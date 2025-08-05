@@ -63,3 +63,8 @@ Youtube
 Subtitles
 Netflix
 Audio comprehension
+
+
+
+### Important fixes for clustering cleaning of text
+Word characters such as I'd, the apastrophe would be represented by I\u2019d. It is important to remove such character combination for special characters before clustering. 
