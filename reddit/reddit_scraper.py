@@ -1,68 +1,14 @@
 from __future__ import annotations # needed so that we can use the nested structure of replies
 import os
 import requests
-from typing import Any, Dict, List, Optional, Union
-from pydantic import BaseModel, Field
+from typing import List, Optional
 from dotenv import load_dotenv
+
+from responses.reddit_post_comments_response import RedditComment, RedditPost, RedditResponse
 
 load_dotenv()
 
-class BaseRedditMessage(BaseModel):
-    id: str # Id of the reddit post, this is in a string format
-    selftext: str # text in a reddit post
-    subreddit: str # reddit where it was found
-    ups: int # number of upvotes more than downvotes
-    downs: int # number of downvotes more than upvotes
-    send_replies: bool
-    selftext_html: Optional[str] # we can use this to figure out whether a picture of link is added, as you won't see this in the selftext if embedded on reddit
-    permalink: str # e.g. '/r/deaf/comments/1mg82a6/is_there_a_polite_way_to_decline_signing/'   | this is used to retrieve the comments
-    link_flair_text: Optional[str] # user added tag for example "deaf"
-    author: str # The author name 
-    created_utc: float # created at UTC timestamp
 
-
-class RedditPost(BaseRedditMessage):
-
-    title: str # reddit post title
-    upvote_ratio: float # percentage of upvote vs downvotes
-    
-
-
-class RedditComment(BaseRedditMessage):
-    body: str
-    replies: Union[RedditResponse, str] = ""
-    controversiality: float
-    depth: int # How many nests are above this comment
-    media_metadata: Dict[str, Any]
-
-class RedditChild(BaseModel):
-    """Represents a child item in the Reddit API response"""
-    kind: str
-    data: RedditPost | RedditComment
-
-class RedditDataResponse(BaseModel):
-    after: str
-    dist: int
-    modhash: Optional[Any]
-    before: Optional[Any]
-    children: List[RedditChild]
-
-class RedditResponse(BaseModel):
-    kind: str
-    data: RedditDataResponse
-
-    def get_posts(self):
-        return [post.data for post in self.data.children]
-
-# Update forward references after all models are defined
-RedditChild.model_rebuild()
-RedditComment.model_rebuild()
-RedditResponse.model_rebuild()
-
-class RedditPostManager:
-    """in this class we simplify the posts and comments into a more undertandable data structure
-    that relates the posts and comments to its parent without the data and children attribute. This class also manages which query was executed to find the post 
-    also it makes it easy restrict which posts and comments have already been scraped so that double execution is inhibited"""
 
 class RedditScraper:
     """The system that calls the reddit API with the correct information"""
@@ -91,7 +37,7 @@ class RedditScraper:
         return headers
 
     
-    def search(self, subreddit: str, query: str, age: str, limit= 25, filter: Optional[str] = ""):
+    def search(self, subreddit: str, query: str, age: str, limit= 25, filter: Optional[str] = "top") -> RedditPost:
         """
         subreddit = "deaf"; // subreddit name goes here
         query = what should be added in the reddit search bar
@@ -105,17 +51,44 @@ class RedditScraper:
         response = requests.get(f"https://oauth.reddit.com/r/{subreddit}/{filter}?search={query}/?t=${age}", headers=self.headers, params={'limit': limit})
         return RedditResponse.model_validate(response.json()).get_posts()
     
-    def search_comments(self, permalink: str):
+    def search_comments(self, permalink: str) -> List[RedditComment]:
         response = requests.get(f"https://oauth.reddit.com/{permalink}", headers=self.headers, params={'limit': 100})
-        full_submission_post =  response.json()[0] # this is the post of the permalink that is connected to it
+        full_submission_post =  response.json()[0] # this is the post of the permalink that is connected to it, it is exactly the same as the post
         comments = response.json()[1]
         print(comments.keys())
-        return RedditResponse.model_validate(comments).get_posts()
+        return RedditResponse.model_validate(comments).get_comments()
         
 
-    def get_post_comments(self, reddit_post: RedditPost):
+    def get_post_comments(self, reddit_post: RedditPost) -> List[RedditComment]:
         comments = self.search_comments(reddit_post.permalink)
         return comments
+
+
+class RedditManager:
+    """This class manages to send all of the searches that need to be searched in the subreddit. It also makes sure to limit the number of responses send
+    
+    :params 
+        subreddit: to search in
+        keywords: list of keywords to search for in subreddit
+        number_posts_per_keyword: total number of posts to extract per keyword [TODO should this be dynamically set?]"""
+    def __init__(self, subreddit: str, keywords: List[str], number_posts_per_keyword: int):
+        self.subreddit = subreddit
+        self.keyswords = keywords
+        self.scraper = RedditScraper()
+        self.number_posts_per_keyword = number_posts_per_keyword
+    
+
+    def scrape_subreddit(self):
+        """scrapes the whole subreddit with each of the keywords and builds the reddit conversation Post entity"""
+        
+    def scrape_keyword(self, keyword: str):
+        reddit_posts = self.scraper.search(subreddit=self.subreddit,
+                                    query=keyword,
+                                    age="all", # or past year only to only focus on unmet needs?
+                                    limit=self.number_posts_per_keyword)
+        for post in reddit_posts:
+            comments = self.scraper.get_post_comments(post)
+
 
 
 
