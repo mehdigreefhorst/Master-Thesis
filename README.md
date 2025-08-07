@@ -72,3 +72,5 @@ Word characters such as I'd, the apastrophe would be represented by I\u2019d. It
 
 ### Reddit scraper
 SO we have a list of keywords that we want to scrape the posts and its comments for in a subreddit. The search will result in 1-100 posts. So we must determine this number, the default is 25. But the question is whether we should increase this number. Right now it is a fixed number, but if a keyword has a lot or very few hits. We should dynamcally adjust this number or in extreme events, look for the second page of the search result to get more posts. We could do this by having an LLM determine whether the last 3 post relates to the research question, and if this is the case, we look for another set of reddit posts. 
+
+Do something with flair_name which can be VENT -> which are posts that are about venting

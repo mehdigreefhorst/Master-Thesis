@@ -72,3 +72,5 @@ class RedditPostManager:
         # now enrich the object with LLM to make a comment more full of information. 
 
     
+if __name__ == "__main__":
+    reddit_post_manager = RedditPostManager()

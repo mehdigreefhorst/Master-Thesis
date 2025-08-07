@@ -1,9 +1,11 @@
 from __future__ import annotations # needed so that we can use the nested structure of replies
+import json
 import os
 import requests
 from typing import List, Optional
 from dotenv import load_dotenv
-
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from responses.reddit_post_comments_response import RedditComment, RedditPost, RedditResponse
 
 load_dotenv()
@@ -37,7 +39,7 @@ class RedditScraper:
         return headers
 
     
-    def search(self, subreddit: str, query: str, age: str, limit= 25, filter: Optional[str] = "top") -> RedditPost:
+    def search(self, subreddit: str, query: str, age: str, limit= 25, filter: Optional[str] = "top") -> List[RedditPost]:
         """
         subreddit = "deaf"; // subreddit name goes here
         query = what should be added in the reddit search bar
@@ -49,12 +51,14 @@ class RedditScraper:
         """
         query = query.replace(" ", "+")
         response = requests.get(f"https://oauth.reddit.com/r/{subreddit}/{filter}?search={query}/?t=${age}", headers=self.headers, params={'limit': limit})
-        return RedditResponse.model_validate(response.json()).get_posts()
+        response = response.json()
+        return RedditResponse.model_validate(response).get_posts()
     
     def search_comments(self, permalink: str) -> List[RedditComment]:
         response = requests.get(f"https://oauth.reddit.com/{permalink}", headers=self.headers, params={'limit': 100})
-        full_submission_post =  response.json()[0] # this is the post of the permalink that is connected to it, it is exactly the same as the post
-        comments = response.json()[1]
+        response = response.json()
+        full_submission_post =  response[0] # this is the post of the permalink that is connected to it, it is exactly the same as the post
+        comments = response[1]
         print(comments.keys())
         return RedditResponse.model_validate(comments).get_comments()
         
@@ -90,8 +94,14 @@ class RedditManager:
             comments = self.scraper.get_post_comments(post)
 
 
+if __name__ == "__main__":
 
-
-redditScaper= RedditScraper()
-posts = redditScaper.search("deaf", "video", "week")
-print(redditScaper.get_post_comments(posts[0]))
+    redditScaper= RedditScraper()
+    posts = redditScaper.search("deaf", "video", "week")
+    post_to_save = posts[0]
+    with open("data/cached_post1.json", "w") as f:
+        f.write(post_to_save.model_dump_json(indent=4))
+    comments = redditScaper.get_post_comments(post_to_save)
+    comments_json = [comment.model_dump() for comment in comments]
+    with open("data/cached_comments1.json", "w") as f:
+        f.write(json.dumps(comments_json, indent=4))
