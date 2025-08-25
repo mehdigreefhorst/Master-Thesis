@@ -49,6 +49,6 @@ class KeyWordSearchObjective(BaseModel):
 class ScraperEntity(BaseEntity):
     user_id: PyObjectId
     keywords: List[str]
-    post_ids: List[str] # should we refer the post ids here or in the entities of the post
+    post_ids: List[str] = list() # should we refer the post ids here or in the entities of the post
     subreddits: List[str] # Subreddits to search for
     keyword_search_objective: KeyWordSearchObjective

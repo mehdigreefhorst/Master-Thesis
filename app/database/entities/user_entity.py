@@ -10,9 +10,10 @@ class UserRole(str, Enum):
 
 class UserEntity(BaseEntity):
     email: str
+    password: bytes
     reddit_name: Optional[str] = None
     reddit_api_key: Optional[str] = None
     reddit_password: Optional[str] = None
     reddit_client_id: Optional[str] = None
-    role: UserRole = UserRole.Admin
+    role: UserRole = UserRole.Default
     
