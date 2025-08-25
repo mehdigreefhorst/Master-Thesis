@@ -4,7 +4,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 # from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.database import get_scraper_repository, get_user_repository
-from app.requests.scraping_commands import ScrapingCommands
+from app.requests.scraping_commands import ScrapingCommands, ScrapingId
 from app.requests.scraper_requests import CreateScraperRequest
 from app.responses.reddit_post_comments_response import RedditResponse
 from app.services.scraper_service import ScraperService
@@ -42,3 +42,37 @@ def create_scraper_instance(body: CreateScraperRequest):
 
     return jsonify(scraper_instance=result.inserted_id)
 
+@scraper_bp.route("/pause", methods=["PUT"])
+@validate_request_body(ScrapingId)
+@jwt_required()
+def pause_scraper(body: ScrapingId):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    
+    scraper_instance = get_scraper_repository().find_by_id_and_user(user_id, body.scraper_id)
+    if not scraper_instance:
+        return jsonify(error="no such scraper instance exists"), 401
+    
+    get_scraper_repository().update(scraper_instance.id, {"status": "paused"})
+    return jsonify(message=f"{scraper_instance.id} is now paused"), 200
+
+
+@scraper_bp.route("/pause", methods=["PUT"])
+@validate_request_body(ScrapingId)
+@jwt_required()
+def start_scraper(body: ScrapingId):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    
+    scraper_instance = get_scraper_repository().find_by_id_and_user(user_id, body.scraper_id)
+    if not scraper_instance:
+        return jsonify(error="no such scraper instance exists"), 401
+    
+    if scraper_instance.status != "ongoing":
+        get_scraper_repository().update(scraper_instance.id, {"status": "ongoing"})
+        
+    

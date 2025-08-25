@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Mapping, Type, Optional
+from typing import Any, Dict, List, Literal, Mapping, Type, Optional
 
 import pymongo
 from flask_pymongo.wrappers import Database
@@ -86,3 +86,14 @@ class BaseRepository[T: BaseEntity]:
         new_filter = existing_filter.copy()
         new_filter["deleted_at"] = None
         return new_filter
+    
+    def find_ids(self, filter: Dict[str, Any], fields_to_include: Dict[str, Literal[0, 1]] = dict()) -> List[PyObjectId]:
+        """
+        Returns only the document IDs (_id) matching the filter.
+        If fields_to_include is given, also those fields will be returned
+        This avoids converting to full entities and speeds up queries.
+        """
+        filter_with_soft_delete = self._soft_delete_filter(filter)
+        projection = {"_id": 1}
+        projection.update(fields_to_include)
+        return self.collection.find(filter_with_soft_delete, projection)

@@ -1,6 +1,6 @@
 
 
-from typing import List, Literal
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel
 from app.database.entities.base_entity import BaseEntity, PyObjectId
@@ -8,6 +8,7 @@ from app.database.entities.base_entity import BaseEntity, PyObjectId
 class KeyWordSearch(BaseModel):
     """this class keeps track the search results for one of the keywords """
     keyword: str
+    found_post_ids: List[PyObjectId] = list()
     status: Literal["pending", "ongoing", "done"] = "pending"
 
 
@@ -25,24 +26,24 @@ class KeyWordSearchSubreddit(BaseModel):
 
 class KeyWordSearchObjective(BaseModel):
     """keeps track the search results for each of the keywords"""
-    keyword_subreddit_searches: List[KeyWordSearchSubreddit]
+    keyword_subreddit_searches: Dict[str, KeyWordSearchSubreddit]
 
     def find_next_pending_keyword_ongoing_subreddit(self):
-        ongoing_subreddits = [subreddit for subreddit in self.keyword_subreddit_searches if subreddit.status == "ongoing"]
+        ongoing_subreddits = [subreddit for subreddit in self.keyword_subreddit_searches.values() if subreddit.status == "ongoing"]
         if ongoing_subreddits:
             next_subreddit = ongoing_subreddits[0]
             next_keyword = next_subreddit.find_next_pending_keyword()
             if not next_keyword:
                 next_subreddit.status = "done"
-            return next_subreddit
+            return next_subreddit, next_keyword
         
-        pending_subreddits = [subreddit for subreddit in self.keyword_subreddit_searches if subreddit.status == "pending"]
+        pending_subreddits = [subreddit for subreddit in self.keyword_subreddit_searches.values() if subreddit.status == "pending"]
         if pending_subreddits:
             next_subreddit = pending_subreddits[0]
             next_subreddit.status = "ongoing"
             next_keyword = next_subreddit.find_next_pending_keyword()
 
-            return next_subreddit
+            return next_subreddit, next_keyword
 
 
 
@@ -52,3 +53,7 @@ class ScraperEntity(BaseEntity):
     post_ids: List[str] = list() # should we refer the post ids here or in the entities of the post
     subreddits: List[str] # Subreddits to search for
     keyword_search_objective: KeyWordSearchObjective
+    status: Literal["initialized", "ongoing", "paused", "completed", "error"] = "initialized"
+
+    def get_next_keyword(self):
+        return self.keyword_search_objective.find_next_pending_keyword_ongoing_subreddit()

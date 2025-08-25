@@ -6,9 +6,11 @@ from pydantic import BaseModel
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
+from app.database.entities.base_entity import BaseEntity
 from app.responses.reddit_post_comments_response import RedditComment, RedditPost, RedditResponse
 
-class RedditBaseEntity(BaseModel):
+class RedditBaseEntity(BaseEntity):
+    reddit_id: str
     text: str
     author: str
     upvotes: int
@@ -25,8 +27,9 @@ class CommentEntity(RedditBaseEntity):
     prior_comments_thread: Optional[List[str]]
 
     @classmethod
-    def from_comment_response(cls, comment: RedditComment, prior_comments_thread: List[str] = list()) -> "RedditCommentEntity":
+    def from_comment_response(cls, comment: RedditComment, prior_comments_thread: List[str] = list()) -> "CommentEntity":
         return cls(
+            reddit_id=comment.id,
             text= comment.body,
             author=comment.author,
             upvotes= comment.ups,
@@ -59,6 +62,7 @@ class PostEntity (RedditBaseEntity):
     @classmethod
     def from_post_response(cls, post: RedditPost, comments: List[CommentEntity]):
         return cls(
+            reddit_id=post.id,
             title=post.title,
             permalink=post.permalink,
             text= post.selftext,
@@ -77,38 +81,3 @@ class PostEntity (RedditBaseEntity):
 
 
 
-class PostManager:
-    """in this class we simplify the posts and comments into a more undertandable data structure
-    that relates the posts and comments to its parent without the data and children attribute. This class also manages which query was executed to find the post 
-    also it makes it easy restrict which posts and comments have already been scraped so that double execution is inhibited"""
-
-    @staticmethod
-    def save_reddit_post_conversation(post_entity: PostEntity):
-        # save_to_db
-        print("Saving to database code here!")
-        return
-    
-    @staticmethod
-    def create_reddit_post_conversation(post: RedditPost, comments: List[RedditComment]):
-        """Transforms the response format of the reddit posts, into the structure that we would like to save in the database
-        It is important to start with the comments first, because each of the comments have a thread and it might be very nested
-        """
-        post_title_content_text = post.title + "\n" + post.selftext
-        comment_entities = [CommentEntity.from_comment_response(comment, [post_title_content_text]) for comment in comments]
-        post_entity = PostEntity.from_post_response(post, comment_entities)
-        with open("data/post_entity.json", "w") as f:
-            f.write(post_entity.model_dump_json(indent=4))
-        # now call the database to update with the post with its comments
-
-        # now enrich the object with LLM to make a comment more full of information. 
-
-    
-if __name__ == "__main__":
-    reddit_post_manager = PostManager()
-    with open("data/cached_post1.json") as f:
-        post = RedditPost.model_validate_json(f.read())
-    with open("data/cached_comments1.json") as f:
-        comments = json.loads(f.read())
-        comments = [RedditComment.model_validate(comment) for comment in comments]
-    
-    PostManager.create_reddit_post_conversation(post, comments)

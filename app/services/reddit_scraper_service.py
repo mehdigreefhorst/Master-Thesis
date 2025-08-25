@@ -1,8 +1,10 @@
 from __future__ import annotations # needed so that we can use the nested structure of replies
+from enum import Enum
 import json
 import os
+from pydantic import BaseModel
 import requests
-from typing import List, Optional
+from typing import List, Literal, Optional, Tuple
 from dotenv import load_dotenv
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
@@ -36,10 +38,16 @@ class RedditScraper:
         print("response = \n", response.json())
         token = response.json()['access_token']
         headers = {**headers, **{'Authorization': f'bearer {token}'}}
-        return headers
+        return headers        
 
-    
-    def search(self, subreddit: str, query: str, age: str, limit= 25, filter: Optional[str] = "top") -> List[RedditPost]:
+
+    def search(self, 
+               subreddit: str, 
+               query: str, 
+               age: Literal["hour", "day", "week", "month", "year", "all"] = "all", 
+               limit= 25, 
+               filter: Literal["new", "hot", "top", "rising"] = "top"
+               ) -> List[RedditPost]:
         """
         subreddit = "deaf"; // subreddit name goes here
         query = what should be added in the reddit search bar
@@ -75,9 +83,7 @@ class RedditManager:
         subreddit: to search in
         keywords: list of keywords to search for in subreddit
         number_posts_per_keyword: total number of posts to extract per keyword [TODO should this be dynamically set?]"""
-    def __init__(self, subreddit: str, keywords: List[str], number_posts_per_keyword: int):
-        self.subreddit = subreddit
-        self.keyswords = keywords
+    def __init__(self, number_posts_per_keyword: int):
         self.scraper = RedditScraper()
         self.number_posts_per_keyword = number_posts_per_keyword
     
@@ -85,14 +91,26 @@ class RedditManager:
     def scrape_subreddit(self):
         """scrapes the whole subreddit with each of the keywords and builds the reddit conversation Post entity"""
         
-    def scrape_keyword(self, keyword: str):
-        reddit_posts = self.scraper.search(subreddit=self.subreddit,
+    def find_related_posts_to_keyword(
+            self,
+            subreddit: str, 
+            keyword: str, 
+            age: Literal["hour", "day", "week", "month", "year", "all"] = "all",
+            filter: Literal["new", "hot", "top", "rising"] = "top"):
+        
+        reddit_posts = self.scraper.search(subreddit=subreddit,
                                     query=keyword,
-                                    age="all", # or past year only to only focus on unmet needs?
-                                    limit=self.number_posts_per_keyword)
-        for post in reddit_posts:
-            comments = self.scraper.get_post_comments(post)
-
+                                    age=age, # or past year only to only focus on unmet needs?
+                                    limit=self.number_posts_per_keyword,
+                                    filter=filter)
+        return reddit_posts
+        
+    
+    def scrape_comments_of_post(self, reddit_post: RedditPost):
+        # TODO: here we would like a try and except block because it might fail because of limits
+        
+        comments = self.scraper.get_post_comments(reddit_post)
+        return comments
 
 if __name__ == "__main__":
 
