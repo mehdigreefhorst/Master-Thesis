@@ -3,7 +3,7 @@
 from typing import List, Literal
 
 from pydantic import BaseModel
-from app.database.entities.base_entity import BaseEntity
+from app.database.entities.base_entity import BaseEntity, PyObjectId
 
 class KeyWordSearch(BaseModel):
     """this class keeps track the search results for one of the keywords """
@@ -47,6 +47,7 @@ class KeyWordSearchObjective(BaseModel):
 
 
 class ScraperEntity(BaseEntity):
+    user_id: PyObjectId
     keywords: List[str]
     post_ids: List[str] # should we refer the post ids here or in the entities of the post
     subreddits: List[str] # Subreddits to search for

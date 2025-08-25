@@ -11,13 +11,14 @@ from app.database.user_repository import UserRepository
 
 
 DATABASE_OPTIONS = CodecOptions[Any](tz_aware=True)
+from app.utils.extensions import mongo
 
 
 def _get_db() -> Database:
     db = getattr(g, "_database", None)
 
     if db is None:
-        db = g._database = PyMongo(current_app).cx["reddit_scraper"]
+        db = g._database = mongo.cx["reddit_scraper"]
 
     return db
 

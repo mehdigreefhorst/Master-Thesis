@@ -34,13 +34,12 @@ def login(body: LoginRequest):
 
 
 @auth_bp.route("/signup", methods=["POST"])
-@jwt_required()
 @validate_request_body(SignupRequest)
 def signup(body: SignupRequest):
-    current_user_id = get_jwt_identity()
-    current_user = get_user_repository().find_by_id(current_user_id)
-    if not current_user or current_user.role != UserRole.Admin:
-        return jsonify(message="Cannot create a user"), 403
+    # current_user_id = get_jwt_identity()
+    # current_user = get_user_repository().find_by_id(current_user_id)
+    # if not current_user or current_user.role != UserRole.Admin:
+    #     return jsonify(message="Cannot create a user"), 403
 
     existing_user = get_user_repository().find_by_email(body.email.lower())
     if existing_user:

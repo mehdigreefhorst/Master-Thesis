@@ -1,6 +1,7 @@
 
 
 from enum import Enum
+from typing import Optional
 from app.database.entities.base_entity import BaseEntity
 
 class UserRole(str, Enum):
@@ -8,9 +9,10 @@ class UserRole(str, Enum):
     Admin = 'ADMIN'
 
 class UserEntity(BaseEntity):
-    reddit_name: str
-    reddit_api_key: str
-    reddit_password: str
-    reddit_client_id: str
+    email: str
+    reddit_name: Optional[str] = None
+    reddit_api_key: Optional[str] = None
+    reddit_password: Optional[str] = None
+    reddit_client_id: Optional[str] = None
     role: UserRole = UserRole.Admin
     

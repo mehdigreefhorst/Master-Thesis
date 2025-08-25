@@ -6,11 +6,14 @@ from flask import Flask
 from flask.json.provider import DefaultJSONProvider
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from flask_pymongo import PyMongo
 
 from app.routes.scraper_routes import scraper_bp
 from app.routes.user_routes import user_bp
+from app.routes.auth_routes import auth_bp
 
 from app.utils.configuration import get_env_variable, is_production_environment
+from app.utils.extensions import mongo
 
 
 class CustomJSONEncoder(DefaultJSONProvider):
@@ -27,6 +30,7 @@ def start_app():
     # Configuration can be added here
     mongo_db_url = os.getenv("MONGODB_URL").replace("<db_password>", os.getenv("MONGODB_PASSWORD"))
     app.config["MONGO_URI"] = mongo_db_url
+    mongo.init_app(app)  # bind to the real app
 
     app.config["JWT_SECRET_KEY"] = get_env_variable("JWT_SECRET_KEY", str)
     app.config["JWT_TOKEN_LOCATION"] = ["headers"]
@@ -45,6 +49,7 @@ def start_app():
     app.url_map.strict_slashes = False
 
     # Register Blueprints
+    app.register_blueprint(auth_bp)
     app.register_blueprint(scraper_bp)
     app.register_blueprint(user_bp)
 

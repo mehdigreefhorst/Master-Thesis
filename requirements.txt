@@ -3,9 +3,10 @@ python-dotenv
 pydantic
 pymongo
 flask
-flask_pymongo
 Flask-JWT-Extended
 flask-cors
 flask[async]
 pymongo[srv]
 bcrypt
+flask-pymongo
+PyJWT
