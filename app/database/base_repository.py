@@ -6,8 +6,8 @@ from pydantic import BaseModel
 from pymongo.results import InsertOneResult, UpdateResult
 
 
-from database.entities.base_entity import BaseEntity, PyObjectId
-from utils import utc_timestamp
+from app.database.entities.base_entity import BaseEntity, PyObjectId
+from app.utils import utc_timestamp
 
 
 class PaginatedEntities[T: BaseEntity](BaseModel):

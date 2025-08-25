@@ -181,3 +181,5 @@ cython_debug/
 .cursorindexingignore
 .env
 .DS_Store
+config/base.env
+config/development.env

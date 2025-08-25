@@ -4,7 +4,7 @@ from typing import Any, Mapping, Optional
 from bson import ObjectId
 from pydantic import BaseModel, Field
 
-from utils import utc_timestamp
+from app.utils import utc_timestamp
 
 PyObjectId = str
 

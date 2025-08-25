@@ -4,9 +4,9 @@ import os
 from typing import List, Optional
 from pydantic import BaseModel
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from responses.reddit_post_comments_response import RedditComment, RedditPost, RedditResponse
+from app.responses.reddit_post_comments_response import RedditComment, RedditPost, RedditResponse
 
 class RedditBaseEntity(BaseModel):
     text: str
@@ -17,8 +17,8 @@ class RedditBaseEntity(BaseModel):
     created_utc: float # created at UTC timestamp
 
 
-class RedditCommentEntity(RedditBaseEntity):
-    replies: List["RedditCommentEntity"]
+class CommentEntity(RedditBaseEntity):
+    replies: List["CommentEntity"]
     controversiality: float
     depth: int # How many nests are above this comment
     enriched_text: Optional[str] = None
@@ -37,7 +37,7 @@ class RedditCommentEntity(RedditBaseEntity):
             depth=comment.depth,
             prior_comments_thread = prior_comments_thread.copy(),
             replies= [
-                RedditCommentEntity.from_comment_response(reply, prior_comments_thread + [comment.body]) 
+                CommentEntity.from_comment_response(reply, prior_comments_thread + [comment.body]) 
                 for reply 
                 in comment.replies.get_comments()
                 ] if not isinstance(comment.replies , str) else []
@@ -48,16 +48,16 @@ class RedditCommentEntity(RedditBaseEntity):
                 #     ]
         )
 
-class RedditPostEntity (RedditBaseEntity):
+class PostEntity (RedditBaseEntity):
     title: str
     subreddit: str # subreddit where the post was made in
     send_replies: bool # shows whether the author has send replies to the comments received
 
     permalink: str # e.g. '/r/deaf/comments/1mg82a6/is_there_a_polite_way_to_decline_signing/'   | this is used to retrieve the comments
-    comments: List[RedditCommentEntity]
+    comments: List[CommentEntity]
 
     @classmethod
-    def from_post_response(cls, post: RedditPost, comments: List[RedditCommentEntity]):
+    def from_post_response(cls, post: RedditPost, comments: List[CommentEntity]):
         return cls(
             title=post.title,
             permalink=post.permalink,
@@ -77,13 +77,13 @@ class RedditPostEntity (RedditBaseEntity):
 
 
 
-class RedditPostManager:
+class PostManager:
     """in this class we simplify the posts and comments into a more undertandable data structure
     that relates the posts and comments to its parent without the data and children attribute. This class also manages which query was executed to find the post 
     also it makes it easy restrict which posts and comments have already been scraped so that double execution is inhibited"""
 
     @staticmethod
-    def save_reddit_post_conversation(post_entity: RedditPostEntity):
+    def save_reddit_post_conversation(post_entity: PostEntity):
         # save_to_db
         print("Saving to database code here!")
         return
@@ -94,8 +94,8 @@ class RedditPostManager:
         It is important to start with the comments first, because each of the comments have a thread and it might be very nested
         """
         post_title_content_text = post.title + "\n" + post.selftext
-        comment_entities = [RedditCommentEntity.from_comment_response(comment, [post_title_content_text]) for comment in comments]
-        post_entity = RedditPostEntity.from_post_response(post, comment_entities)
+        comment_entities = [CommentEntity.from_comment_response(comment, [post_title_content_text]) for comment in comments]
+        post_entity = PostEntity.from_post_response(post, comment_entities)
         with open("data/post_entity.json", "w") as f:
             f.write(post_entity.model_dump_json(indent=4))
         # now call the database to update with the post with its comments
@@ -104,11 +104,11 @@ class RedditPostManager:
 
     
 if __name__ == "__main__":
-    reddit_post_manager = RedditPostManager()
+    reddit_post_manager = PostManager()
     with open("data/cached_post1.json") as f:
         post = RedditPost.model_validate_json(f.read())
     with open("data/cached_comments1.json") as f:
         comments = json.loads(f.read())
         comments = [RedditComment.model_validate(comment) for comment in comments]
     
-    RedditPostManager.create_reddit_post_conversation(post, comments)
+    PostManager.create_reddit_post_conversation(post, comments)

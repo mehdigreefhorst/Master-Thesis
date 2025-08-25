@@ -5,8 +5,8 @@ import requests
 from typing import List, Optional
 from dotenv import load_dotenv
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from responses.reddit_post_comments_response import RedditComment, RedditPost, RedditResponse
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from app.responses.reddit_post_comments_response import RedditComment, RedditPost, RedditResponse
 
 load_dotenv()
 
