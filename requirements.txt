@@ -8,3 +8,4 @@ Flask-JWT-Extended
 flask-cors
 flask[async]
 pymongo[srv]
+bcrypt
