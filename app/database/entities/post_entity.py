@@ -1,4 +1,4 @@
-
+# database/entities/post_entity.py
 import json
 import os
 from typing import List, Optional

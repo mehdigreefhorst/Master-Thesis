@@ -57,21 +57,30 @@ class BaseRepository[T: BaseEntity]:
 
         return PaginatedEntities(content=entities, total_size=total_size)
 
-    def find_one(self, filter: Dict[str, Any]) -> T | None:
-        document = self.collection.find_one(self._soft_delete_filter(filter))
-        if document:
-            entity = self._convert_to_entity(document)
-            return entity
+    def find_one(self, filter: Dict[str, Any], fields: list[str] | None = None) -> T | None:
+        projection = None
+        if fields:
+            projection = {"_id": 1}
+            projection.update({field: 1 for field in fields})
+        
+        document = self.collection.find_one(self._soft_delete_filter(filter), projection)
 
-        return None
+        if not document:
+            return None
+        
+        # If fields are requested, return raw dict instead of entity
+        if fields:
+            return document
+        return self._convert_to_entity(document)
 
-    def find_by_id(self, id: PyObjectId) -> T | None:
-        return self.find_one({"_id": id})
+    def find_by_id(self, id: PyObjectId, fields: list[str] | None = None) -> T | None:
+        return self.find_one({"_id": id}, fields)
 
     def update(self, id: PyObjectId, to_update: Mapping[str, Any] | T) -> UpdateResult:
         if isinstance(to_update, BaseEntity):  # Cannot do 'isinstance(..., T)' so we use BaseEntity instead.
             to_update = dict(to_update.dump_for_database())
             del to_update["_id"]
+        to_update["updated_at"] = utc_timestamp()
 
         filter = self._soft_delete_filter({"_id": id})
         return self.collection.update_one(filter, {"$set": to_update})
@@ -97,3 +106,16 @@ class BaseRepository[T: BaseEntity]:
         projection = {"_id": 1}
         projection.update(fields_to_include)
         return self.collection.find(filter_with_soft_delete, projection)
+    
+    def insert_list_element(self, filter: Dict[str, Any], mongo_db_variable_path: str, list_element_to_append: Any):
+        """
+        if multiple adding.   -> mycol.update_one({'name': 'Jane Doe'}, {'$push': {'interests': {'$each': ['hiking', 'swimming']}}}) 
+        if one element adding -> mycol.update_one({'name': 'John Doe'}, {'$push': {'interests': 'gardening'}}) 
+        if complex adding     -> mycol.update_one({'title': 'MongoDB Basics'}, {'$push': {'authors': {'name': 'Jane Smith', 'affiliation': 'University of MongoDB'}}})
+        """
+        filter_with_soft_delete = self._soft_delete_filter(filter)
+        if isinstance(list_element_to_append, (set, list)):
+            return self.collection.update_one(filter_with_soft_delete, {"$push": {mongo_db_variable_path: {"$each": list_element_to_append}}})
+        else:
+            return self.collection.update_one(filter_with_soft_delete, {"$push": {mongo_db_variable_path: list_element_to_append}})
+
