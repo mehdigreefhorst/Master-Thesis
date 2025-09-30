@@ -62,7 +62,6 @@ class KeyWordSearchObjective(BaseModel):
 class ScraperEntity(BaseEntity):
     user_id: PyObjectId
     keywords: List[str]
-    post_ids: List[str] = list() # should we refer the post ids here or in the entities of the post
     subreddits: List[str] # Subreddits to search for
     keyword_search_objective: KeyWordSearchObjective
     status: Literal["initialized", "ongoing", "paused", "completed", "error"] = "initialized"
@@ -75,5 +74,17 @@ class ScraperEntity(BaseEntity):
     
     def has_unscraped_keywords(self) -> bool:
         return self.keyword_search_objective.check_unscraped_keywords()
+    
+    def get_all_post_entity_ids(self) -> List[PyObjectId]:
+        """gets the scraperEntity all the post_ids that were scraped by this entity"""
+        post_entity_ids = []
 
+        for sureddit, keyword_search_subreddit in self.keyword_search_objective.keyword_subreddit_searches.items():
+            for keyword, keyword_search in keyword_search_subreddit.keyword_searches.items():
+                post_entity_ids.extend(keyword_search.found_post_ids)
+        
+        return post_entity_ids
+
+
+    
 

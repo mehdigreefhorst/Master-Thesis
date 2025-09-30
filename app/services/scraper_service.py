@@ -29,7 +29,6 @@ class ScraperService(BaseModel):
         scraper_entity = ScraperEntity(
             keywords = scraper_request.keywords,
             subreddits= scraper_request.subreddits,
-            post_ids=[],
             keyword_search_objective=keyword_search_objective,
             user_id=user_id
         )

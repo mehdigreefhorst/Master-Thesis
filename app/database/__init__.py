@@ -5,7 +5,10 @@ from flask import current_app, g
 from flask_pymongo import PyMongo
 from flask_pymongo.wrappers import Database
 
+from app.database.cluster_repository import ClusterRepository
+from app.database.cluster_unit_repository import ClusterUnitRepository
 from app.database.post_repository import PostRepository
+from app.database.scraper_cluster_repository import ScraperClusterRepository
 from app.database.scraper_repository import ScraperRepository
 from app.database.user_repository import UserRepository
 
@@ -42,3 +45,21 @@ def get_scraper_repository() -> ScraperRepository:
         g.scraper_repository = ScraperRepository(_get_db())
 
     return g.scraper_repository
+
+def get_cluster_repository() -> ClusterRepository:
+    if not hasattr(g, "cluster_repository"):
+        g.cluster_repository = ClusterRepository(_get_db())
+        
+    return g.cluster_repository
+
+def get_cluster_unit_repository() -> ClusterUnitRepository:
+    if not hasattr(g, "cluster_unit_repository"):
+        g.cluster_unit_repository = ClusterUnitRepository(_get_db())
+
+    return g.cluster_unit_repository
+
+def get_scraper_cluster_repository() -> ScraperClusterRepository:
+    if not hasattr(g, "cluster_scraper_repository"):
+        g.cluster_scraper_repository = ScraperClusterRepository(_get_db())
+
+    return g.cluster_scraper_repository
