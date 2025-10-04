@@ -1,6 +1,7 @@
 
 
-from typing import List, Literal
+from datetime import datetime
+from typing import List, Literal, Optional
 from app.database.entities.base_entity import BaseEntity, PyObjectId
 from app.database.entities.post_entity import PostEntity, CommentEntity
 
@@ -12,7 +13,7 @@ class ClusterUnitEntity(BaseEntity):
     type: Literal["post", "comment"]
     reddit_id: str # official "REDDIT" reddit id
     author: str
-    usertag: str
+    usertag: Optional[str]
     upvotes: int
     downvotes: int
     created_utc: int
@@ -35,8 +36,8 @@ class ClusterUnitEntity(BaseEntity):
             usertag= post_entity.user_tag,
             upvotes= post_entity.upvotes,
             downvotes= post_entity.downvotes,
-            created_utc= post_entity.created_at,
-            thread_path_text=  None,# the full prior thread (post -> comment -> reply --> ...) up until the current comment
+            created_utc=post_entity.created_utc,
+            thread_path_text=  [],# the full prior thread (post -> comment -> reply --> ...) up until the current comment
             enriched_comment_thread_text= None, # what the LLM made from the thread path text & text
             text= post_entity.text # the author's individual text contribution to reddit
         )
@@ -56,7 +57,7 @@ class ClusterUnitEntity(BaseEntity):
             usertag= comment_entity.user_tag,
             upvotes= comment_entity.upvotes,
             downvotes= comment_entity.downvotes,
-            created_utc= comment_entity.created_at,
+            created_utc= comment_entity.created_utc,
             thread_path_text=  comment_entity.prior_comments_thread,# the full prior thread (post -> comment -> reply --> ...) up until the current comment
             enriched_comment_thread_text= None, # what the LLM made from the thread path text & text
             text= comment_entity.text # the author's individual text contribution to reddit

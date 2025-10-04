@@ -2,12 +2,13 @@
 
 from typing import List
 from app.database.entities.base_entity import PyObjectId
-from app.database.entities.cluster_entity import ClusterEntity, ClusterPostPrepStatusType, ClusterTextThreadModeType, ClusterStatusType
+from app.database.entities.cluster_entity import ClusterEntity, ClusterTextThreadModeType
 from app.database.entities.cluster_unit_entity import ClusterUnitEntity
 from app.database.entities.post_entity import CommentEntity
 from app.database.entities.scraper_cluster_entity import ScraperClusterEntity
 from app.database.entities.scraper_entity import ScraperEntity
-from app.database import get_cluster_repository, get_cluster_unit_repository, get_post_repository, get_scraper_cluster_repository
+from app.database import get_cluster_repository, get_cluster_unit_repository, get_post_repository, get_scraper_cluster_repository, get_scraper_repository
+from app.utils.types import StatusType
 
 
 class ClusterPrepService:
@@ -15,8 +16,9 @@ class ClusterPrepService:
     
     """
     @staticmethod
-    def prepare_cluster_entity(scraping_entity: ScraperEntity, text_thread_mode=ClusterTextThreadModeType.LlmParsedText) -> ClusterEntity:
-        post_entity_ids = scraping_entity.get_all_post_entity_ids()
+    def prepare_cluster_entity(scraper_cluster_entity: ScraperClusterEntity, text_thread_mode=ClusterTextThreadModeType.LlmParsedText) -> ClusterEntity:
+        scraper_entity = get_scraper_repository().find_by_id(scraper_cluster_entity.scraper_entity_id)
+        post_entity_ids = scraper_entity.get_all_post_entity_ids()
 
 
         # should I gather the cluster_unit_ids that have the post_ids or always recreate new cluster_unit_ids
@@ -24,18 +26,17 @@ class ClusterPrepService:
         # But for the thesis, I might want to iterate with different prompts while still maintaining prior ones. 
         # So better for the testing phase that we are in, to create new ones. 
         cluster_entity = ClusterEntity.from_params(
-            scraper_entity_id= scraping_entity.id,
+            scraper_entity_id= scraper_entity.id,
             text_thread_mode= text_thread_mode,
             post_entity_ids= post_entity_ids
         )
-        get_cluster_repository().insert(cluster_entity)
         return cluster_entity
     
     @staticmethod
     def get_or_create_cluster_entity(scraper_cluster_entity: ScraperClusterEntity) -> ClusterEntity:
         """creates the cluster entity if it is not assigned yet. Also updates the database"""
         if not scraper_cluster_entity.cluster_entity_id:
-            cluster_entity = ClusterPrepService.prepare_cluster_entity()
+            cluster_entity = ClusterPrepService.prepare_cluster_entity(scraper_cluster_entity)
             scraper_cluster_entity.cluster_entity_id = cluster_entity.id
             get_cluster_repository().insert(cluster_entity)
             get_scraper_cluster_repository().update(scraper_cluster_entity.id, {"cluster_entity_id": cluster_entity.id})
@@ -50,16 +51,25 @@ class ClusterPrepService:
         cluster_entity.prompt = prompt
         get_cluster_repository().update(cluster_entity.id, {"prompt": prompt})
 
+        # Retrieve all cluster units that have already been created
+        all_previously_added_cluster_units = get_cluster_unit_repository().find({"cluster_entity_id": cluster_entity.id})
+        previous_found_post_ids_set = set([cluster_unit.post_id for cluster_unit in all_previously_added_cluster_units])
+
         all_inserted_cluster_unit_entities = []
-        for post_prep_status, post_id in cluster_entity.post_entity_ids_prep_status.items():
-            if post_prep_status == ClusterPostPrepStatusType.Created:
+        for post_id, post_prep_status  in cluster_entity.post_entity_ids_prep_status.items():
+            print("processing post_id = ", post_id)
+            if post_prep_status == StatusType.Initialized:
+                if post_id in previous_found_post_ids_set:
+                    continue
                 inserted_cluster_unit_entities = ClusterPrepService.convert_post_entity_to_cluster_units(cluster_entity, post_id)
-                inserted_cluster_unit_entities.extend(inserted_cluster_unit_entities)
-            elif post_prep_status == ClusterPostPrepStatusType.Ongoing:
+                all_inserted_cluster_unit_entities.extend(inserted_cluster_unit_entities)
+            elif post_prep_status == StatusType.Ongoing:
                 # TODO what do we do here, it is probably not finished correctly?
                 raise Exception(f"We are with {cluster_entity.id} in a problem with post: {post_id} | we are ongoing???")
-            elif post_prep_status == ClusterPostPrepStatusType.Completed:
+            elif post_prep_status == StatusType.Completed:
                 print(f"cluster_entity_id {cluster_entity.id} already finished with finished {post_id}")
+            else:
+                print(f"ERROR cluster_entity_id {cluster_entity.id} has a problem with {post_id} since post_prep_status = {post_prep_status}")
         
         return len(all_inserted_cluster_unit_entities)
 

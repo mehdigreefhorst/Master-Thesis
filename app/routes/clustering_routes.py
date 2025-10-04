@@ -16,12 +16,12 @@ from app.services.scraper_service import ScraperService
 from app.utils.api_validation import validate_request_body
 from app.utils.types import StatusType
 
-scraper_bp = Blueprint("clustering", __name__, url_prefix="/clustering")
+clustering_bp = Blueprint("clustering", __name__, url_prefix="/clustering")
 
 
-@scraper_bp.route("/prepare_cluster", methods=["POST"])
-@validate_request_body()
-@jwt_required
+@clustering_bp.route("/prepare_cluster", methods=["POST"])
+@validate_request_body(ScraperClusterId)
+@jwt_required()
 def prepare_cluster(body: ScraperClusterId):
     user_id = get_jwt_identity()
     current_user = get_user_repository().find_by_id(user_id)
@@ -33,8 +33,14 @@ def prepare_cluster(body: ScraperClusterId):
     if not scraper_cluster_entity:
         return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {body.scraper_cluster_id}"), 400
     
-    if scraper_cluster_entity.scraper_entity_id:
-        return jsonify(message="scraper has already been created before"), 204 # TODO: Not the right status code
+    if not scraper_cluster_entity.scraper_entity_id:
+        return jsonify(message="scraper is not yet initialized"), 204 # TODO: Not the right status code
+    
+    if not scraper_cluster_entity.stages.scraping == StatusType.Completed:
+        return jsonify(message="scraper is not completed yet"), 204 # TODO: Not the right status code
+    
+    if scraper_cluster_entity.stages.cluster_prep == StatusType.Completed:
+        return jsonify(message="Cluster preparation is already completed"), 201 # TODO: Not the right status code
     
     scraper_entity = get_scraper_repository().find_by_id_and_user(user_id, scraper_cluster_entity.scraper_entity_id)
     if not scraper_entity:
@@ -53,6 +59,10 @@ def prepare_cluster(body: ScraperClusterId):
     """
     
     cluster_units_created = ClusterPrepService.start_preparing_clustering(scraper_cluster_entity, prompt)
+    scraper_cluster_entity.stages.cluster_prep = StatusType.Completed
+
+    get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
+
 
     print(f"A total of {cluster_units_created} cluster units are created!")
     return jsonify(message=f"preparing the cluster is successful, a total of {cluster_units_created} cluster units are created"), 200

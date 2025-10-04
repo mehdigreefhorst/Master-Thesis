@@ -32,6 +32,14 @@ class ScraperRepository(BaseRepository[ScraperEntity]):
 
         return self.collection.update_one(filter, update)
     
+    def update_keyword_search(self, scraper_id: PyObjectId, subreddit: str, keyword_search: KeyWordSearch):
+        filter = {"_id": scraper_id}
+        update_path = f"keyword_search_objective.keyword_subreddit_searches.{subreddit}.keyword_searches.{keyword_search.keyword}"
+        # Update only the nested value
+        update = {"$set": {update_path: keyword_search.model_dump(by_alias=True)}}  # or keyword_search.value if just one value
+
+        return self.collection.update_one(filter, update)
+    
     def update_subreddit_status(self, scraper_id: PyObjectId, keyword_search_subreddit: KeyWordSearchSubreddit):
         """updates the status of the subreddit"""
         filter = {"_id": scraper_id}

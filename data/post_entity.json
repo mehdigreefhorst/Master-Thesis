@@ -1,52 +1,72 @@
 {
-    "id": "68e0dbc347581dd48e361773",
-    "created_at": "2025-10-04T08:33:07.300220Z",
+    "id": "68e0ea2ba792cd3888c83194",
+    "created_at": "2025-10-04T09:34:35.097386Z",
     "updated_at": null,
     "deleted_at": null,
-    "reddit_id": "1cidytm",
-    "text": "I'm following the BrightBSL app to get started on BSL and I tried looking into grammar, which suggested that sentences should be formed in the following order.\n\nTime, place, object, subject, verb, question.\n\nBrightBSL gave me the sentence, \"what's your name\"? And assigned the signs \"NAME-YOU-WHAT?\", which seems correct because it's object, subject, question. But then in a future sentence used \"YOUR-NAME-WHAT?\"\n\nWhy does using \"YOU\" and \"YOUR\" cause the order to change? Is it a mistake, or am I missing something?",
-    "author": "SaintAndrew92",
+    "reddit_id": "sfn2ja",
+    "text": "I'm interested in languages in general and with BSL currently being in the news I'm trying to understand the basics of the language and how it relates to English. I read that BSL is a full language with its own grammar, vocabulary and syntax. Does this mean that it is completely independent from English? Could someone who does not speak English (even as a second language) use BSL effectively? Does BSL have a sign for \"platypus\" or \"muntjac\" or does it rely on finger spelling the English word?",
+    "author": "Serifini",
     "upvotes": 2,
     "downvotes": 0,
     "user_tag": null,
-    "created_utc": 1714651500.0,
-    "title": "Grammar Question: you and your",
+    "created_utc": 1643477608.0,
+    "title": "Very basic questions",
     "subreddit": "BSL",
     "send_replies": true,
-    "permalink": "/r/BSL/comments/1cidytm/grammar_question_you_and_your/",
+    "permalink": "/r/BSL/comments/sfn2ja/very_basic_questions/",
     "comments": [
         {
-            "id": "68e0dbc347581dd48e361772",
-            "created_at": "2025-10-04T08:33:07.300201Z",
+            "id": "68e0ea2ba792cd3888c83191",
+            "created_at": "2025-10-04T09:34:35.097301Z",
             "updated_at": null,
             "deleted_at": null,
-            "reddit_id": "l28gxu5",
-            "text": "Soooooo\n\n\nThis is more to do with two constructions; adjectives and indexing.\n\n\nAdjectives in BSL are free to come before or after a noun. YOUR is being treated as an adjective. Adjectives after nouns is more 'pure' BSL grammar but enough people do both because of English influence that both are allowable.\n\n\nHowever YOU as a pronoun is a form of index (made with the index finger, and indexes different things). It is most often, though I hesitate to say always, comes after the noun. An example would be MAN POINT-LEFT MAN POINT-RIGHT HIT(leftward). This is a way of setting up the \"actors\" and \"props\" in sign space that you are going to be talking about later.\n\n\nThat being said I wouldn't find \"YOU NAME WHAT?\" to be eggregiously wrong or even really think twice about it - especially if it is in a group and you need to be clear who you are addressing.",
-            "author": "wibbly-water",
+            "reddit_id": "huqt0nt",
+            "text": "1. Yes it is completely independent from English spoken language. I do have Deaf visitors from aboard coming to the UK and then learning a little bit of BSL without ever learning English. \n\n2. Yes it can be used effectively. The only problem is that there are some words that do not have a sign and needs to fingerspelt, so those without English either spell the word in their native language or describe whatever is it they want to say.\n\n3. BSL does not have a sign for those two words, they'd have to fingerspell it.",
+            "author": "BritishDeafMan",
             "upvotes": 5,
             "downvotes": 0,
-            "user_tag": "Advanced",
-            "created_utc": 1714652713.0,
+            "user_tag": "Native",
+            "created_utc": 1643478572.0,
+            "replies": [],
+            "controversiality": 0.0,
+            "depth": 0,
+            "enriched_text": null,
+            "prior_comments_thread": [
+                "Very basic questions\nI'm interested in languages in general and with BSL currently being in the news I'm trying to understand the basics of the language and how it relates to English. I read that BSL is a full language with its own grammar, vocabulary and syntax. Does this mean that it is completely independent from English? Could someone who does not speak English (even as a second language) use BSL effectively? Does BSL have a sign for \"platypus\" or \"muntjac\" or does it rely on finger spelling the English word?"
+            ]
+        },
+        {
+            "id": "68e0ea2ba792cd3888c83193",
+            "created_at": "2025-10-04T09:34:35.097362Z",
+            "updated_at": null,
+            "deleted_at": null,
+            "reddit_id": "hvjiieo",
+            "text": "I would disagree with the other comment partially. It is somewhat independent, but part of BSL is to mouth the word you are trying to say as some signs have multiple meanings; as well as this it uses the English alphabet, and requires you to know how to spell any English word you want to use but don't know the sign for. You could learn and communicate with BSL quite effectively if you have no understanding of English, but you wouldn't be able to speak it to its full effect; which is why it isn't COMPLETELY independent.",
+            "author": "CrazyNinjaJay",
+            "upvotes": 1,
+            "downvotes": 0,
+            "user_tag": null,
+            "created_utc": 1643966703.0,
             "replies": [
                 {
-                    "id": "68e0dbc347581dd48e361771",
-                    "created_at": "2025-10-04T08:33:07.300163Z",
+                    "id": "68e0ea2ba792cd3888c83192",
+                    "created_at": "2025-10-04T09:34:35.097350Z",
                     "updated_at": null,
                     "deleted_at": null,
-                    "reddit_id": "l28i1vz",
-                    "text": "Thank you, this makes sense!",
-                    "author": "SaintAndrew92",
+                    "reddit_id": "hvjilb5",
+                    "text": "Oh, turns out I didn't really read the whole comment, but yeah the point still stands.",
+                    "author": "CrazyNinjaJay",
                     "upvotes": 1,
                     "downvotes": 0,
                     "user_tag": null,
-                    "created_utc": 1714653219.0,
+                    "created_utc": 1643966769.0,
                     "replies": [],
                     "controversiality": 0.0,
                     "depth": 1,
                     "enriched_text": null,
                     "prior_comments_thread": [
-                        "Grammar Question: you and your\nI'm following the BrightBSL app to get started on BSL and I tried looking into grammar, which suggested that sentences should be formed in the following order.\n\nTime, place, object, subject, verb, question.\n\nBrightBSL gave me the sentence, \"what's your name\"? And assigned the signs \"NAME-YOU-WHAT?\", which seems correct because it's object, subject, question. But then in a future sentence used \"YOUR-NAME-WHAT?\"\n\nWhy does using \"YOU\" and \"YOUR\" cause the order to change? Is it a mistake, or am I missing something?",
-                        "Soooooo\n\n\nThis is more to do with two constructions; adjectives and indexing.\n\n\nAdjectives in BSL are free to come before or after a noun. YOUR is being treated as an adjective. Adjectives after nouns is more 'pure' BSL grammar but enough people do both because of English influence that both are allowable.\n\n\nHowever YOU as a pronoun is a form of index (made with the index finger, and indexes different things). It is most often, though I hesitate to say always, comes after the noun. An example would be MAN POINT-LEFT MAN POINT-RIGHT HIT(leftward). This is a way of setting up the \"actors\" and \"props\" in sign space that you are going to be talking about later.\n\n\nThat being said I wouldn't find \"YOU NAME WHAT?\" to be eggregiously wrong or even really think twice about it - especially if it is in a group and you need to be clear who you are addressing."
+                        "Very basic questions\nI'm interested in languages in general and with BSL currently being in the news I'm trying to understand the basics of the language and how it relates to English. I read that BSL is a full language with its own grammar, vocabulary and syntax. Does this mean that it is completely independent from English? Could someone who does not speak English (even as a second language) use BSL effectively? Does BSL have a sign for \"platypus\" or \"muntjac\" or does it rely on finger spelling the English word?",
+                        "I would disagree with the other comment partially. It is somewhat independent, but part of BSL is to mouth the word you are trying to say as some signs have multiple meanings; as well as this it uses the English alphabet, and requires you to know how to spell any English word you want to use but don't know the sign for. You could learn and communicate with BSL quite effectively if you have no understanding of English, but you wouldn't be able to speak it to its full effect; which is why it isn't COMPLETELY independent."
                     ]
                 }
             ],
@@ -54,7 +74,7 @@
             "depth": 0,
             "enriched_text": null,
             "prior_comments_thread": [
-                "Grammar Question: you and your\nI'm following the BrightBSL app to get started on BSL and I tried looking into grammar, which suggested that sentences should be formed in the following order.\n\nTime, place, object, subject, verb, question.\n\nBrightBSL gave me the sentence, \"what's your name\"? And assigned the signs \"NAME-YOU-WHAT?\", which seems correct because it's object, subject, question. But then in a future sentence used \"YOUR-NAME-WHAT?\"\n\nWhy does using \"YOU\" and \"YOUR\" cause the order to change? Is it a mistake, or am I missing something?"
+                "Very basic questions\nI'm interested in languages in general and with BSL currently being in the news I'm trying to understand the basics of the language and how it relates to English. I read that BSL is a full language with its own grammar, vocabulary and syntax. Does this mean that it is completely independent from English? Could someone who does not speak English (even as a second language) use BSL effectively? Does BSL have a sign for \"platypus\" or \"muntjac\" or does it rely on finger spelling the English word?"
             ]
         }
     ]

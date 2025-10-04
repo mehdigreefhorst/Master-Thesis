@@ -91,7 +91,7 @@ class ScraperService(BaseModel):
         
         # we must update the status of the keyword 
         next_keyword.status = "done"
-        get_scraper_repository().update_keyword_search_status(scraper_instance.id, next_subreddit.subreddit, next_keyword)
+        get_scraper_repository().update_keyword_search(scraper_instance.id, next_subreddit.subreddit, next_keyword)
 
         # update the status subreddit when there are no keywords left
         if not next_subreddit.find_next_keyword():
