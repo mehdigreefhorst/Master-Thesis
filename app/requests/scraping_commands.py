@@ -5,3 +5,6 @@ from app.database.entities.base_entity import PyObjectId
 
 class ScrapingId(BaseModel):
     scraper_id: PyObjectId
+
+class ScraperClusterId(BaseModel):
+    scraper_cluster_id: PyObjectId

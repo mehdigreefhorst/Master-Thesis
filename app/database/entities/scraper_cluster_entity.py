@@ -2,7 +2,7 @@
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.database.entities.base_entity import BaseEntity, PyObjectId
 from app.utils.types import StatusType
 
@@ -18,4 +18,4 @@ class ScraperClusterEntity(BaseEntity):
     user_id: PyObjectId
     cluster_entity_id: Optional[PyObjectId] = None
     scraper_entity_id: Optional[PyObjectId] = None
-    stages: StageStatus # Literal["initialized", "scraping", "cluster_prep" "clustering", "completed"]  # replace by status class (values = initialized, ongoing, completed, error). so each stage has one of these values
+    stages: StageStatus = Field(default_factory=StageStatus) # Literal["initialized", "scraping", "cluster_prep" "clustering", "completed"]  # replace by status class (values = initialized, ongoing, completed, error). so each stage has one of these values

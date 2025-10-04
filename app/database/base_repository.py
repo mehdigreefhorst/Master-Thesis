@@ -80,11 +80,9 @@ class BaseRepository[T: BaseEntity]:
 
     def find_by_id(self, id: PyObjectId, fields: list[str] | None = None) -> T | None:
         return self.find_one({"_id": id}, fields)
+        
     
-    def find_by_id_and_user(self, user_id: PyObjectId, entity_id: PyObjectId) -> T | None:
-        """Finds and returns individual entity by its id which is also part of the user_id, makes sure entity belong to the given user."""
-        filter = {"user_id": user_id, "_id": entity_id}
-        return super().find_one(filter)
+    
 
     def update(self, id: PyObjectId, to_update: Mapping[str, Any] | T) -> UpdateResult:
         if isinstance(to_update, BaseEntity):  # Cannot do 'isinstance(..., T)' so we use BaseEntity instead.
