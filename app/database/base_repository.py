@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Literal, Mapping, Type, Optional
 import pymongo
 from flask_pymongo.wrappers import Database
 from pydantic import BaseModel
-from pymongo.results import InsertOneResult, UpdateResult
+from pymongo.results import InsertOneResult, UpdateResult, InsertManyResult
 
 
 from app.database.entities.base_entity import BaseEntity, PyObjectId
@@ -26,6 +26,11 @@ class BaseRepository[T: BaseEntity]:
     def insert(self, item: T) -> InsertOneResult:
         data = item.dump_for_database()
         return self.collection.insert_one(data)
+    
+    def insert_list_entities(self, items: List[T]) -> InsertManyResult:
+        data_list = [item.dump_for_database() for item in items]
+        return self.collection.insert_many(data_list)
+        
 
     def find(self, filter: Dict[str, Any]) -> List[T]:
         documents = self.collection.find(self._soft_delete_filter(filter))
@@ -75,6 +80,11 @@ class BaseRepository[T: BaseEntity]:
 
     def find_by_id(self, id: PyObjectId, fields: list[str] | None = None) -> T | None:
         return self.find_one({"_id": id}, fields)
+    
+    def find_by_id_and_user(self, user_id: PyObjectId, entity_id: PyObjectId) -> T | None:
+        """Finds and returns individual entity by its id which is also part of the user_id, makes sure entity belong to the given user."""
+        filter = {"user_id": user_id, "_id": entity_id}
+        return super().find_one(filter)
 
     def update(self, id: PyObjectId, to_update: Mapping[str, Any] | T) -> UpdateResult:
         if isinstance(to_update, BaseEntity):  # Cannot do 'isinstance(..., T)' so we use BaseEntity instead.

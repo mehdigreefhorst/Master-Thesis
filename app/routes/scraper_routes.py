@@ -4,13 +4,15 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 # from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from app.database import get_scraper_repository, get_user_repository
+from app.database import get_scraper_cluster_repository, get_scraper_repository, get_user_repository
+from app.database.entities.scraper_cluster_entity import ScraperClusterEntity
 from app.requests.scraping_commands import ScrapingId
 from app.requests.scraper_requests import CreateScraperRequest
 from app.responses.reddit_post_comments_response import RedditResponse
 from app.services.scraper_service import ScraperService
 
 from app.utils.api_validation import validate_request_body
+from app.utils.types import StatusType
 
 scraper_bp = Blueprint("scraper", __name__, url_prefix="/scraper")
 
@@ -37,11 +39,24 @@ def create_scraper_instance(body: CreateScraperRequest):
     if not current_user:
         return jsonify(error="No such user"), 401
     
+    scraper_cluster_entity = get_scraper_cluster_repository().find_by_id_and_user(user_id, body.scraper_cluster_id)
+
+    if not scraper_cluster_entity:
+        return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {body.scraper_cluster_id}"), 400
+    
+    if scraper_cluster_entity.scraper_entity_id:
+        return jsonify(message="scraper has already been created before"), 204 # TODO: Not the right status code
+    
+    
     scraper_instance = ScraperService.create_scraper_instance(body, user_id)
     result = get_scraper_repository().insert(scraper_instance)
-    result.inserted_id
 
-    return jsonify(scraper_id=result.inserted_id)
+    scraper_cluster_entity.stages.initialized = StatusType.Completed
+    scraper_cluster_entity.scraper_entity_id = result.id
+
+    get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity) # TODO: this is not correct ,we also want to update the stages
+
+    return jsonify(scraper_id=result.inserted_id), 200
 
 @scraper_bp.route("/pause", methods=["POST"])
 @validate_request_body(ScrapingId)
@@ -57,6 +72,7 @@ def pause_scraper(body: ScrapingId):
         return jsonify(error="no such scraper instance exists"), 401
     
     get_scraper_repository().update(scraper_instance.id, {"status": "paused"})
+
     return jsonify(message=f"{scraper_instance.id} is now paused"), 200
 
 
@@ -68,7 +84,7 @@ def start_scraper(body: ScrapingId):
     current_user = get_user_repository().find_by_id(user_id)
     if not current_user:
         return jsonify(error="No such user"), 401
-    
+        
     scraper_instance = get_scraper_repository().find_by_id_and_user(user_id, body.scraper_id)
     print(scraper_instance)
     if not scraper_instance:

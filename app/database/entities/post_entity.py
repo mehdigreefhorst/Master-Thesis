@@ -20,7 +20,7 @@ class RedditBaseEntity(BaseEntity):
 
 
 class CommentEntity(RedditBaseEntity):
-    replies: List["CommentEntity"]
+    replies: Optional[List["CommentEntity"]] = None
     controversiality: float
     depth: int # How many nests are above this comment
     enriched_text: Optional[str] = None

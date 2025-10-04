@@ -13,11 +13,6 @@ class ScraperRepository(BaseRepository[ScraperEntity]):
     def find_by_user_id(self, user_id: PyObjectId) -> List[ScraperEntity]:
         return super().find({"user_id": user_id})
     
-    def find_by_id_and_user(self, user_id: PyObjectId, scraper_id: PyObjectId) -> ScraperEntity:
-        """Finds and returns individual scraper entity, but also makes sure that the scraper entity belong to the given user."""
-        filter = {"user_id": user_id, "_id": scraper_id}
-        return super().find_one(filter)
-    
     def append_postid_to_subreddit_keyword_search(self, scraper_id: PyObjectId, subreddit: str, keyword: str, post_id: PyObjectId | List[PyObjectId]):
         """adds the internal post id to the scraper search result"""
         filter = {"_id": scraper_id}

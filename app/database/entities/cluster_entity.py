@@ -4,14 +4,8 @@
 from enum import Enum
 from typing import Dict, List, Literal, Optional
 from app.database.entities.base_entity import BaseEntity, PyObjectId
+from app.utils.types import StatusType
 
-
-class ClusterStatusType(str, Enum):
-    Initialized = "initialized"
-    Ongoing = "ongoing"
-    Paused = "paused"
-    Completed = "completed"
-    Error = "error"
 
 class ClusterTextThreadModeType(str, Enum):
     PlainText = "plain_text"
@@ -27,9 +21,9 @@ class ClusterPostPrepStatusType(str, Enum):
 
 class ClusterEntity(BaseEntity):
     scraper_entity_id: PyObjectId
-    text_thread_mode: ClusterStatusType # Literal["plain_text", "appended_text", "llm_parsed_text"]
+    text_thread_mode: ClusterTextThreadModeType # Literal["plain_text", "appended_text", "llm_parsed_text"]
     prompt: Optional[str] = None
-    status: ClusterStatusType #Literal["initialized", "ongoing", "paused", "completed", "error"]
+    status: StatusType #Literal["initialized", "ongoing", "paused", "completed", "error"]
     post_entity_ids_prep_status: Dict[PyObjectId, ClusterPostPrepStatusType]
 
     @classmethod
