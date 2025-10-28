@@ -45,7 +45,7 @@ def create_scraper_instance(body: CreateScraperRequest):
         return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {body.scraper_cluster_id}"), 400
     
     if scraper_cluster_entity.scraper_entity_id:
-        return jsonify(message="scraper has already been created before"), 204 # TODO: Not the right status code
+        return jsonify(message="scraper has already been created before"), 409
     
     
     scraper_instance = ScraperService.create_scraper_instance(body, user_id)
@@ -58,7 +58,7 @@ def create_scraper_instance(body: CreateScraperRequest):
 
     return jsonify(scraper_id=inserted_id), 200
 
-@scraper_bp.route("/pause", methods=["POST"])
+@scraper_bp.route("/pause", methods=["PUT"])
 @validate_request_body(ScraperClusterId)
 @jwt_required()
 def pause_scraper(body: ScraperClusterId):
@@ -73,7 +73,7 @@ def pause_scraper(body: ScraperClusterId):
         return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {body.scraper_cluster_id}"), 400
     
     if not scraper_cluster_entity.scraper_entity_id:
-        return jsonify(message="scraper entity has not been created "), 204 # TODO: Not the right status code
+        return jsonify(message="scraper entity has not been created "), 409
     
     scraper_cluster_entity.stages.scraping = StatusType.Paused
     
@@ -88,7 +88,7 @@ def pause_scraper(body: ScraperClusterId):
     return jsonify(message=f"{scraper_instance.id} is now paused"), 200
 
 
-@scraper_bp.route("/start", methods=["POST"])
+@scraper_bp.route("/start", methods=["PUT"])
 @validate_request_body(ScraperClusterId)
 @jwt_required()
 def start_scraper(body: ScraperClusterId):
@@ -103,8 +103,7 @@ def start_scraper(body: ScraperClusterId):
         return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {body.scraper_cluster_id}"), 400
     
     if not scraper_cluster_entity.scraper_entity_id:
-        return jsonify(message="scraper entity has not been created "), 204 # TODO: Not the right status code
-    
+        return jsonify(message="scraper entity has not been created "), 409
     scraper_cluster_entity.stages.initialized = StatusType.Completed
     scraper_cluster_entity.stages.scraping = StatusType.Ongoing
     get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)

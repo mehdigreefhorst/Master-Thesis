@@ -27,7 +27,7 @@ def get_scraper_cluster_instances():
     returnable_instances = [instance.model_dump() for instance in scraper_instances]
     return jsonify(returnable_instances), 200
 
-@scraper_cluster_bp.route("/create", methods=["POST"])
+@scraper_cluster_bp.route("/", methods=["POST"])
 @jwt_required()
 def create_scraper_cluster():
     user_id = get_jwt_identity()

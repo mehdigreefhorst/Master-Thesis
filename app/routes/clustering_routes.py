@@ -5,7 +5,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 # from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from app.database import get_scraper_repository, get_user_repository, get_scraper_cluster_repository
+from app.database import get_cluster_unit_repository, get_scraper_repository, get_user_repository, get_scraper_cluster_repository
 from app.requests.cluster_prep_requests import ScraperClusterId
 from app.requests.scraping_commands import ScrapingId
 from app.requests.scraper_requests import CreateScraperRequest
@@ -34,13 +34,13 @@ def prepare_cluster(body: ScraperClusterId):
         return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {body.scraper_cluster_id}"), 400
     
     if not scraper_cluster_entity.scraper_entity_id:
-        return jsonify(message="scraper is not yet initialized"), 204 # TODO: Not the right status code
+        return jsonify(message="scraper is not yet initialized"), 409
     
     if not scraper_cluster_entity.stages.scraping == StatusType.Completed:
-        return jsonify(message="scraper is not completed yet"), 204 # TODO: Not the right status code
+        return jsonify(message="scraper is not completed yet"), 409
     
     if scraper_cluster_entity.stages.cluster_prep == StatusType.Completed:
-        return jsonify(message="Cluster preparation is already completed"), 201 # TODO: Not the right status code
+        return jsonify(message="Cluster preparation is already completed"), 409
     
     scraper_entity = get_scraper_repository().find_by_id_and_user(user_id, scraper_cluster_entity.scraper_entity_id)
     if not scraper_entity:
@@ -66,3 +66,59 @@ def prepare_cluster(body: ScraperClusterId):
 
     print(f"A total of {cluster_units_created} cluster units are created!")
     return jsonify(message=f"preparing the cluster is successful, a total of {cluster_units_created} cluster units are created"), 200
+
+
+@clustering_bp.route("/enrich_cluster_text", methods=["POST"])
+@validate_request_body(ScraperClusterId)
+@jwt_required()
+def enrich_cluster_text(body: ScraperClusterId):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    
+    scraper_cluster_entity = get_scraper_cluster_repository().find_by_id_and_user(user_id, body.scraper_cluster_id)
+    
+    if not scraper_cluster_entity:
+        return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {body.scraper_cluster_id}"), 400
+    
+    if not scraper_cluster_entity.scraper_entity_id:
+        return jsonify(message="scraper is not yet initialized"), 409 
+    if not scraper_cluster_entity.stages.scraping == StatusType.Completed:
+        return jsonify(message="scraper is not completed yet"), 409
+    
+    if not scraper_cluster_entity.stages.cluster_prep == StatusType.Completed:
+        return jsonify(message="Cluster preparation is not completed"), 409
+    
+    # :TODO Call the LLM for each comment
+    ClusterPrepService.enrich_cluster_units()
+
+
+    
+@clustering_bp.route("/get_cluster_units", methods=["POST"])
+@validate_request_body(ScraperClusterId)
+@jwt_required()
+def get_cluster_units(body: ScraperClusterId):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    
+    scraper_cluster_entity = get_scraper_cluster_repository().find_by_id_and_user(user_id, body.scraper_cluster_id)
+    
+    if not scraper_cluster_entity:
+        return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {body.scraper_cluster_id}"), 400
+    
+    if not scraper_cluster_entity.scraper_entity_id:
+        return jsonify(message="scraper is not yet initialized"), 409
+    
+    if not scraper_cluster_entity.stages.scraping == StatusType.Completed:
+        return jsonify(message="scraper is not completed yet"), 409
+    
+    if not scraper_cluster_entity.stages.cluster_prep == StatusType.Completed:
+        return jsonify(message="Cluster preparation is no completed"), 409
+    
+    returnable_cluster_units = ClusterPrepService.convert_cluster_units_to_bertopic_ready_documents(scraper_cluster_entity)
+
+    if returnable_cluster_units:
+        return jsonify(cluster_unit_entities=returnable_cluster_units), 200

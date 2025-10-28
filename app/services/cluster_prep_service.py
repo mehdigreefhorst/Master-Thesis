@@ -95,6 +95,37 @@ class ClusterPrepService:
 
 
 
+    @staticmethod
+    def convert_cluster_units_to_bertopic_ready_documents(scraper_cluster_entity: ScraperClusterEntity) -> List:#[response]:
+        cluster_unit_entities = get_cluster_unit_repository().find({"cluster_entity_id": scraper_cluster_entity.cluster_entity_id})
+        returnable_entities = [cluster_unit_entity.model_dump() for cluster_unit_entity in cluster_unit_entities]
+        return returnable_entities
+    
+    @staticmethod
+    def enrich_cluster_units(scraper_cluster_entity: ScraperClusterEntity):
+        cluster_unit_entities = get_cluster_unit_repository().find({"cluster_entity_id": scraper_cluster_entity.cluster_entity_id})
+        # TODO rewrite the cluster unit using the conversation thread into a problem statement / frustration 
+        # TODO have an LLM decide whether the user text is a [problem_description, frustration, alternative solution, none of the above]
+        """
+        You are scoring whether the final commenter on Reddit is stating a problem, frustration, alternative solution or none of the above. 
+        It is your task to determine whether the redditor is 
+        """
+
+        """
+        # Instructions
+        You are scoring whether the final commenter on Reddit is also experiencing a problem or a frustration of any kind. (TRUE/FALSE) 
+        Your will see the conversation thread of the final commenter that the redditor has replied to, state with TRUE/FALSE whether the user is experiencing it themselves.
+        It is important to evaluate from the perspective of the final redditor. 
+
+        ### Post + reply thread
+
+        ### Redditor comment to evaluate
+
+        ### Expected response
+        TRUE/FALSE
+        """
+
+
 
 
         

@@ -10,3 +10,9 @@ pymongo[srv]
 bcrypt
 flask-pymongo
 PyJWT
+sentence_transformers
+scikit-learn
+bertopic
+gensim
+kaleido
+openai

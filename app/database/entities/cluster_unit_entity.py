@@ -39,7 +39,7 @@ class ClusterUnitEntity(BaseEntity):
             created_utc=post_entity.created_utc,
             thread_path_text=  [],# the full prior thread (post -> comment -> reply --> ...) up until the current comment
             enriched_comment_thread_text= None, # what the LLM made from the thread path text & text
-            text= post_entity.text # the author's individual text contribution to reddit
+            text= "post_title: " + post_entity.title + "\n" + post_entity.text # the author's individual text contribution to reddit
         )
     
     @classmethod
