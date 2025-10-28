@@ -82,7 +82,14 @@ class ClusterPrepService:
         # now we loop over each comment. To convert them into cluster unit entities. It also takes care of the replies
         for comment in post_entity.comments:
             cluster_unit_entities.append(ClusterUnitEntity.from_comment(comment, cluster_entity.id, post_id))
-
+            
+            if comment.replies:
+                ClusterPrepService.convert_comment_entity_to_cluster_units(
+                    replies=comment.replies, 
+                    post_id=post_id, 
+                    cluster_entity=cluster_entity, 
+                    cluster_unit_entities=cluster_unit_entities)
+                
         return get_cluster_unit_repository().insert_list_entities(cluster_unit_entities).inserted_ids
 
     @staticmethod

@@ -91,7 +91,7 @@ def enrich_cluster_text(body: ScraperClusterId):
         return jsonify(message="Cluster preparation is not completed"), 409
     
     # :TODO Call the LLM for each comment
-    ClusterPrepService.enrich_cluster_units()
+    ClusterPrepService.enrich_cluster_units(scraper_cluster_entity)
 
 
     
