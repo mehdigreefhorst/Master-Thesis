@@ -13,7 +13,7 @@ from app.responses.reddit_post_comments_response import RedditResponse
 from app.services.cluster_prep_service import ClusterPrepService
 from app.services.scraper_service import ScraperService
 
-from app.utils.api_validation import validate_request_body
+from app.utils.api_validation import validate_query_params, validate_request_body
 from app.utils.types import StatusType
 
 clustering_bp = Blueprint("clustering", __name__, url_prefix="/clustering")
@@ -95,19 +95,20 @@ def enrich_cluster_text(body: ScraperClusterId):
 
 
     
-@clustering_bp.route("/get_cluster_units", methods=["POST"])
-@validate_request_body(ScraperClusterId)
+@clustering_bp.route("/get_cluster_units", methods=["GET"])
+@validate_query_params(ScraperClusterId)
 @jwt_required()
-def get_cluster_units(body: ScraperClusterId):
+def get_cluster_units(query: ScraperClusterId):
+    print("query = ", query)
     user_id = get_jwt_identity()
     current_user = get_user_repository().find_by_id(user_id)
     if not current_user:
         return jsonify(error="No such user"), 401
     
-    scraper_cluster_entity = get_scraper_cluster_repository().find_by_id_and_user(user_id, body.scraper_cluster_id)
+    scraper_cluster_entity = get_scraper_cluster_repository().find_by_id_and_user(user_id, query.scraper_cluster_id)
     
     if not scraper_cluster_entity:
-        return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {body.scraper_cluster_id}"), 400
+        return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {query.scraper_cluster_id}"), 400
     
     if not scraper_cluster_entity.scraper_entity_id:
         return jsonify(message="scraper is not yet initialized"), 409
