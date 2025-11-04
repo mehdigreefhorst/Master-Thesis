@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Label Comparison Tool - Design 5.2</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Custom Theme CSS -->
+    <link rel="stylesheet" href="label_comparison_theme.css">
+
+    <style>
+        /* Additional component-specific styles */
+        .consensus-bar {
+            height: 8px;
+            background: var(--bar-empty);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .consensus-bar-fill {
+            height: 100%;
+            background: var(--bar-full);
+            transition: width 500ms ease-out;
+            border-radius: 4px;
+        }
+
+        .consensus-bar-partial {
+            background: var(--warning);
+        }
+
+        .thread-box {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+        }
+
+        .thread-post {
+            background: var(--thread-post);
+            padding: 1rem;
+            border-radius: var(--radius);
+            margin-bottom: 1rem;
+        }
+
+        .thread-comment {
+            background: var(--thread-comment);
+            padding: 1rem;
+            border-radius: var(--radius);
+            margin-left: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .thread-target {
+            background: var(--thread-target);
+            border: 2px solid var(--thread-target-border);
+            padding: 1rem;
+            border-radius: var(--radius);
+            margin-left: 3rem;
+            position: relative;
+            animation: targetPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes targetPulse {
+            0%, 100% { box-shadow: 0 0 0 0px var(--thread-target-border); }
+            50% { box-shadow: 0 0 0 4px oklch(0.65 0.15 120 / 0.3); }
+        }
+
+        .insight-box {
+            background: linear-gradient(135deg, oklch(0.95 0.02 250), oklch(0.95 0.02 200));
+            border: 1px solid var(--primary);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            animation: insightAppear 400ms ease-out;
+        }
+
+        @keyframes insightAppear {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .label-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: white;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .label-table th {
+            background: var(--secondary);
+            padding: 0.75rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--secondary-foreground);
+            border-bottom: 2px solid var(--border);
+        }
+
+        .label-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.875rem;
+        }
+
+        .label-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .label-table tr:hover {
+            background: var(--muted);
+        }
+
+        .reasoning-icon {
+            cursor: pointer;
+            display: inline-block;
+            transition: transform 200ms;
+            font-size: 1.2rem;
+        }
+
+        .reasoning-icon:hover {
+            transform: scale(1.2) rotate(5deg);
+        }
+
+        .reasoning-panel {
+            display: none;
+            background: var(--muted);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem;
+            margin-top: 0.5rem;
+            animation: panelExpand 300ms ease-out;
+        }
+
+        .reasoning-panel.active {
+            display: block;
+        }
+
+        @keyframes panelExpand {
+            from {
+                opacity: 0;
+                max-height: 0;
+            }
+            to {
+                opacity: 1;
+                max-height: 500px;
+            }
+        }
+
+        .warning-pulse {
+            animation: warningPulse 1500ms ease-in-out infinite;
+        }
+
+        @keyframes warningPulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        .page-content {
+            animation: pageLoad 400ms ease-out;
+        }
+
+        @keyframes pageLoad {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body class="p-8">
+    <div class="page-content max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-semibold">Label Accuracy Viewer</h1>
+            <div class="flex items-center gap-4">
+                <span class="text-sm text-gray-600">#47 / 250</span>
+                <div class="flex gap-2">
+                    <button class="btn btn-secondary">← Previous</button>
+                    <button class="btn btn-secondary">Next →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thread Context -->
+        <div class="mb-6">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-lg font-semibold">r/techsupport Thread:</h2>
+                <button class="text-sm text-blue-600 hover:text-blue-700">View Full ▼</button>
+            </div>
+
+            <div class="thread-box">
+                <!-- Original Post -->
+                <div class="thread-post">
+                    <div class="font-semibold text-sm mb-2">u/techuser123 wrote:</div>
+                    <div class="text-sm">
+                        "My laptop keeps crashing when I run Adobe Premiere. I've tried everything but nothing seems to work."
+                    </div>
+                </div>
+
+                <!-- First Comment -->
+                <div class="thread-comment">
+                    <div class="text-sm mb-1">→ <span class="font-semibold">u/helper42</span> replied:</div>
+                    <div class="text-sm">
+                        "Have you tried updating your graphics drivers? That usually fixes rendering crashes."
+                    </div>
+                </div>
+
+                <!-- Target Reply -->
+                <div class="thread-target">
+                    <div class="absolute top-2 right-2 text-xs font-bold text-green-700">⭐ ANALYZING THIS REPLY</div>
+                    <div class="text-sm mb-1">→ <span class="font-semibold">u/techuser123</span> replied:</div>
+                    <div class="text-sm">
+                        "Yes I updated them yesterday but still getting blue screens. So frustrated this keeps happening during renders..."
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ground Truth -->
+        <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="font-semibold text-sm mb-2">Ground Truth (Human Labels):</div>
+            <div class="flex gap-2">
+                <span class="badge badge-success">solution_attempted</span>
+                <span class="badge badge-success">frustration_expression</span>
+            </div>
+        </div>
+
+        <!-- Label Comparison Table -->
+        <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-3">Label Analysis (3 runs each):</h3>
+
+            <table class="label-table">
+                <thead>
+                    <tr>
+                        <th style="width: 25%">Label</th>
+                        <th style="width: 10%">Truth</th>
+                        <th style="width: 21%">
+                            <div class="text-center">
+                                <div class="font-bold">GPT-4</div>
+                                <div class="text-xs font-normal text-gray-600">Prompt v1.2</div>
+                            </div>
+                        </th>
+                        <th style="width: 21%">
+                            <div class="text-center">
+                                <div class="font-bold">GPT-4</div>
+                                <div class="text-xs font-normal text-gray-600">Prompt v2.0</div>
+                            </div>
+                        </th>
+                        <th style="width: 21%">
+                            <div class="text-center">
+                                <div class="font-bold">Claude-3</div>
+                                <div class="text-xs font-normal text-gray-600">Prompt v1.2</div>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- problem_description -->
+                    <tr>
+                        <td><strong>problem_description</strong></td>
+                        <td class="text-center text-xl">✗</td>
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <div class="consensus-bar flex-1">
+                                    <div class="consensus-bar-fill consensus-bar-partial" style="width: 66.6%"></div>
+                                </div>
+                                <span class="text-sm font-semibold">2/3</span>
+                                <span class="warning-pulse text-yellow-600">⚠️</span>
+                                <span class="reasoning-icon" onclick="toggleReasoning('reasoning-1')">💬</span>
+                            </div>
+                            <div id="reasoning-1" class="reasoning-panel">
+                                <div class="text-xs font-semibold mb-2">Reasoning across runs:</div>
+                                <div class="text-xs mb-1"><strong>Run 1 & 2:</strong> "User describes the ongoing problem of blue screens."</div>
+                                <div class="text-xs"><strong>Run 3:</strong> "This is solution_attempted, not problem_description."</div>
+                            </div>
+                        </td>
+                        <td class="text-center text-gray-400">—</td>
+                        <td class="text-center text-gray-400">—</td>
+                    </tr>
+
+                    <!-- frustration_expression -->
+                    <tr>
+                        <td><strong>frustration_expression</strong></td>
+                        <td class="text-center text-xl text-green-600">✓</td>
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <div class="consensus-bar flex-1">
+                                    <div class="consensus-bar-fill" style="width: 100%"></div>
+                                </div>
+                                <span class="text-sm font-semibold">3/3</span>
+                                <span class="text-green-600">✓</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <div class="consensus-bar flex-1">
+                                    <div class="consensus-bar-fill" style="width: 100%"></div>
+                                </div>
+                                <span class="text-sm font-semibold">3/3</span>
+                                <span class="text-green-600">✓</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <div class="consensus-bar flex-1">
+                                    <div class="consensus-bar-fill" style="width: 100%"></div>
+                                </div>
+                                <span class="text-sm font-semibold">3/3</span>
+                                <span class="text-green-600">✓</span>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- solution_seeking -->
+                    <tr>
+                        <td><strong>solution_seeking</strong></td>
+                        <td class="text-center text-xl">✗</td>
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <div class="consensus-bar flex-1">
+                                    <div class="consensus-bar-fill consensus-bar-partial" style="width: 33.3%"></div>
+                                </div>
+                                <span class="text-sm font-semibold">1/3</span>
+                                <span class="warning-pulse text-yellow-600">⚠️</span>
+                                <span class="reasoning-icon" onclick="toggleReasoning('reasoning-2')">💬</span>
+                            </div>
+                        </td>
+                        <td class="text-center text-gray-400">—</td>
+                        <td class="text-center text-gray-400">—</td>
+                    </tr>
+
+                    <!-- solution_attempted -->
+                    <tr>
+                        <td><strong>solution_attempted</strong></td>
+                        <td class="text-center text-xl text-green-600">✓</td>
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <div class="consensus-bar flex-1">
+                                    <div class="consensus-bar-fill" style="width: 100%"></div>
+                                </div>
+                                <span class="text-sm font-semibold">3/3</span>
+                                <span class="text-green-600">✓</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <div class="consensus-bar flex-1">
+                                    <div class="consensus-bar-fill" style="width: 100%"></div>
+                                </div>
+                                <span class="text-sm font-semibold">3/3</span>
+                                <span class="text-green-600">✓</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <div class="consensus-bar flex-1">
+                                    <div class="consensus-bar-fill" style="width: 100%"></div>
+                                </div>
+                                <span class="text-sm font-semibold">3/3</span>
+                                <span class="text-green-600">✓</span>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- solution_proposing -->
+                    <tr>
+                        <td><strong>solution_proposing</strong></td>
+                        <td class="text-center text-xl">✗</td>
+                        <td class="text-center text-gray-400">—</td>
+                        <td class="text-center text-gray-400">—</td>
+                        <td class="text-center text-gray-400">—</td>
+                    </tr>
+
+                    <!-- agreement_empathy -->
+                    <tr>
+                        <td><strong>agreement_empathy</strong></td>
+                        <td class="text-center text-xl">✗</td>
+                        <td class="text-center text-gray-400">—</td>
+                        <td class="text-center text-gray-400">—</td>
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <div class="consensus-bar flex-1">
+                                    <div class="consensus-bar-fill consensus-bar-partial" style="width: 33.3%"></div>
+                                </div>
+                                <span class="text-sm font-semibold">1/3</span>
+                                <span class="reasoning-icon" onclick="toggleReasoning('reasoning-3')">💬</span>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Stats Row -->
+                    <tr class="bg-gray-50">
+                        <td colspan="2" class="font-semibold">Overall Performance</td>
+                        <td>
+                            <div class="text-sm"><strong>Accuracy:</strong> 72%</div>
+                            <div class="text-xs text-gray-600">Consistency: Medium</div>
+                        </td>
+                        <td>
+                            <div class="text-sm"><strong>Accuracy:</strong> <span class="text-green-600 font-bold">100% ✓</span></div>
+                            <div class="text-xs text-gray-600">Consistency: Perfect ✓</div>
+                        </td>
+                        <td>
+                            <div class="text-sm"><strong>Accuracy:</strong> 94%</div>
+                            <div class="text-xs text-gray-600">Consistency: Good</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="mt-3 text-sm text-gray-600">
+                💬 = Click to view reasoning | ⚠️ = Inconsistent across runs | ✓ = All runs match
+            </div>
+        </div>
+
+        <!-- AI Insight Box -->
+        <div class="insight-box mb-6">
+            <div class="flex items-start gap-3">
+                <div class="text-2xl">🤖</div>
+                <div>
+                    <div class="font-semibold mb-2">Key Insight (AI Analysis):</div>
+                    <div class="text-sm leading-relaxed">
+                        Prompt v2.0 fixes the core issue from v1.2: false positive labeling.
+                        v1.2 inconsistently adds "problem_description" and "solution_seeking"
+                        when the user is actually reporting a failed solution attempt.
+                        v2.0 achieves <strong>100% accuracy</strong> with perfect consistency across all runs.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-3">
+            <button class="btn btn-primary">View Prompts & Edit</button>
+            <button class="btn btn-secondary">Export Data</button>
+            <button class="btn btn-secondary">Flag Sample</button>
+            <button class="btn btn-primary">Next Sample →</button>
+        </div>
+    </div>
+
+    <script>
+        function toggleReasoning(id) {
+            const panel = document.getElementById(id);
+            panel.classList.toggle('active');
+        }
+
+        // Add smooth transitions on load
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Label Comparison Tool loaded');
+        });
+    </script>
+</body>
+</html>

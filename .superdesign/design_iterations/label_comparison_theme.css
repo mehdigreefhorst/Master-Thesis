@@ -1,0 +1,169 @@
+/* Label Comparison Tool Theme - Clean Data-Focused Design */
+
+:root {
+  /* Color Palette - Optimized for data readability */
+  --background: oklch(0.98 0 0);
+  --foreground: oklch(0.15 0 0);
+  --card: oklch(1.0000 0 0);
+  --card-foreground: oklch(0.15 0 0);
+
+  /* Primary - Used for interactive elements */
+  --primary: oklch(0.55 0.15 250);
+  --primary-foreground: oklch(1.0000 0 0);
+
+  /* Secondary - Used for less prominent elements */
+  --secondary: oklch(0.92 0 0);
+  --secondary-foreground: oklch(0.25 0 0);
+
+  /* Muted - Backgrounds and subtle elements */
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.50 0 0);
+
+  /* Accent - Highlighting important info */
+  --accent: oklch(0.70 0.20 150);
+  --accent-foreground: oklch(1.0000 0 0);
+
+  /* Status colors */
+  --success: oklch(0.65 0.18 145);
+  --success-foreground: oklch(1.0000 0 0);
+  --warning: oklch(0.70 0.18 60);
+  --warning-foreground: oklch(0.15 0 0);
+  --error: oklch(0.60 0.22 25);
+  --error-foreground: oklch(1.0000 0 0);
+
+  /* Borders */
+  --border: oklch(0.88 0 0);
+  --input: oklch(0.88 0 0);
+  --ring: oklch(0.55 0.15 250);
+
+  /* Thread colors for visual hierarchy */
+  --thread-post: oklch(0.95 0.02 250);
+  --thread-comment: oklch(0.95 0.02 200);
+  --thread-target: oklch(0.88 0.08 120);
+  --thread-target-border: oklch(0.65 0.15 120);
+
+  /* Label consensus bars */
+  --bar-full: oklch(0.65 0.18 145);
+  --bar-empty: oklch(0.92 0 0);
+
+  /* Fonts - Optimized for readability */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Spacing & Layout */
+  --radius: 0.5rem;
+  --spacing: 0.25rem;
+
+  /* Shadows - Subtle depth */
+  --shadow-2xs: 0 1px 2px 0px hsl(0 0% 0% / 0.03);
+  --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+  --shadow-sm: 0 2px 4px 0px hsl(0 0% 0% / 0.06), 0 1px 2px -1px hsl(0 0% 0% / 0.06);
+  --shadow: 0 4px 6px -1px hsl(0 0% 0% / 0.08), 0 2px 4px -2px hsl(0 0% 0% / 0.08);
+  --shadow-md: 0 6px 12px -2px hsl(0 0% 0% / 0.10), 0 3px 6px -3px hsl(0 0% 0% / 0.10);
+  --shadow-lg: 0 10px 20px -3px hsl(0 0% 0% / 0.12), 0 4px 8px -4px hsl(0 0% 0% / 0.12);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans) !important;
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+  line-height: 1.6 !important;
+  font-size: 14px !important;
+}
+
+h1 {
+  font-size: 1.5rem !important;
+  font-weight: 600 !important;
+  color: var(--foreground) !important;
+}
+
+h2 {
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+  color: var(--foreground) !important;
+}
+
+h3 {
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  color: var(--foreground) !important;
+}
+
+code, pre {
+  font-family: var(--font-mono) !important;
+}
+
+/* Utility classes */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  font-size: 0.875rem;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.btn-primary:hover {
+  background: oklch(0.50 0.15 250);
+  box-shadow: var(--shadow);
+}
+
+.btn-secondary {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+}
+
+.btn-secondary:hover {
+  background: oklch(0.88 0 0);
+}
+
+/* Badge for labels */
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.badge-success {
+  background: var(--success);
+  color: var(--success-foreground);
+}
+
+.badge-warning {
+  background: var(--warning);
+  color: var(--warning-foreground);
+}
+
+.badge-error {
+  background: var(--error);
+  color: var(--error-foreground);
+}

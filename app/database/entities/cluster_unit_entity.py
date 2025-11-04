@@ -2,9 +2,29 @@
 
 from datetime import datetime
 from typing import List, Literal, Optional
+
+from pydantic import BaseModel
 from app.database.entities.base_entity import BaseEntity, PyObjectId
 from app.database.entities.post_entity import PostEntity, CommentEntity
 
+
+class ClusterUnitEntityCategory(BaseModel):
+    """
+    problem_description (The use describes a problem that it faces)
+    frustration_expression (The user expresser a frustration about something they face)
+    solution_seeking (The user is looking for a solution)
+    solution_attempted (The user explains an experience to using a solution)
+    solution_proposing (The user suggests a solution to someone else)
+    agreement_empathy (The user is emphathetic towards another user)
+    none_of_the_above
+    """
+    problem_description: bool
+    frustration_expression: bool
+    solution_seeking: bool
+    solution_attempted: bool
+    solution_proposing: bool
+    agreement_empathy: bool
+    none_of_the_above: bool
 
 class ClusterUnitEntity(BaseEntity):
     cluster_entity_id: PyObjectId # ClusterInstanceEntity
@@ -19,6 +39,7 @@ class ClusterUnitEntity(BaseEntity):
     created_utc: int
     thread_path_text: List[str] | None # the full prior thread (post -> comment -> reply --> ...) up until the current comment
     enriched_comment_thread_text: str | None # what the LLM made from the thread path text & text
+    category: ClusterUnitEntityCategory | None = None
     text: str # the author's individual text contribution to reddit
 
     @classmethod
