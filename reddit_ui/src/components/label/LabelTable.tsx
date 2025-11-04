@@ -35,11 +35,11 @@ export const LabelTable: React.FC<LabelTableProps> = ({
 }) => {
   return (
     <div className={`overflow-hidden ${className}`}>
-      <table className="w-full border-separate border-spacing-0 bg-white rounded-lg shadow-(--shadow-sm)">
+      <table className="w-full table-fixed border-separate border-spacing-0 bg-white rounded-lg shadow-(--shadow-sm)">
         <thead>
           <tr>
             <th className="bg-(--secondary) p-3 text-left font-semibold text-sm text-(--secondary-foreground) border-b-2 border-(--border) w-1/4">
-              Label
+              Category
             </th>
             <th className="bg-(--secondary) p-3 text-center font-semibold text-sm text-(--secondary-foreground) border-b-2 border-(--border) w-[10%]">
               Truth
@@ -47,12 +47,12 @@ export const LabelTable: React.FC<LabelTableProps> = ({
             {models.map((model, index) => (
               <th
                 key={index}
-                className="bg-(--secondary) p-3 text-center font-semibold text-sm text-(--secondary-foreground) border-b-2 border-(--border)"
+                className="bg-(--secondary) text-center font-semibold text-sm text-(--secondary-foreground) border-b-2 border-(--border)"
               >
-                <div className="font-bold">{model.name}</div>
-                <div className="text-xs font-normal text-gray-600">
-                  {model.version}
+                <div className="font-bold">
+                  <span>{model.name}</span> <span className="text-xs font-normal text-gray-600">{model.version}</span>
                 </div>
+
               </th>
             ))}
           </tr>
@@ -88,10 +88,7 @@ export const LabelTable: React.FC<LabelTableProps> = ({
                       {stat.accuracy}%{stat.isHighlighted ? ' ✓' : ''}
                     </span>
                   </div>
-                  <div className="text-xs text-gray-600">
-                    Consistency: {stat.consistency}
-                    {stat.isHighlighted ? ' ✓' : ''}
-                  </div>
+
                 </td>
               ))}
             </tr>

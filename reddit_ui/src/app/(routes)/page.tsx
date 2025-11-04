@@ -30,7 +30,6 @@ export default function Home() {
         {
           count: 2,
           total: 3,
-          isWarning: true,
           reasoning: (
             <div>
               <div className="text-xs font-semibold mb-2">Reasoning across runs:</div>
@@ -51,16 +50,16 @@ export default function Home() {
       labelName: 'frustration_expression',
       groundTruth: true,
       results: [
-        { count: 3, total: 3, isSuccess: true },
-        { count: 3, total: 3, isSuccess: true },
-        { count: 3, total: 3, isSuccess: true }
+        { count: 3, total: 3 },
+        { count: 3, total: 3 },
+        { count: 3, total: 3 }
       ]
     },
     {
       labelName: 'solution_seeking',
       groundTruth: false,
       results: [
-        { count: 1, total: 3, isWarning: true },
+        { count: 1, total: 3 },
         null,
         null
       ]
@@ -69,9 +68,9 @@ export default function Home() {
       labelName: 'solution_attempted',
       groundTruth: true,
       results: [
-        { count: 3, total: 3, isSuccess: true },
-        { count: 3, total: 3, isSuccess: true },
-        { count: 3, total: 3, isSuccess: true }
+        { count: 3, total: 3 },
+        { count: 3, total: 3 },
+        { count: 3, total: 3 }
       ]
     },
     {
@@ -117,9 +116,9 @@ export default function Home() {
         <div className="mb-6">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-semibold">r/techsupport Thread:</h2>
-            <button className="text-sm text-blue-600 hover:text-blue-700">
+            <Button className="text-sm text-blue-600" variant='invisible'>
               View Full ▼
-            </button>
+            </Button>
           </div>
 
           <ThreadBox>
@@ -138,22 +137,9 @@ export default function Home() {
           </ThreadBox>
         </div>
 
-        {/* Ground Truth */}
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="font-semibold text-sm mb-2">
-            Ground Truth (Human Labels):
-          </div>
-          <div className="flex gap-2">
-            <Badge variant="success">solution_attempted</Badge>
-            <Badge variant="success">frustration_expression</Badge>
-          </div>
-        </div>
-
         {/* Label Comparison Table */}
         <div className="mb-6">
-          <h3 className="text-lg font-semibold mb-3">
-            Label Analysis (3 runs each):
-          </h3>
+
           <LabelTable models={models} labels={labels} stats={stats} />
           <div className="mt-3 text-sm text-gray-600">
             💬 = Click to view reasoning | ⚠️ = Inconsistent across runs | ✓ = All runs match

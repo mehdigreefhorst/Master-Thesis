@@ -12,8 +12,8 @@ export const ThreadPost: React.FC<ThreadPostProps> = ({
   className = ''
 }) => {
   return (
-    <div className={`bg-[var(--thread-post)] p-4 rounded-[var(--radius)] mb-4 ${className}`}>
-      <div className="font-semibold text-sm mb-2">{username} wrote:</div>
+    <div className={`bg-(--thread-post) pl-4 rounded-(--radius) mb-2 ${className}`}>
+      <div className="font-semibold text-sm">{username} wrote:</div>
       <div className="text-sm">{content}</div>
     </div>
   );

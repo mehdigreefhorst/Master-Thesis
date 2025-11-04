@@ -9,15 +9,14 @@ interface ConsensusBarProps {
 export const ConsensusBar: React.FC<ConsensusBarProps> = ({
   value,
   total = 3,
-  isPartial = false
 }) => {
   const percentage = (value / total) * 100;
 
   return (
-    <div className="h-2 bg-[var(--bar-empty)] rounded overflow-hidden relative">
+    <div className="h-2 bg-(--bar-empty) rounded overflow-hidden relative">
       <div
         className={`h-full rounded transition-all duration-500 ease-out ${
-          isPartial ? 'bg-[var(--warning)]' : 'bg-[var(--bar-full)]'
+          value !== total ? 'bg-(--warning)' : 'bg-(--bar-full)'
         }`}
         style={{ width: `${percentage}%` }}
       />

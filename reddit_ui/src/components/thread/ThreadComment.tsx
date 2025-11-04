@@ -12,8 +12,8 @@ export const ThreadComment: React.FC<ThreadCommentProps> = ({
   className = ''
 }) => {
   return (
-    <div className={`bg-(--thread-comment) p-4 rounded-(--radius) ml-6 mb-3 ${className}`}>
-      <div className="text-sm mb-1">
+    <div className={`bg-(--thread-comment) pl-4 rounded-(--radius) ml-6 mb-3 ${className}`}>
+      <div className="text-sm">
         → <span className="font-semibold">{username}</span> replied:
       </div>
       <div className="text-sm">{content}</div>
