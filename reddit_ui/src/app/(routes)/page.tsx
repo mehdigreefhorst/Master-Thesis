@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/Badge';
 import { LabelTable } from '@/components/label/LabelTable';
 import { InsightBox } from '@/components/ui/InsightBox';
 import { Button } from '@/components/ui/Button';
+import Link from 'next/link';
 
 export default function Home() {
   const [currentSample, setCurrentSample] = useState(47);
@@ -156,7 +157,9 @@ export default function Home() {
 
         {/* Action Buttons */}
         <div className="flex gap-3 flex-wrap">
-          <Button variant="primary">View Prompts & Edit</Button>
+          <Link href={"/prompts"}>
+              <Button variant="primary">View Prompts & Edit</Button>
+          </Link>
           <Button variant="secondary">Export Data</Button>
           <Button variant="secondary">Flag Sample</Button>
           <Button variant="primary">Next Sample →</Button>
