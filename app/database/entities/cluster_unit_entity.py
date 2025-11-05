@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.database.entities.base_entity import BaseEntity, PyObjectId
 from app.database.entities.post_entity import PostEntity, CommentEntity
 
@@ -18,13 +18,32 @@ class ClusterUnitEntityCategory(BaseModel):
     agreement_empathy (The user is emphathetic towards another user)
     none_of_the_above
     """
-    problem_description: bool
-    frustration_expression: bool
-    solution_seeking: bool
-    solution_attempted: bool
-    solution_proposing: bool
-    agreement_empathy: bool
-    none_of_the_above: bool
+    problem_description: bool | None = None
+    frustration_expression: bool | None = None
+    solution_seeking: bool | None = None
+    solution_attempted: bool | None = None
+    solution_proposing: bool | None = None
+    agreement_empathy: bool | None = None
+    none_of_the_above: bool | None = None
+
+    @classmethod
+    def field_names(cls) -> list[str]:
+        return list(cls.model_fields.keys()) 
+
+ClusterUnitCategoryFieldNames = Literal["problem_description", 
+                                        "frustration_expression", 
+                                        "solution_seeking", 
+                                        "solution_attempted",
+                                        "solution_proposing",
+                                        "agreement_empathy",
+                                        "none_of_the_above"]
+
+
+class ClusterUnitEntityPredictedCategory(ClusterUnitEntityCategory):
+    """
+    Combines the clusterunit category and the prompt id that predicted the category
+    """
+    prompt_id: PyObjectId
 
 class ClusterUnitEntity(BaseEntity):
     cluster_entity_id: PyObjectId # ClusterInstanceEntity
@@ -39,7 +58,8 @@ class ClusterUnitEntity(BaseEntity):
     created_utc: int
     thread_path_text: List[str] | None # the full prior thread (post -> comment -> reply --> ...) up until the current comment
     enriched_comment_thread_text: str | None # what the LLM made from the thread path text & text
-    category: ClusterUnitEntityCategory | None = None
+    predicted_category: List[ClusterUnitEntityPredictedCategory] | None = None
+    ground_truth: ClusterUnitEntityCategory  = Field(default_factory=ClusterUnitEntityCategory)
     text: str # the author's individual text contribution to reddit
 
     @classmethod

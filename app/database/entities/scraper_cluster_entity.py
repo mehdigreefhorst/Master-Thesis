@@ -10,6 +10,7 @@ class StageStatus(BaseModel):
     initialized: StatusType = StatusType.Initialized
     scraping: StatusType = StatusType.Initialized
     cluster_prep: StatusType = StatusType.Initialized
+    cluster_filter: StatusType = StatusType.Initialized
     cluster_enrich: StatusType = StatusType.Initialized
     clustering: StatusType = StatusType.Initialized
 

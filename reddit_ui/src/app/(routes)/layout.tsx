@@ -1,4 +1,4 @@
-
+import { Navbar } from '@/components/layout/Navbar';
 
 export default function ScraperLayout({
   children,
@@ -6,9 +6,12 @@ export default function ScraperLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <>
+      <Navbar />
+      <div className="min-h-screen">
         {children}
-    </div>
+      </div>
+    </>
   )
 
 }

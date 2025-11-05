@@ -7,6 +7,8 @@ interface PageHeaderProps {
   totalSamples?: number;
   onPrevious?: () => void;
   onNext?: () => void;
+  disablePrevious?: boolean;
+  disableNext?: boolean;
   className?: string;
 }
 
@@ -16,6 +18,8 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   totalSamples,
   onPrevious,
   onNext,
+  disablePrevious = false,
+  disableNext = false,
   className = ''
 }) => {
   return (
@@ -27,10 +31,10 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             #{currentSample} / {totalSamples}
           </span>
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={onPrevious}>
+            <Button variant="secondary" onClick={onPrevious} disabled={disablePrevious}>
               ← Previous
             </Button>
-            <Button variant="secondary" onClick={onNext}>
+            <Button variant="secondary" onClick={onNext} disabled={disableNext}>
               Next →
             </Button>
           </div>

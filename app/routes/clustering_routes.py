@@ -6,7 +6,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 # from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.database import get_cluster_unit_repository, get_scraper_repository, get_user_repository, get_scraper_cluster_repository
-from app.requests.cluster_prep_requests import ScraperClusterId
+from app.requests.cluster_prep_requests import ScraperClusterId, UpdateGroundTruthRequest
 from app.requests.scraping_commands import ScrapingId
 from app.requests.scraper_requests import CreateScraperRequest
 from app.responses.reddit_post_comments_response import RedditResponse
@@ -120,6 +120,26 @@ def get_cluster_units(query: ScraperClusterId):
         return jsonify(message="Cluster preparation is no completed"), 409
     
     returnable_cluster_units = ClusterPrepService.convert_cluster_units_to_bertopic_ready_documents(scraper_cluster_entity)
-
+    print("a total of units = ", len(returnable_cluster_units))
     if returnable_cluster_units:
         return jsonify(cluster_unit_entities=returnable_cluster_units), 200
+    
+
+@clustering_bp.route("/update_ground_truth", methods=["PUT"])
+@validate_request_body(UpdateGroundTruthRequest)
+@jwt_required()
+def update_ground_truth(body: UpdateGroundTruthRequest):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    
+    get_cluster_unit_repository().find({"cluster_entity_id": body.cluster_entity_id})
+
+    result = get_cluster_unit_repository().update_ground_truth_category(body.cluster_entity_id,
+                                                                        body.ground_truth_category,
+                                                                        body.ground_truth)
+    
+    print("result of the update = ", result)
+    return jsonify(result=result.modified_count)
+    

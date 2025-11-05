@@ -10,7 +10,7 @@ export interface ModelColumn {
 
 export interface LabelData {
   labelName: string;
-  groundTruth: boolean;
+  groundTruth: boolean | null;
   results: (LabelResult | null)[];
 }
 
@@ -24,6 +24,7 @@ interface LabelTableProps {
   models: ModelColumn[];
   labels: LabelData[];
   stats?: PerformanceStats[];
+  cluster_unit_id: string;
   className?: string;
 }
 
@@ -31,6 +32,7 @@ export const LabelTable: React.FC<LabelTableProps> = ({
   models,
   labels,
   stats,
+  cluster_unit_id,
   className = ''
 }) => {
   return (
@@ -64,6 +66,7 @@ export const LabelTable: React.FC<LabelTableProps> = ({
               labelName={label.labelName}
               groundTruth={label.groundTruth}
               results={label.results}
+              cluster_unit_id={cluster_unit_id}
             />
           ))}
           {stats && (

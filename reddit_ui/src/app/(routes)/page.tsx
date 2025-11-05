@@ -141,7 +141,7 @@ export default function Home() {
         {/* Label Comparison Table */}
         <div className="mb-6">
 
-          <LabelTable models={models} labels={labels} stats={stats} />
+          <LabelTable models={models} labels={labels} stats={stats} cluster_unit_id='1'/>
           <div className="mt-3 text-sm text-gray-600">
             💬 = Click to view reasoning | ⚠️ = Inconsistent across runs | ✓ = All runs match
           </div>

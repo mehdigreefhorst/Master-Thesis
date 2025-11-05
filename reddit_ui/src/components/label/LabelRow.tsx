@@ -3,6 +3,9 @@
 import React, { useState } from 'react';
 import { ConsensusBar } from '../ui/ConsensusBar';
 import { ReasoningIcon } from '../ui/ReasoningIcon';
+import { Button } from '../ui';
+import { clusterApi } from '@/lib/api';
+import { useAuthFetch } from '@/utils/fetch';
 
 export interface LabelResult {
   count: number; // How many runs matched (0-3)
@@ -12,8 +15,9 @@ export interface LabelResult {
 
 interface LabelRowProps {
   labelName: string;
-  groundTruth: boolean; // true = ✓, false = ✗
+  groundTruth: boolean | null; // true = ✓, false = ✗, null = -
   results: (LabelResult | null)[]; // null means no data (—)
+  cluster_unit_id: string;
   className?: string;
 }
 
@@ -21,8 +25,11 @@ export const LabelRow: React.FC<LabelRowProps> = ({
   labelName,
   groundTruth,
   results,
+  cluster_unit_id,
   className = ''
 }) => {
+  const authFetch = useAuthFetch();
+  const [newGroundTruth, setNewGroundTruth] = useState<boolean | null >(groundTruth)
   // Track which result cells have their reasoning expanded
   const [openStates, setOpenStates] = useState<boolean[]>(
     results.map(() => false)
@@ -32,15 +39,24 @@ export const LabelRow: React.FC<LabelRowProps> = ({
     setOpenStates(prev => prev.map((state, i) => i === index ? !state : state));
   };
 
+  const updateGroundTruth = () => {
+    const newBool = !newGroundTruth
+    setNewGroundTruth(newBool);
+    clusterApi.updateClusterUnitGroundTruth(authFetch, cluster_unit_id, labelName, newBool)
+
+  }
+
   return (
     <tr className={`hover:bg-(--muted) ${className}`}>
       <td className="p-4 border-b border-(--border) text-sm">
         <strong>{labelName}</strong>
       </td>
       <td className=" border-b border-(--border) text-center text-xl">
-        <span className={groundTruth ? 'text-green-600' : ''}>
-          {groundTruth ? '✓' : '✗'}
-        </span>
+        <Button variant="invisible" onClick={updateGroundTruth}>        
+          <span className={newGroundTruth ? 'text-green-600' : ''}>
+            {newGroundTruth===true ? '✓' : '✗'}
+          </span>
+        </Button>
       </td>
       {results.map((result, index) => (
         <td key={index} className="p-4 border-b border-(--border)">
