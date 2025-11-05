@@ -25,6 +25,7 @@ interface LabelTableProps {
   labels: LabelData[];
   stats?: PerformanceStats[];
   cluster_unit_id: string;
+  onGroundTruthUpdate?: (labelKey: string, newValue: boolean) => void;
   className?: string;
 }
 
@@ -33,6 +34,7 @@ export const LabelTable: React.FC<LabelTableProps> = ({
   labels,
   stats,
   cluster_unit_id,
+  onGroundTruthUpdate,
   className = ''
 }) => {
   // console.log("models = ")
@@ -75,6 +77,7 @@ export const LabelTable: React.FC<LabelTableProps> = ({
               groundTruth={label.groundTruth}
               results={label.results}
               cluster_unit_id={cluster_unit_id}
+              onGroundTruthUpdate={onGroundTruthUpdate}
             />
           ))}
           {stats && (

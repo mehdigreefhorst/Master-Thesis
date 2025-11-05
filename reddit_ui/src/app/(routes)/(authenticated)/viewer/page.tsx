@@ -154,9 +154,34 @@ export default function ViewerPage() {
   // Get unique prompt IDs (models)
   const promptIds = Object.keys(groupedPredictions);
 
+  // Callback to update ground truth in cached data
+  const handleGroundTruthUpdate = (labelKey: string, newValue: boolean) => {
+    if (!cachedData || !clusterUnitEntityId) return;
+
+    setCachedData(prev => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        clusterUnits: prev.clusterUnits.map(unit => {
+          if (unit.id === clusterUnitEntityId && unit.ground_truth) {
+            return {
+              ...unit,
+              ground_truth: {
+                ...unit.ground_truth,
+                [labelKey]: newValue
+              }
+            };
+          }
+          return unit;
+        })
+      };
+    });
+  };
+
   // Transform data for LabelTable component
   const { models, labels, stats } = useMemo(() => {
-            
+
 
     if (!currentUnit || !currentUnit.ground_truth) {
       return { models: [], labels: [], stats: [] };
@@ -339,9 +364,15 @@ export default function ViewerPage() {
 
 
         {/* Label Comparison Table */}
-        
+
           <div className="mb-6">
-            <LabelTable models={models} labels={labels} stats={stats} cluster_unit_id={currentUnit.id} />
+            <LabelTable
+              models={models}
+              labels={labels}
+              stats={stats}
+              cluster_unit_id={currentUnit.id}
+              onGroundTruthUpdate={handleGroundTruthUpdate}
+            />
             <div className="mt-3 text-sm text-gray-600">
               💬 = Click to view reasoning | ⚠️ = Inconsistent across runs | ✓ = All runs match
             </div>

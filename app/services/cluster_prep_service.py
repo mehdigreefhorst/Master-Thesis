@@ -116,7 +116,7 @@ class ClusterPrepService:
         else:
             cluster_unit_entities = get_cluster_unit_repository().find({"cluster_entity_id": scraper_cluster_entity.cluster_entity_id, 
                                                                         "type": reddit_message_type})
-        cluster_unit_entities = sorted(cluster_unit_entities, key=lambda x: x.upvotes, reverse=True)
+            cluster_unit_entities = sorted(cluster_unit_entities, key=lambda x: x.upvotes, reverse=True)
         returnable_entities = [cluster_unit_entity.model_dump() for cluster_unit_entity in cluster_unit_entities]
         return returnable_entities
     

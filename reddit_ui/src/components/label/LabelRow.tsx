@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ConsensusBar } from '../ui/ConsensusBar';
 import { ReasoningIcon } from '../ui/ReasoningIcon';
 import { Button } from '../ui';
@@ -18,6 +18,7 @@ interface LabelRowProps {
   groundTruth: boolean | null; // true = ✓, false = ✗, null = -
   results: (LabelResult | null)[]; // null means no data (—)
   cluster_unit_id: string;
+  onGroundTruthUpdate?: (labelKey: string, newValue: boolean) => void;
   className?: string;
 }
 
@@ -26,6 +27,7 @@ export const LabelRow: React.FC<LabelRowProps> = ({
   groundTruth,
   results,
   cluster_unit_id,
+  onGroundTruthUpdate,
   className = ''
 }) => {
   const authFetch = useAuthFetch();
@@ -35,6 +37,11 @@ export const LabelRow: React.FC<LabelRowProps> = ({
     results.map(() => false)
   );
 
+  // Update newGroundTruth when groundTruth or cluster_unit_id changes
+  useEffect(() => {
+    setNewGroundTruth(groundTruth);
+  }, [groundTruth, cluster_unit_id]);
+
   const toggleOpen = (index: number) => {
     setOpenStates(prev => prev.map((state, i) => i === index ? !state : state));
   };
@@ -42,8 +49,12 @@ export const LabelRow: React.FC<LabelRowProps> = ({
   const updateGroundTruth = () => {
     const newBool = !newGroundTruth
     setNewGroundTruth(newBool);
-    clusterApi.updateClusterUnitGroundTruth(authFetch, cluster_unit_id, labelName, newBool)
+    clusterApi.updateClusterUnitGroundTruth(authFetch, cluster_unit_id, labelName, newBool);
 
+    // Update the cached data in the parent component
+    if (onGroundTruthUpdate) {
+      onGroundTruthUpdate(labelName, newBool);
+    }
   }
 
   return (
