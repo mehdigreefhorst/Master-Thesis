@@ -124,6 +124,8 @@ def get_cluster_units(query: GetClusterUnitsRequest):
     print("a total of units = ", len(returnable_cluster_units))
     if returnable_cluster_units:
         return jsonify(cluster_unit_entities=returnable_cluster_units), 200
+    else:
+        return jsonify(error="There are no cluster unit entities for the scraper cluster instance"), 400
     
 
 @clustering_bp.route("/update_ground_truth", methods=["PUT"])

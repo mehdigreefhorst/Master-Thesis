@@ -31,7 +31,7 @@ const stageDescriptions = {
 const stageRoutes = {
   initialized: '/define',
   scraping: '/scraper',
-  cluster_prep: '/prompts',
+  cluster_prep: '/sample',
   cluster_filter: '/viewer',
   cluster_enrich: '/enrich',
   clustering: '/clustering',

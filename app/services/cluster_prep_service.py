@@ -77,18 +77,22 @@ class ClusterPrepService:
     def convert_post_entity_to_cluster_units(cluster_entity: ClusterEntity, post_id: PyObjectId) -> List[PyObjectId]:
         post_entity = get_post_repository().find_by_id(post_id)
         # First we add the post as text by itself. since it is already valuable. Should we also add metadata of the replies/ comments?
-        cluster_unit_entities = []
+        cluster_unit_entities: List[ClusterUnitEntity] = []
         cluster_unit_entities.append(ClusterUnitEntity.from_post(post_entity, cluster_entity.id))
         # now we loop over each comment. To convert them into cluster unit entities. It also takes care of the replies
         for comment in post_entity.comments:
             cluster_unit_entities.append(ClusterUnitEntity.from_comment(comment, cluster_entity.id, post_id))
-            
+            comment_index = len(cluster_unit_entities) -1
             if comment.replies:
                 ClusterPrepService.convert_comment_entity_to_cluster_units(
                     replies=comment.replies, 
                     post_id=post_id, 
                     cluster_entity=cluster_entity, 
                     cluster_unit_entities=cluster_unit_entities)
+            
+            cluster_unit_entities[comment_index].total_nested_replies = len(cluster_unit_entities) - comment_index - 1 
+        
+        cluster_unit_entities[0].total_nested_replies = len(cluster_unit_entities) - 1
                 
         return get_cluster_unit_repository().insert_list_entities(cluster_unit_entities).inserted_ids
 
@@ -97,9 +101,11 @@ class ClusterPrepService:
         """recursively calls until there are no more replies left to convert into cluster_unit entities"""
         for reply in replies:
             cluster_unit_entities.append(ClusterUnitEntity.from_comment(reply, cluster_entity.id, post_id))
+            reply_index = len(cluster_unit_entities) -1 
             if reply.replies:
                 ClusterPrepService.convert_comment_entity_to_cluster_units(reply.replies, post_id, cluster_entity, cluster_unit_entities)
 
+            cluster_unit_entities[reply_index].total_nested_replies = len(cluster_unit_entities) - reply_index - 1
 
 
     @staticmethod
@@ -109,6 +115,7 @@ class ClusterPrepService:
         else:
             cluster_unit_entities = get_cluster_unit_repository().find({"cluster_entity_id": scraper_cluster_entity.cluster_entity_id, 
                                                                         "type": reddit_message_type})
+        cluster_unit_entities = sorted(cluster_unit_entities, key=lambda x: x.upvotes, reverse=True)
         returnable_entities = [cluster_unit_entity.model_dump() for cluster_unit_entity in cluster_unit_entities]
         return returnable_entities
     

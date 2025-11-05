@@ -35,14 +35,14 @@ export const LabelTable: React.FC<LabelTableProps> = ({
   cluster_unit_id,
   className = ''
 }) => {
-  console.log("models = ")
-  console.log(JSON.stringify(models))
-  console.log("labels = ")
-  console.log(JSON.stringify(labels))
-  console.log("stats = ")
-  console.log(JSON.stringify(stats))
-  console.log("cluster_unit_id = ")
-  console.log(cluster_unit_id)
+  // console.log("models = ")
+  // console.log(JSON.stringify(models))
+  // console.log("labels = ")
+  // console.log(JSON.stringify(labels))
+  // console.log("stats = ")
+  // console.log(JSON.stringify(stats))
+  // console.log("cluster_unit_id = ")
+  // console.log(cluster_unit_id)
   return (
     <div className={`overflow-hidden ${className}`}>
       <table className="w-full table-fixed border-separate border-spacing-0 bg-white rounded-lg shadow-(--shadow-sm)">

@@ -9,7 +9,7 @@ class ScraperClusterId(BaseModel):
 
 class GetClusterUnitsRequest(BaseModel):
     scraper_cluster_id: PyObjectId
-    reddit_message_type: Literal["post", "comment", "all"] = "post"
+    reddit_message_type: Literal["post", "comment", "all"] = "all"
 
 
 

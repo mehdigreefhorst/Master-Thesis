@@ -61,6 +61,8 @@ class ClusterUnitEntity(BaseEntity):
     predicted_category: List[ClusterUnitEntityPredictedCategory] | None = None
     ground_truth: ClusterUnitEntityCategory  = Field(default_factory=ClusterUnitEntityCategory)
     text: str # the author's individual text contribution to reddit
+    total_nested_replies: Optional[int] = None # Total nr of replies on the post summed up, replies to replies also count
+
 
     @classmethod
     def from_post(cls, post_entity: PostEntity, cluster_entity_id: PyObjectId):
@@ -86,7 +88,7 @@ class ClusterUnitEntity(BaseEntity):
     @classmethod
     def from_comment(cls, comment_entity: CommentEntity, cluster_entity_id: PyObjectId, post_id: PyObjectId):
         if not isinstance(comment_entity, CommentEntity):
-            raise Exception(f"Wrong type it should be a comment entity for comment: = {comment_entity}!")
+            raise Exception(f"Wrong type: {type(comment_entity)}it should be a comment entity for comment: = {comment_entity}!")
         
         return cls(
             cluster_entity_id=cluster_entity_id,

@@ -33,6 +33,7 @@ export interface ClusterUnitEntity {
   predicted_category: ClusterUnitEntityPredictedCategory[]; // List of predictions from different prompts
   ground_truth: ClusterUnitEntityCategory | null;
   text: string;
+  total_nested_replies: number | null;
 }
 
 // API Response types
