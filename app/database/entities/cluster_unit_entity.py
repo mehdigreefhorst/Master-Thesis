@@ -62,6 +62,7 @@ class ClusterUnitEntity(BaseEntity):
     ground_truth: ClusterUnitEntityCategory  = Field(default_factory=ClusterUnitEntityCategory)
     text: str # the author's individual text contribution to reddit
     total_nested_replies: Optional[int] = None # Total nr of replies on the post summed up, replies to replies also count
+    subreddit: str
 
 
     @classmethod
@@ -82,11 +83,13 @@ class ClusterUnitEntity(BaseEntity):
             created_utc=post_entity.created_utc,
             thread_path_text=  [],# the full prior thread (post -> comment -> reply --> ...) up until the current comment
             enriched_comment_thread_text= None, # what the LLM made from the thread path text & text
-            text= "post_title: " + post_entity.title + "\n" + post_entity.text # the author's individual text contribution to reddit
+            text= "post_title: " + post_entity.title + "\n" + post_entity.text, # the author's individual text contribution to reddit
+            subreddit=post_entity.subreddit
+
         )
     
     @classmethod
-    def from_comment(cls, comment_entity: CommentEntity, cluster_entity_id: PyObjectId, post_id: PyObjectId):
+    def from_comment(cls, comment_entity: CommentEntity, cluster_entity_id: PyObjectId, post_id: PyObjectId, subreddit: str):
         if not isinstance(comment_entity, CommentEntity):
             raise Exception(f"Wrong type: {type(comment_entity)}it should be a comment entity for comment: = {comment_entity}!")
         
@@ -103,6 +106,7 @@ class ClusterUnitEntity(BaseEntity):
             created_utc= comment_entity.created_utc,
             thread_path_text=  comment_entity.prior_comments_thread,# the full prior thread (post -> comment -> reply --> ...) up until the current comment
             enriched_comment_thread_text= None, # what the LLM made from the thread path text & text
-            text= comment_entity.text # the author's individual text contribution to reddit
+            text= comment_entity.text, # the author's individual text contribution to reddit
+            subreddit=subreddit
         )
 

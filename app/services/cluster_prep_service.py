@@ -81,14 +81,15 @@ class ClusterPrepService:
         cluster_unit_entities.append(ClusterUnitEntity.from_post(post_entity, cluster_entity.id))
         # now we loop over each comment. To convert them into cluster unit entities. It also takes care of the replies
         for comment in post_entity.comments:
-            cluster_unit_entities.append(ClusterUnitEntity.from_comment(comment, cluster_entity.id, post_id))
+            cluster_unit_entities.append(ClusterUnitEntity.from_comment(comment, cluster_entity.id, post_id, post_entity.subreddit))
             comment_index = len(cluster_unit_entities) -1
             if comment.replies:
                 ClusterPrepService.convert_comment_entity_to_cluster_units(
                     replies=comment.replies, 
                     post_id=post_id, 
                     cluster_entity=cluster_entity, 
-                    cluster_unit_entities=cluster_unit_entities)
+                    cluster_unit_entities=cluster_unit_entities,
+                    subreddit=post_entity.subreddit)
             
             cluster_unit_entities[comment_index].total_nested_replies = len(cluster_unit_entities) - comment_index - 1 
         
@@ -97,13 +98,13 @@ class ClusterPrepService:
         return get_cluster_unit_repository().insert_list_entities(cluster_unit_entities).inserted_ids
 
     @staticmethod
-    def convert_comment_entity_to_cluster_units(replies: List[CommentEntity], post_id: PyObjectId, cluster_entity: ClusterEntity, cluster_unit_entities=List[ClusterUnitEntity]):
+    def convert_comment_entity_to_cluster_units(replies: List[CommentEntity], post_id: PyObjectId, cluster_entity: ClusterEntity, cluster_unit_entities:List[ClusterUnitEntity], subreddit: str):
         """recursively calls until there are no more replies left to convert into cluster_unit entities"""
         for reply in replies:
-            cluster_unit_entities.append(ClusterUnitEntity.from_comment(reply, cluster_entity.id, post_id))
-            reply_index = len(cluster_unit_entities) -1 
+            cluster_unit_entities.append(ClusterUnitEntity.from_comment(reply, cluster_entity.id, post_id, subreddit))
+            reply_index = len(cluster_unit_entities) -1
             if reply.replies:
-                ClusterPrepService.convert_comment_entity_to_cluster_units(reply.replies, post_id, cluster_entity, cluster_unit_entities)
+                ClusterPrepService.convert_comment_entity_to_cluster_units(reply.replies, post_id, cluster_entity, cluster_unit_entities, subreddit)
 
             cluster_unit_entities[reply_index].total_nested_replies = len(cluster_unit_entities) - reply_index - 1
 

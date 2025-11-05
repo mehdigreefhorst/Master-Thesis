@@ -17,13 +17,12 @@ const PostCardComponent: React.FC<PostCardProps> = ({ post, isSelected, onToggle
   });
 
   const displayText = post.text.length > 200 ? post.text.substring(0, 200) + '...' : post.text;
-  const totalComments = post.thread_path_text?.length || 0;
 
   return (
     <div
       onClick={() => onToggleSelect(post.id)}
       className={`
-        relative flex-shrink-0 w-[320px] h-[450px]
+        relative shrink-0 w-[320px] h-[450px]
         rounded-xl border-2 p-6
         transition-all duration-300 ease-out
         cursor-pointer
@@ -64,8 +63,8 @@ const PostCardComponent: React.FC<PostCardProps> = ({ post, isSelected, onToggle
         )}
       </div>
 
-      {/* Post Type Badge */}
-      <div className="mb-3">
+      {/* Post Type Badge & Subreddit */}
+      <div className="mb-3 flex items-center gap-2 flex-wrap">
         <span
           className={`
             inline-block px-3 py-1 text-xs font-semibold rounded-full
@@ -78,6 +77,9 @@ const PostCardComponent: React.FC<PostCardProps> = ({ post, isSelected, onToggle
         >
           {post.type === 'post' ? '📝 Post' : '💬 Comment'}
         </span>
+        <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-700">
+          r/{post.subreddit}
+        </span>
       </div>
 
       {/* Author */}
@@ -86,7 +88,7 @@ const PostCardComponent: React.FC<PostCardProps> = ({ post, isSelected, onToggle
       </div>
 
       {/* Content */}
-      <div className="mb-4 flex-grow overflow-hidden">
+      <div className="mb-4 grow overflow-hidden">
         <p className="text-sm text-gray-800 leading-relaxed line-clamp-6">
           {displayText}
         </p>

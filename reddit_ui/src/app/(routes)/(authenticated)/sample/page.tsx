@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthFetch } from '@/utils/fetch';
 import type { ClusterUnitEntity } from '@/types/cluster-unit';
 import { VirtualizedHorizontalGrid } from '@/components/sample/VirtualizedHorizontalGrid';
 import { SelectionCounter } from '@/components/sample/SelectionCounter';
+import { SubredditFilter } from '@/components/sample/SubredditFilter';
 import { Button } from '@/components/ui/Button';
 import { clusterApi } from '@/lib/api';
 
@@ -20,11 +21,33 @@ export default function SampleSelectorPage() {
 
   const [posts, setPosts] = useState<ClusterUnitEntity[]>([]);
   const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
+  const [selectedSubreddits, setSelectedSubreddits] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const scraperClusterId = searchParams.get('scraper_cluster_id');
   const messageType = (searchParams.get('message_type') as 'post' | 'comment' | 'all') || 'all';
+
+  // Extract unique subreddits from posts
+  const uniqueSubreddits = useMemo(() => {
+    const subreddits = new Set(posts.map(post => post.subreddit));
+    return Array.from(subreddits).sort();
+  }, [posts]);
+
+  // Initialize selected subreddits when posts load (select all by default)
+  useEffect(() => {
+    if (posts.length > 0 && selectedSubreddits.size === 0) {
+      setSelectedSubreddits(new Set(uniqueSubreddits));
+    }
+  }, [posts, uniqueSubreddits, selectedSubreddits.size]);
+
+  // Filter posts by selected subreddits
+  const filteredPosts = useMemo(() => {
+    if (selectedSubreddits.size === 0 || selectedSubreddits.size === uniqueSubreddits.length) {
+      return posts; // Show all if none selected or all selected
+    }
+    return posts.filter(post => selectedSubreddits.has(post.subreddit));
+  }, [posts, selectedSubreddits, uniqueSubreddits.length]);
 
   // Fetch cluster units on mount
   useEffect(() => {
@@ -94,8 +117,29 @@ export default function SampleSelectorPage() {
   // Select all posts (optimized for large datasets)
   const handleSelectAll = useCallback(() => {
     // Use a single setState call with the complete Set
-    setSelectedPosts(new Set(posts.map(post => post.id)));
-  }, [posts]);
+    setSelectedPosts(new Set(filteredPosts.map(post => post.id)));
+  }, [filteredPosts]);
+
+  // Subreddit filter handlers
+  const handleToggleSubreddit = useCallback((subreddit: string) => {
+    setSelectedSubreddits(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(subreddit)) {
+        newSet.delete(subreddit);
+      } else {
+        newSet.add(subreddit);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleSelectAllSubreddits = useCallback(() => {
+    setSelectedSubreddits(new Set(uniqueSubreddits));
+  }, [uniqueSubreddits]);
+
+  const handleClearAllSubreddits = useCallback(() => {
+    setSelectedSubreddits(new Set());
+  }, []);
 
   // Loading state
   if (isLoading) {
@@ -184,16 +228,29 @@ export default function SampleSelectorPage() {
                 </h1>
                 <p className="text-sm text-gray-600">
                   Choose posts to analyze from cluster
+                  {filteredPosts.length < posts.length && (
+                    <span className="ml-2 text-orange-600 font-medium">
+                      (Showing {filteredPosts.length} of {posts.length})
+                    </span>
+                  )}
                 </p>
               </div>
               <SelectionCounter
                 selectedCount={selectedPosts.size}
-                totalCount={posts.length}
+                totalCount={filteredPosts.length}
               />
             </div>
 
-            {/* Right: Action buttons */}
+            {/* Right: Filter and Action buttons */}
             <div className="flex items-center gap-3">
+              <SubredditFilter
+                subreddits={uniqueSubreddits}
+                selectedSubreddits={selectedSubreddits}
+                onToggleSubreddit={handleToggleSubreddit}
+                onSelectAll={handleSelectAllSubreddits}
+                onClearAll={handleClearAllSubreddits}
+              />
+              <div className="w-px h-8 bg-gray-300" />
               <Button
                 variant="secondary"
                 onClick={handleClearSelection}
@@ -204,7 +261,7 @@ export default function SampleSelectorPage() {
               <Button
                 variant="secondary"
                 onClick={handleSelectAll}
-                disabled={selectedPosts.size === posts.length}
+                disabled={selectedPosts.size === filteredPosts.length}
               >
                 Select All
               </Button>
@@ -226,7 +283,7 @@ export default function SampleSelectorPage() {
       {/* Main content: Virtualized horizontal scroll grid */}
       <div className="py-12">
         <VirtualizedHorizontalGrid
-          posts={posts}
+          posts={filteredPosts}
           selectedPosts={selectedPosts}
           onToggleSelect={handleToggleSelect}
         />

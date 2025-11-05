@@ -34,6 +34,7 @@ export interface ClusterUnitEntity {
   ground_truth: ClusterUnitEntityCategory | null;
   text: string;
   total_nested_replies: number | null;
+  subreddit: string;
 }
 
 // API Response types
