@@ -30,7 +30,7 @@ const stageDescriptions = {
 // Map stage names to their respective routes
 const stageRoutes = {
   initialized: '/define',
-  scraping: '/scraper',
+  scraping: '/scraping-progress',
   cluster_prep: '/sample',
   cluster_filter: '/viewer',
   cluster_enrich: '/enrich',

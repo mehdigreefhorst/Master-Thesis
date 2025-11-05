@@ -6,7 +6,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from app.database import get_scraper_cluster_repository, get_scraper_repository, get_user_repository
 from app.database.entities.scraper_cluster_entity import ScraperClusterEntity
 from app.requests.scraping_commands import ScrapingId
-from app.requests.scraper_requests import CreateScraperRequest
+from app.requests.scraper_requests import CreateScraperClusterRequest, CreateScraperRequest
 from app.responses.reddit_post_comments_response import RedditResponse
 from app.services.scraper_service import ScraperService
 
@@ -28,12 +28,15 @@ def get_scraper_cluster_instances():
     return jsonify(returnable_instances), 200
 
 @scraper_cluster_bp.route("/", methods=["POST"])
+@validate_request_body(CreateScraperClusterRequest)
 @jwt_required()
-def create_scraper_cluster():
+def create_scraper_cluster(body: CreateScraperClusterRequest):
     user_id = get_jwt_identity()
     if not user_id:
         return jsonify("No valid user_id valid"), 400
-    scraper_cluster_instance = ScraperClusterEntity(user_id=user_id)
+    scraper_cluster_instance = ScraperClusterEntity(user_id=user_id, 
+                                                    problem_description=body.problem_description, 
+                                                    target_audience=body.target_audience)
 
     scraper_cluster_id = get_scraper_cluster_repository().insert(scraper_cluster_instance).inserted_id
 

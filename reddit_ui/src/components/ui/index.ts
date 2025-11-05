@@ -5,3 +5,6 @@ export { ConsensusBar } from './ConsensusBar';
 export { ReasoningIcon } from './ReasoningIcon';
 export { InsightBox } from './InsightBox';
 export { StatusBadge } from './StatusBadge';
+export { Textarea } from './Textarea';
+export { KeywordTag } from './KeywordTag';
+export { Input } from './Input';

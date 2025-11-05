@@ -112,11 +112,10 @@ export function unauthFetch(
   const backend_url = process.env.NEXT_PUBLIC_FLASK_API_URL;
 
   const requestInit: RequestInit = {
-    "method": method,
+    method: method,
     ...additionalParameters,
+    credentials: "include",
   };
-
-  requestInit.credentials = "include"
 
   if (body !== undefined) {
     if (toSnakeCase) {
@@ -124,12 +123,13 @@ export function unauthFetch(
     } else {
       requestInit.body = JSON.stringify(body);
     }
+    // Merge headers properly, ensuring Content-Type is set for JSON
     requestInit.headers = {
-      ...requestInit.headers,
+      ...(requestInit.headers || {}),
       "Content-Type": "application/json",
     };
   }
-  
+
   return fetch(new URL(endpoint, backend_url), requestInit);
 }
 

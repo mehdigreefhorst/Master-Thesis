@@ -47,19 +47,45 @@ The system integrates keyword-driven Reddit scraping with LLM-assisted filtering
 
 ### User Journey
 
-1. User logs in or signs up
-2. Inputs topic + subreddit
-3. System suggests related subreddits via external persona graph  (or add link to the respective website)
-4. LLM generates keywords
-5. User edits keywords
-6. Reddit scraping begins (progress bar shown)
-7. Scraped Post and comments are classified by LLM (you can see the prompt with how it will do this. You can see examples of how the LLM is doing this step). So you can interactively see how the system is doing the task at hand. When you are happy with the results. You can lock it in. then the complete dataset will be labeled. Possible supercharging of this step through massive parallelization. Or cheaply using batch API?
-8. User edits filter + prompt. This
-9. LLM rewrites selected posts into problem descriptions
-10. BERTopic clustering with LLM evaluation
-11. User selects best cluster config
-12. Persona profiling from user history
-13. Final dashboard displays cluster insights
+1. **Authentication**: User logs in or signs up
+2. **Problem Definition** (Define Page - Step 1):
+   - User describes the problem they want to investigate
+   - Specifies target audience
+   - Optionally specifies subreddit where audience is active
+   - Progress indicator shows Step 1 of 2
+3. **Keyword Generation** (Define Page - Step 2):
+   - User manually adds initial keywords
+   - Info box encourages manual keyword entry first
+   - Optional: AI generates additional keywords based on problem description
+   - Keywords displayed as removable tags
+   - Summary shows complete research focus
+   - Progress indicator shows Step 2 of 2
+4. **Scraping**: Reddit scraping begins (progress bar shown)
+5. **Ground Truth Labeling** (Sample Page):
+   - User navigates through scraped posts/comments in carousel view
+   - Manually labels a subset (e.g., 50-250 samples) with ground truth categories
+   - Can filter by subreddit to focus labeling efforts
+   - Labels auto-save to database as they're created
+   - **Purpose**: Creates training/validation data for prompt evaluation
+6. **LLM Classification**:
+   - Multiple prompts run predictions on the labeled dataset
+   - Each prompt runs multiple times (e.g., 3 runs) for consistency testing
+   - Results stored with prompt_id for comparison
+7. **Label Accuracy Analysis** (Viewer Page):
+   - Compare LLM predictions vs ground truth side-by-side
+   - View accuracy and consistency metrics per prompt
+   - Identify which prompts perform best on which categories
+   - Edit ground truth if corrections needed
+   - Select winning prompt(s) for full dataset classification
+8. **Full Dataset Classification**:
+   - Run best-performing prompt on entire scraped dataset
+   - Possible optimization: Batch API or parallelization
+9. **Filter & Refine**: User edits classification filters based on results
+10. **Problem Synthesis**: LLM rewrites selected posts into problem descriptions
+11. **BERTopic Clustering**: Multiple clustering configurations evaluated by LLM
+12. **Cluster Selection**: User selects best cluster configuration
+13. **Persona Profiling**: Deep dive into user histories per cluster
+14. **Final Dashboard**: Comprehensive insights and exportable reports
 
 ---
 
@@ -92,9 +118,11 @@ PUT  /scraper/start               # Begins scraping
 
 ### 🧠 Clustering Pipeline
 ```
-POST /clustering/prepare_cluster       # Flattens nested Reddit data
-POST /clustering/enrich_cluster_text  # Creates synthetic messages
-POST /clustering/assign_units         # Runs BERTopic clustering
+POST /clustering/prepare_cluster          # Flattens nested Reddit data
+POST /clustering/enrich_cluster_text      # Creates synthetic messages
+POST /clustering/assign_units             # Runs BERTopic clustering
+GET  /clustering/get_cluster_units        # Fetches cluster units with predictions and ground truth
+PUT  /clustering/update_ground_truth      # Updates ground truth label for a cluster unit
 ```
 
 ---
@@ -113,6 +141,30 @@ POST /clustering/assign_units         # Runs BERTopic clustering
 - `posts_per_keyword: int`
 - `post_entity_ids_status: Dict[PyObjectId, bool]`
 
+### Entity: `ClusterUnitEntity`
+- `id: str`
+- `cluster_entity_id: str`
+- `post_id: str`
+- `comment_post_id: str`
+- `type: "post" | "comment"`
+- `text: str`
+- `thread_path_text: str[]` - Full conversation thread leading to this message
+- `ground_truth: ClusterUnitEntityCategory | null` - User-labeled ground truth
+- `predicted_category: ClusterUnitEntityPredictedCategory[]` - LLM predictions from multiple prompts
+
+### Model: `ClusterUnitEntityCategory`
+- `problem_description: bool`
+- `frustration_expression: bool`
+- `solution_seeking: bool`
+- `solution_attempted: bool`
+- `solution_proposing: bool`
+- `agreement_empathy: bool`
+- `none_of_the_above: bool`
+
+### Model: `ClusterUnitEntityPredictedCategory`
+Extends `ClusterUnitEntityCategory` with:
+- `prompt_id: str` - Identifies which prompt generated this prediction
+
 ---
 
 ## 8. 📄 UI Pages & Concepts
@@ -121,51 +173,159 @@ Each screen includes 3 design options for layout and structure.
 
 ---
 
-### 🖥️ 1. Landing/Login Page
+### 🖥️ 1. Landing Page
+
+**Brand**: VibeResearch - "Turning Reddit noise into market clarity"
 
 **Functionality**:
-- Log in
-- Register
-- Redirect to dashboard
+- Product marketing and value proposition
+- Educational content about the research tool
+- Lead generation and sign-up conversion
+- Social proof and testimonials
+- Clear call-to-action to get started
 
-**Design Options**:
-1. Split screen (Form left / Hero text right)
-2. Modal form on blurred background
-3. Full-page form with testimonial footer
+**Key Sections**:
 
-🖼️ _[Insert wireframe or BPMN diagram placeholder here]_
+1. **Hero Section**:
+   - Headline: "Find What Your Market Complains About — Before Your Competitors Do."
+   - Sub-headline explaining the value proposition
+   - Input field for subreddit/topic with "Analyze My Niche" CTA
+   - Animated dashboard mockup showing pain point clusters
+   - Trust indicators: Free to use, No credit card, Public data only
+   - Gradient background with decorative elements
+
+2. **Quick Product Snapshot**:
+   - 3-sentence description of how the tool works
+   - Scroll-to-features CTA link
+   - Gray background section for visual separation
+
+3. **Feature Grid** (3 columns):
+   - Smart Subreddit Discovery: Find related communities automatically
+   - Problem Extraction Engine: NLP-powered pain point detection
+   - Quantified Insights Dashboard: Visualize clusters and patterns
+   - Hover effects showing data examples
+   - Gradient accent borders on hover
+
+4. **Story Section** ("Why We Built This"):
+   - Problem paragraph: Traditional research is slow/expensive
+   - Solution paragraph: Automated Reddit exploration
+   - Founder bio (80 words) with circular avatar
+   - Coral-tinted background (#FFF5F5)
+
+5. **Testimonial Carousel**:
+   - 3 testimonials from founders/researchers/indie hackers
+   - 5-star ratings with rotation controls
+   - Dark background with Reddit thread pattern
+   - Auto-advancing slides with manual navigation
+
+6. **Getting Started Section** (Updated for Beta):
+   - Free beta access badge
+   - Feature checklist with green checkmarks
+   - Reddit API key requirement notice
+   - Primary CTA: "Get Started Free"
+   - No pricing tiers (all features free during beta)
+
+7. **FAQ Accordion**:
+   - 4 questions addressing common objections
+   - "Why Reddit?", "How accurate?", "Private subreddits?", "Ethical data?"
+   - Expandable answers with smooth animations
+   - GDPR compliance notice in highlighted box
+
+8. **Sticky CTA Bar**:
+   - Red-to-coral gradient background
+   - Input + "Get Insights Now" button
+   - Fixed to bottom of viewport
+   - Always accessible for conversion
+
+9. **Footer**:
+   - Navigation links (Features, How It Works, FAQ)
+   - Social media links (LinkedIn, Twitter, Product Hunt, GitHub)
+   - Legal links (Privacy, Terms)
+   - Tagline: "Turning Reddit noise into market clarity"
+
+**Design System**:
+- **Colors**:
+  - Primary: Crimson Red #E63946
+  - Secondary: Coral #F9844A
+  - Accent: Teal #06B6D4
+  - Neutral: Charcoal #1C1C1C, Off-white #FAF9F6
+- **Typography**:
+  - System fonts for performance (fallback to Inter/Poppins style)
+  - Bold headings with gradient text effects
+  - Clean, readable body text
+- **Animations**:
+  - slideInLeft/slideInRight for hero elements
+  - fadeInUp for feature cards
+  - Smooth hover transitions
+  - Pulse effect on data badges
+
+**Technical Implementation**:
+- Next.js 14 with App Router
+- Client-side components with useState/useEffect
+- Modular component architecture:
+  - `HeroSection.tsx`
+  - `FeatureGrid.tsx`
+  - `StorySection.tsx`
+  - `TestimonialCarousel.tsx`
+  - `PricingSection.tsx`
+  - `FAQSection.tsx`
+  - `CTABar.tsx`
+  - `LandingFooter.tsx`
+- Responsive design (mobile-first)
+- SEO-optimized meta tags
+- Analytics-ready conversion tracking
+
+**Route**: `/landing`
+
+🖼️ _[Implemented as full-featured marketing landing page]_
 
 ---
 
-### 🖥️ 2. Topic Input + Subreddit Selector
+### 🖥️ 2. Define Page (Two-Step Flow)
+
+**Step 1: Problem Definition**
 
 **Functionality**:
-- Enter topic text
-- Select subreddit
-- Show suggested related subreddits
+- Enter problem description (textarea)
+- Specify target audience (input)
+- Optional: Specify subreddit (input)
+- Progress bar shows 50% completion
+- Continue button disabled until problem & audience filled
 
-**Design Options**:
-1. Wizard stepper layout
-2. Sidebar input form + preview panel
-3. Central card form with chips for related subreddits
-
-🖼️ _[Insert diagram placeholder]_
-
----
-
-### 🖥️ 3. Keyword Refinement Page
+**Step 2: Keyword Generation**
 
 **Functionality**:
-- Display AI-generated keywords
-- Add/edit/remove terms
-- Preview scrape volume estimate
+- Humorous info box encourages manual keyword entry first
+- Add keywords manually (input + "Add" button or Enter key)
+- Keywords displayed as removable tags with staggered animation
+- Counter shows number of keywords added
+- AI generation button (optional):
+  - Analyzes problem description and audience
+  - Generates suggested keywords
+  - Adds them as removable tags
+  - Shows loading state with spinning gear icon
+- Research summary card displays all inputs
+- Back button returns to Step 1
+- Start Scraping button proceeds to next phase
 
-**Design Options**:
-1. Dual-column: LLM suggestions vs Final list
-2. Editable table with ranking
-3. Tag editor with search autocomplete
+**Key Animations**:
+- Bouncing target emoji in header
+- Smooth progress bar transition (50% → 100%)
+- Slide-in animation when switching steps
+- Fade-in for form elements with staggered timing
+- Wobble animation on info box
+- Hover effects on buttons (translate arrow icons)
+- Keyword tags fade in with delay based on index
 
-🖼️ _[Insert wireframe placeholder]_
+**Design Pattern**:
+- Two-column max-width layout (4xl)
+- Gradient background
+- Card-based forms
+- Emoji section headers
+- Minimalist color scheme
+- Smooth state transitions
+
+🖼️ _[Implemented as /define route]_
 
 ---
 
@@ -185,7 +345,88 @@ Each screen includes 3 design options for layout and structure.
 
 ---
 
-### 🖥️ 5. LLM Classification Page
+### 🖥️ 5. Sample Page (Ground Truth Labeling)
+
+**Functionality**:
+- Browse through scraped posts and comments in an interactive carousel
+- Manually label a subset of messages with ground truth categories
+- Filter by subreddit to focus labeling efforts
+- Navigate between samples with keyboard shortcuts
+- View full Reddit thread context for each message
+- Track labeling progress across the dataset
+
+**Key Features**:
+- **Horizontal Carousel**: Swipe or scroll through messages with smooth navigation
+- **Category Checkboxes**: Multi-select categories for each message:
+  - Problem Description
+  - Frustration Expression
+  - Solution Seeking
+  - Solution Attempted
+  - Solution Proposing
+  - Agreement/Empathy
+  - None of the Above
+- **Subreddit Filter**: Focus on specific communities for targeted labeling
+- **Progress Indicator**: Shows current position (e.g., "47/250")
+- **Auto-save**: Ground truth labels are saved immediately to the database
+- **Thread Context**: Full parent thread displayed above the target message
+
+**Design Pattern**:
+- Card-based carousel with centered focus item
+- Navigation arrows and dot indicators
+- Sticky header with progress and filters
+- Gradient fade on carousel edges for visual polish
+
+🖼️ _[Implemented as /sample route]_
+
+---
+
+### 🖥️ 6. Label Accuracy Viewer Page
+
+**Functionality**:
+- Compare LLM predictions against ground truth labels
+- Evaluate multiple prompts and models side-by-side
+- Track prediction accuracy and consistency across runs
+- Identify prompt strengths and weaknesses per category
+- Navigate through labeled samples to review performance
+
+**Key Features**:
+- **Comparison Table**:
+  - Truth column showing ground truth labels (editable)
+  - Multiple model/prompt columns showing prediction results
+  - Visual consensus bars (e.g., "3/3" runs matched)
+  - Color-coded accuracy indicators
+- **Performance Metrics**:
+  - Overall accuracy percentage per prompt
+  - Consistency scores (Perfect/Good/Medium)
+  - Highlighted prompts achieving 100% accuracy
+- **Interactive Navigation**:
+  - Previous/Next sample buttons
+  - Sample counter (e.g., "#47/250")
+  - Direct navigation to next sample
+- **Thread Context Display**: Full Reddit thread shown above analysis
+- **Ground Truth Editing**: Click to toggle truth values if corrections needed
+- **Reasoning View**: Click 💬 icon to see LLM's reasoning for predictions
+- **AI Insights**: Automated analysis comparing prompt performance
+
+**Design Pattern**:
+- Clean table layout with fixed header
+- Expandable reasoning sections
+- Sticky navigation controls
+- Truth column with toggle interaction
+- Visual feedback for matches/mismatches
+
+**Data Flow**:
+1. Fetches all cluster unit entities with predictions and ground truth
+2. Groups predictions by prompt_id for comparison
+3. Calculates accuracy metrics per prompt
+4. Updates cached data when ground truth is modified
+5. Preserves changes across navigation
+
+🖼️ _[Implemented as /viewer route]_
+
+---
+
+### 🖥️ 7. LLM Classification Page
 
 **Functionality**:
 - View classified comments
@@ -201,7 +442,7 @@ Each screen includes 3 design options for layout and structure.
 
 ---
 
-### 🖥️ 6. Synthetic Problem Explorer
+### 🖥️ 8. Synthetic Problem Explorer
 
 **Functionality**:
 - View rewritten problem descriptions
@@ -217,7 +458,7 @@ Each screen includes 3 design options for layout and structure.
 
 ---
 
-### 🖥️ 7. Clustering Evaluation
+### 🖥️ 9. Clustering Evaluation
 
 **Functionality**:
 - Show clusters and scores
@@ -233,7 +474,7 @@ Each screen includes 3 design options for layout and structure.
 
 ---
 
-### 🖥️ 8. Persona Analysis Dashboard
+### 🖥️ 10. Persona Analysis Dashboard
 
 **Functionality**:
 - Explore users per cluster
@@ -249,7 +490,7 @@ Each screen includes 3 design options for layout and structure.
 
 ---
 
-### 🖥️ 9. Final Report Page
+### 🖥️ 11. Final Report Page
 
 **Functionality**:
 - Summary of cluster insights

@@ -15,7 +15,6 @@ export default function OverviewPage() {
   const [clusters, setClusters] = useState<ScraperClusterEntity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
 
   // Fetch scraper cluster instances
   useEffect(() => {
@@ -38,25 +37,9 @@ export default function OverviewPage() {
     fetchClusters();
   }, []);
 
-  // Create new scraper cluster
-  const handleCreateNew = async () => {
-    try {
-      setIsCreating(true);
-      setError(null);
-
-      const response = await authFetch('/scraper_cluster/', {
-        method: 'POST',
-      });
-
-      const data = await response.json();
-      const newClusterId = data.scraper_cluster_id;
-
-      // Redirect to define page with the new cluster ID
-      router.push(`/define?scraper_cluster_id=${newClusterId}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create scraper cluster');
-      setIsCreating(false);
-    }
+  // Navigate to define page to create new research project
+  const handleCreateNew = () => {
+    router.push('/define');
   };
 
   // Loading state
@@ -85,17 +68,9 @@ export default function OverviewPage() {
           <Button
             variant="primary"
             onClick={handleCreateNew}
-            disabled={isCreating}
-            className="transform mt-2 transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:hover:scale-100"
+            className="transform mt-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
           >
-            {isCreating ? (
-              <>
-                <span className="inline-block animate-spin mr-2">⟳</span>
-                Creating...
-              </>
-            ) : (
-              '+ Create New Instance'
-            )}
+            + Create New Research Project
           </Button>
         </div>
 
