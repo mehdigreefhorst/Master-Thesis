@@ -182,7 +182,7 @@ export default function ViewerPage() {
     // Build labels array
     const labelsData = labelKeys.map((labelKey) => {
       const groundTruth = currentUnit.ground_truth?.[labelKey] ?? null;
-      
+
       // For each prompt, calculate how many predictions matched ground truth
       const results = promptIds.map((promptId) => {
         const predictions = groupedPredictions[promptId];
@@ -337,23 +337,6 @@ export default function ViewerPage() {
           {renderThread()}
         </div>
 
-        {/* Ground Truth Display */}
-        <div className="mb-4 p-4 bg-gray-50 rounded-lg border">
-          <h3 className="font-semibold mb-2">Ground Truth:</h3>
-          <div className="flex flex-wrap gap-2">
-            {currentUnit.ground_truth &&
-              Object.entries(currentUnit.ground_truth)
-            //    .filter(([_, value]) => value === true)
-                .map(([key]) => (
-                  <span
-                    key={key}
-                    className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium"
-                  >
-                    {key}
-                  </span>
-                ))}
-          </div>
-        </div>
 
         {/* Label Comparison Table */}
         
