@@ -329,7 +329,209 @@ Each screen includes 3 design options for layout and structure.
 
 ---
 
-### 🖥️ 4. Scraping Progress Page
+### 🖥️ 3. Scraping Progress Page
+
+**Route**: `/scraping-progress`
+
+**Functionality**:
+Real-time monitoring dashboard that displays live scraping progress across multiple subreddits and keywords. Provides detailed status tracking, estimated completion times, and activity logging to keep users informed during the data collection phase.
+
+**Key Features**:
+
+1. **Overall Progress Section**:
+   - Master progress bar showing total scraping completion percentage
+   - Live statistics: `actualPostsScraped / totalEstimatedPosts`
+   - Elapsed time counter (updates every second)
+   - Estimated time remaining (ETA) calculation
+   - Gradient background with animated shimmer effect on progress bar
+
+2. **Real-time Statistics Grid** (4 stat cards):
+   - **Subreddits**: Completed vs Total (e.g., "2/4 completed")
+   - **Keywords**: Total searches completed across all subreddits
+   - **Posts Found**: Actual posts scraped with percentage vs estimate
+   - **Time Remaining**: ETA with elapsed time subtext
+   - Each card has icon, color theme, and count-up animation
+
+3. **Subreddit Progress Cards**:
+   - Individual card per subreddit with status badge (✅/⚡/⏳)
+   - Per-subreddit progress bar
+   - Keywords completed count (e.g., "3/5 keywords")
+   - Total posts found for that subreddit
+   - Live indicator showing currently active keyword search
+   - Slide-in animations with staggered delays
+
+4. **Keyword Matrix Breakdown**:
+   - Interactive table: Keywords (rows) × Subreddits (columns)
+   - Each cell shows:
+     - ✅ + post count if completed
+     - ⚡ + animated dots if ongoing
+     - ⏳ + dash if pending
+   - Color-coded cells (green/blue/gray)
+   - Sticky table headers for scrolling
+   - Hover effects on rows
+
+5. **Live Activity Log**:
+   - Terminal-style scrolling feed
+   - Timestamped entries (HH:MM:SS format)
+   - Entry types with icons:
+     - 🔍 Info (starting searches)
+     - ✅ Success (completed operations)
+     - ⚠️ Warning (rate limits, retries)
+     - ❌ Error (failures)
+   - Auto-scroll to bottom for new entries
+   - Configurable max entries (default: 50)
+   - Fade-in animation for new logs
+
+6. **Control Actions**:
+   - Pause button (top-right) - Sets scraper status to "paused"
+   - Continue to Analysis button (bottom) - Enabled when status = "completed"
+   - Back to Overview link (top-left)
+
+**Data Flow & Backend Integration**:
+
+1. **Polling Mechanism**:
+   ```typescript
+   // Frontend polls every 2 seconds
+   useEffect(() => {
+     const interval = setInterval(async () => {
+       const response = await authFetch(`/scraper/${scraperId}`);
+       const scraperData = await response.json();
+       updateScraperState(scraperData);
+     }, 2000);
+     return () => clearInterval(interval);
+   }, [scraperId]);
+   ```
+
+2. **Progress Calculations**:
+   - **Total Estimated Posts**: `subreddits.length × keywords.length × posts_per_keyword`
+   - **Actual Posts Scraped**: Sum of all `found_post_ids.length` across all keyword searches
+   - **Overall Progress**: `(actualPostsScraped / totalEstimatedPosts) × 100`
+   - **ETA Calculation**: `(elapsedTime / currentProgress) - elapsedTime`
+   - **Subreddit Progress**: `(completedKeywords / totalKeywords) × 100`
+
+3. **Status Tracking**:
+   - Scraper status: `initialized | ongoing | paused | completed | error`
+   - Subreddit status: `pending | ongoing | done`
+   - Keyword status: `pending | ongoing | done`
+
+4. **Log Generation**:
+   - Backend generates log entries during scraping
+   - Stored in `scraper_logs` collection with:
+     ```typescript
+     {
+       scraper_id: string,
+       timestamp: Date,
+       type: 'info' | 'success' | 'warning' | 'error',
+       message: string
+     }
+     ```
+   - Frontend fetches recent logs with `/scraper/${scraperId}/logs?limit=50`
+
+**Backend API Requirements**:
+
+```
+GET /scraper/:scraper_id
+Response: {
+  id: string,
+  status: StatusType,
+  keywords: string[],
+  subreddits: string[],
+  keyword_search_objective: KeywordSearchObjective,
+  posts_per_keyword: number,
+  created_at: Date
+}
+
+GET /scraper/:scraper_id/logs?limit=50
+Response: {
+  logs: LogEntry[]
+}
+
+PUT /scraper/:scraper_id/pause
+Effect: Sets status to "paused", stops scraping worker
+
+PUT /scraper/:scraper_id/resume
+Effect: Sets status to "ongoing", resumes scraping worker
+```
+
+**Component Architecture**:
+
+Reusable components (fully typed, memoized, composable):
+- `ProgressBar.tsx` - Animated progress visualization
+- `StatusBadge.tsx` - Status indicators with icons
+- `StatCard.tsx` - Metric display cards
+- `SubredditProgressCard.tsx` - Individual subreddit tracking
+- `KeywordMatrix.tsx` - Grid layout for keyword×subreddit status
+- `ActivityLog.tsx` - Scrolling log feed
+
+**Animations**:
+- **Shimmer**: Moving highlight on progress bars (2s loop)
+- **Count-up**: Numbers scale and fade in when changed
+- **Slide-in**: Cards enter from bottom with stagger
+- **Pulse**: Ongoing status badges pulsate
+- **Ping**: Active searches have expanding ring effect
+- **Spin**: Loading spinners on active operations
+
+**Edge Cases & Error Handling**:
+
+1. **Rate Limiting**:
+   - Backend detects HTTP 429 from Reddit API
+   - Logs warning with retry countdown
+   - Automatically resumes after cooldown
+
+2. **Network Failures**:
+   - Polling fails: Display "Connection lost" warning
+   - Retry logic with exponential backoff
+   - Preserve last known state until reconnection
+
+3. **Partial Completion**:
+   - Some keywords find 0 posts → Show "0" in matrix
+   - Subreddit returns fewer than expected → Adjust ETA dynamically
+   - API returns errors → Mark keyword as "error" status
+
+4. **Browser Refresh**:
+   - State persisted in database, not localStorage
+   - Page reload fetches current scraper state
+   - Continue from last position
+
+5. **Long-Running Scrapes**:
+   - Session timeout → Scraping continues server-side
+   - User can navigate away and return later
+   - Progress preserved in database
+
+**User Flow**:
+
+```
+Define Page → [Submit Keywords] → Scraping Progress Page (auto-navigate)
+                                   ↓ (polling every 2s)
+                                   [Backend scraping in background]
+                                   ↓ (status updates)
+                                   [Progress bars animate]
+                                   ↓ (logs appear)
+                                   [Activity log scrolls]
+                                   ↓ (completion)
+                                   [Continue to Analysis] → Sample Page
+```
+
+**Performance Optimizations**:
+
+1. **Memoization**: All components wrapped in `React.memo()`
+2. **Debounced Updates**: Batch state updates to prevent excessive re-renders
+3. **Virtual Scrolling**: Activity log uses windowing for 1000+ entries
+4. **Conditional Rendering**: Hide matrix if >50 keywords to prevent lag
+5. **Lazy Loading**: Components load on-demand
+
+**Design Pattern**:
+- Clean, dashboard-style layout
+- Color-coded status system (green=done, blue=active, gray=pending)
+- Real-time data visualization
+- Mobile-responsive grid layout
+- Terminal aesthetic for logs
+
+🖼️ _[Implemented as /scraping-progress route with mock data]_
+
+---
+
+### 🖥️ 4. Historical: Scraping Progress Page (Old Notes)
 
 **Functionality**:
 - Live scrape progress bar
