@@ -1,6 +1,6 @@
 
 
-from typing import List
+from typing import List, Literal
 from app.database.entities.base_entity import PyObjectId
 from app.database.entities.cluster_entity import ClusterEntity, ClusterTextThreadModeType
 from app.database.entities.cluster_unit_entity import ClusterUnitEntity
@@ -103,8 +103,12 @@ class ClusterPrepService:
 
 
     @staticmethod
-    def convert_cluster_units_to_bertopic_ready_documents(scraper_cluster_entity: ScraperClusterEntity) -> List:#[response]:
-        cluster_unit_entities = get_cluster_unit_repository().find({"cluster_entity_id": scraper_cluster_entity.cluster_entity_id})
+    def convert_cluster_units_to_bertopic_ready_documents(scraper_cluster_entity: ScraperClusterEntity, reddit_message_type: Literal["post", "comment", "all"] = "all") -> List:#[response]:
+        if reddit_message_type == "all":
+            cluster_unit_entities = get_cluster_unit_repository().find({"cluster_entity_id": scraper_cluster_entity.cluster_entity_id})
+        else:
+            cluster_unit_entities = get_cluster_unit_repository().find({"cluster_entity_id": scraper_cluster_entity.cluster_entity_id, 
+                                                                        "type": reddit_message_type})
         returnable_entities = [cluster_unit_entity.model_dump() for cluster_unit_entity in cluster_unit_entities]
         return returnable_entities
     

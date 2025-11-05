@@ -6,7 +6,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 # from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.database import get_cluster_unit_repository, get_scraper_repository, get_user_repository, get_scraper_cluster_repository
-from app.requests.cluster_prep_requests import ScraperClusterId, UpdateGroundTruthRequest
+from app.requests.cluster_prep_requests import GetClusterUnitsRequest, ScraperClusterId, UpdateGroundTruthRequest
 from app.requests.scraping_commands import ScrapingId
 from app.requests.scraper_requests import CreateScraperRequest
 from app.responses.reddit_post_comments_response import RedditResponse
@@ -96,9 +96,9 @@ def enrich_cluster_text(body: ScraperClusterId):
 
     
 @clustering_bp.route("/get_cluster_units", methods=["GET"])
-@validate_query_params(ScraperClusterId)
+@validate_query_params(GetClusterUnitsRequest)
 @jwt_required()
-def get_cluster_units(query: ScraperClusterId):
+def get_cluster_units(query: GetClusterUnitsRequest):
     print("query = ", query)
     user_id = get_jwt_identity()
     current_user = get_user_repository().find_by_id(user_id)
@@ -119,7 +119,8 @@ def get_cluster_units(query: ScraperClusterId):
     if not scraper_cluster_entity.stages.cluster_prep == StatusType.Completed:
         return jsonify(message="Cluster preparation is no completed"), 409
     
-    returnable_cluster_units = ClusterPrepService.convert_cluster_units_to_bertopic_ready_documents(scraper_cluster_entity)
+    print("query.reddit_message_type = ",query.reddit_message_type)
+    returnable_cluster_units = ClusterPrepService.convert_cluster_units_to_bertopic_ready_documents(scraper_cluster_entity, query.reddit_message_type)
     print("a total of units = ", len(returnable_cluster_units))
     if returnable_cluster_units:
         return jsonify(cluster_unit_entities=returnable_cluster_units), 200
