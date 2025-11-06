@@ -41,6 +41,7 @@ ClusterUnitCategoryFieldNames = Literal["problem_description",
 
 class CategoryPrediction(ClusterUnitEntityCategory):
     reason: str
+    sentiment: Literal["negative", "neutral", "positive"]
     tokens_used: Dict # Model dump from the token usage object from the LLM provider
 
 

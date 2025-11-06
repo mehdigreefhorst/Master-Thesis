@@ -80,9 +80,13 @@ class BaseRepository[T: BaseEntity]:
 
     def find_by_id(self, id: PyObjectId, fields: list[str] | None = None) -> T | None:
         return self.find_one({"_id": id}, fields)
+      
+    def find_many_by_ids(self, ids: List[PyObjectId]) -> List[T]:
+        filter = {"_id": {"$in": ids}}
+        cursor =  self.collection.find(self._soft_delete_filter(filter))
+        documents = list(cursor)  # Consume the cursor into a list
         
-    
-    
+        return [self._convert_to_entity(document) for document in documents]
 
     def update(self, id: PyObjectId, to_update: Mapping[str, Any] | T) -> UpdateResult:
         if isinstance(to_update, BaseEntity):  # Cannot do 'isinstance(..., T)' so we use BaseEntity instead.

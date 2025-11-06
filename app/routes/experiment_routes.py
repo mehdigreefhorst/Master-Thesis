@@ -1,0 +1,137 @@
+
+
+from flask import Blueprint, jsonify
+from flask_jwt_extended import get_jwt_identity, jwt_required
+
+from app.database import get_cluster_unit_repository, get_experiment_repository, get_prompt_repository, get_sample_repository, get_scraper_cluster_repository, get_user_repository
+from app.database.entities.experiment_entity import ExperimentEntity
+from app.database.entities.prompt_entity import PromptCategory
+from app.requests.cluster_prep_requests import ScraperClusterId
+from app.requests.experiment_requests import CreateExperiment, GetExperiments, ParsePrompt
+from app.services.experiment_service import ExperimentService
+from app.utils.api_validation import validate_request_body, validate_query_params
+from app.utils.types import StatusType
+
+
+experiment_bp = Blueprint("experiment", __name__, url_prefix="/experiment")
+
+@experiment_bp.route("/", methods=["GET"])
+@validate_query_params(GetExperiments)
+@jwt_required()
+def get_experiment_instances(query: GetExperiments):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    
+    scraper_cluster_entity = get_scraper_cluster_repository().find_by_id_and_user(user_id, query.scraper_cluster_id)
+
+    if not scraper_cluster_entity:
+        return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {query.scraper_cluster_id}"), 400
+    
+    if not scraper_cluster_entity.scraper_entity_id:
+        return jsonify(message="scraper is not yet initialized"), 409
+    
+    if not scraper_cluster_entity.stages.scraping == StatusType.Completed:
+        return jsonify(message="scraper is not completed yet"), 409
+    
+    filter = {"scraper_cluster_id": query.scraper_cluster_id}
+    if query.experiment_id:
+        filter.update({"_id": query.experiment_id})
+        
+    experiment_entities = get_experiment_repository().find(filter)
+
+    returnable_instances = [experiment.model_dump() for experiment in experiment_entities]
+    return jsonify(returnable_instances), 200
+
+
+@experiment_bp.route("/", methods=["POST"])
+@validate_request_body(CreateExperiment)
+@jwt_required()
+def create_experiment(body: CreateExperiment):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    
+    scraper_cluster_entity = get_scraper_cluster_repository().find_by_id_and_user(user_id, body.scraper_cluster_id)
+
+    if not scraper_cluster_entity:
+        return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {body.scraper_cluster_id}"), 400
+    
+    if not scraper_cluster_entity.scraper_entity_id:
+        return jsonify(message="scraper is not yet initialized"), 409
+    
+    if not scraper_cluster_entity.stages.scraping == StatusType.Completed:
+        return jsonify(message="scraper is not completed yet"), 409
+    
+    if not scraper_cluster_entity.sample_entity_id:
+        return jsonify(message="You must create a sample entity first")
+    
+    prompt_entity = get_prompt_repository().find_by_id(body.prompt_id)
+
+    if not prompt_entity:
+        return jsonify(message=f"prompt entity is not found that was provided: {body.prompt_id}"), 400
+    
+    if not prompt_entity.created_by_user_id == user_id and not prompt_entity.public_policy:
+        return jsonify(message="The provided prompt is not public and not created by you!"), 400
+    
+    if not prompt_entity.category == PromptCategory.Classify_cluster_units:
+        return jsonify(message=f"Selected prompt {prompt_entity.id} is not of category 'Classify_cluster_units', it is {prompt_entity.category}")
+    
+    sample_entity = get_sample_repository().find_by_id(scraper_cluster_entity.sample_entity_id)
+
+    if not sample_entity:
+        return jsonify(message=f"the provided sample of the scraper cluster instance does not exist| sample_id: {scraper_cluster_entity.sample_entity_id}"), 400
+    
+    if not sample_entity.sample_cluster_unit_ids:
+        return jsonify(message=f"No cluster units have been assigned in the sample for us to do an experiment with | sample_id: {scraper_cluster_entity.sample_entity_id}"), 400
+
+    experiment_entity = ExperimentEntity(user_id=user_id,
+                                         scraper_cluster_id=scraper_cluster_entity.id,
+                                         prompt_id=prompt_entity.id,
+                                         sample_id=sample_entity.id,
+                                         model= body.model,
+                                         runs_per_unit=body.runs_per_unit)
+    
+    get_experiment_repository().insert(experiment_entity)
+
+    cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_entity.sample_cluster_unit_ids)
+
+    if not cluster_unit_entities or not len(cluster_unit_entities) == len(sample_entity.sample_cluster_unit_ids):
+        return jsonify(message=f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id}")    
+    
+    ExperimentService.predict_categories_cluster_units(experiment_entity=experiment_entity,
+                                                       cluster_unit_entities=cluster_unit_entities,
+                                                       prompt_entity=prompt_entity)
+
+
+@experiment_bp.route("/parse_prompt", methods=["POST"])
+@validate_request_body(ParsePrompt)
+@jwt_required()
+def parse_prompt(body: ParsePrompt):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    
+    prompt_entity = get_prompt_repository().find_by_id(body.prompt_id)
+
+    if not prompt_entity:
+        return jsonify(message=f"prompt entity is not found that was provided: {body.prompt_id}"), 400
+    
+    if not prompt_entity.created_by_user_id == user_id and not prompt_entity.public_policy:
+        return jsonify(message="The provided prompt is not public and not created by you!"), 400
+    
+    if not prompt_entity.category == PromptCategory.Classify_cluster_units:
+        return jsonify(message=f"Selected prompt {prompt_entity.id} is not of category 'Classify_cluster_units', it is {prompt_entity.category}")
+    
+    cluster_unit_entity = get_cluster_unit_repository().find_by_id(body.cluster_unit_id)
+
+    if not cluster_unit_entity:
+        return jsonify(message=f"cluster unit entity is not found id: {body.cluster_unit_id}"), 400
+    
+    parsed_prompt = ExperimentService.parse_classification_prompt(cluster_unit_entity, prompt_entity)
+
+    return jsonify(parsed_prompt), 200
+    

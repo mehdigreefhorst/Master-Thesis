@@ -10,7 +10,7 @@ from app.requests.scraper_requests import CreateScraperClusterRequest, CreateScr
 from app.responses.reddit_post_comments_response import RedditResponse
 from app.services.scraper_service import ScraperService
 
-from app.utils.api_validation import validate_request_body
+from app.utils.api_validation import validate_request_body, validate_query_params
 
 scraper_cluster_bp = Blueprint("scraper_cluster", __name__, url_prefix="/scraper_cluster")
 

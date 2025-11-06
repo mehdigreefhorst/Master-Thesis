@@ -10,3 +10,4 @@ class PromptRepository(BaseRepository[PromptEntity]):
 
     def find_by_user_id(self, user_id: PyObjectId) -> List[PromptEntity]:
       return super().find({"user_id": user_id})
+    

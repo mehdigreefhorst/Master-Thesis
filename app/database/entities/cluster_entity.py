@@ -29,5 +29,4 @@ class ClusterEntity(BaseEntity):
             prompt=prompt,
             status=StatusType.Initialized,
             post_entity_ids_prep_status= post_entity_ids_prep_status
-            
         )

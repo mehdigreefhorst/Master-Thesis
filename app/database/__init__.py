@@ -7,7 +7,10 @@ from flask_pymongo.wrappers import Database
 
 from app.database.cluster_repository import ClusterRepository
 from app.database.cluster_unit_repository import ClusterUnitRepository
+from app.database.experiment_repository import ExperimentRepository
 from app.database.post_repository import PostRepository
+from app.database.prompt_repository import PromptRepository
+from app.database.sample_repository import SampleRepository
 from app.database.scraper_cluster_repository import ScraperClusterRepository
 from app.database.scraper_repository import ScraperRepository
 from app.database.user_repository import UserRepository
@@ -25,14 +28,11 @@ def _get_db() -> Database:
 
     return db
 
-
 def get_post_repository() -> PostRepository:
     if not hasattr(g, "post_repository"):
         g.post_repository = PostRepository(_get_db())
 
     return g.post_repository
-
-
 
 def get_user_repository() -> UserRepository:
     if not hasattr(g, "user_repository"):
@@ -63,3 +63,21 @@ def get_scraper_cluster_repository() -> ScraperClusterRepository:
         g.cluster_scraper_repository = ScraperClusterRepository(_get_db())
 
     return g.cluster_scraper_repository
+
+def get_experiment_repository() -> ExperimentRepository:
+    if not hasattr(g, "experiment_repository"):
+        g.experiment_repository = ExperimentRepository(_get_db())
+    
+    return g.experiment_repository
+
+def get_sample_repository() -> SampleRepository:
+    if not hasattr(g, "sample_repository"):
+        g.sample_repository = SampleRepository(_get_db())
+
+    return g.sample_repository
+
+def get_prompt_repository() -> PromptRepository:
+    if not hasattr(g, "prompt_repository"):
+        g.prompt_repository = PromptRepository(_get_db())
+    
+    return g.prompt_repository
