@@ -21,6 +21,6 @@ class ScraperClusterEntity(BaseEntity):
     cluster_entity_id: Optional[PyObjectId] = None
     scraper_entity_id: Optional[PyObjectId] = None
     sample_entity_id: Optional[PyObjectId] = None
-    problem_description: Optional[str] = None
+    problem_exporation_description: Optional[str] = None
     target_audience: Optional[str] = None
     stages: StageStatus = Field(default_factory=StageStatus) # Literal["initialized", "scraping", "cluster_prep" "clustering", "completed"]  # replace by status class (values = initialized, ongoing, completed, error). so each stage has one of these values

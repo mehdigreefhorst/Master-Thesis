@@ -43,7 +43,7 @@ class ClusterUnitEntityPredictedCategory(ClusterUnitEntityCategory):
     """
     Combines the clusterunit category and the prompt id that predicted the category
     """
-    prompt_id: PyObjectId
+    experiment_id: PyObjectId
 
 class ClusterUnitEntity(BaseEntity):
     cluster_entity_id: PyObjectId # ClusterInstanceEntity

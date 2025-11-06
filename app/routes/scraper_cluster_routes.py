@@ -35,7 +35,7 @@ def create_scraper_cluster(body: CreateScraperClusterRequest):
     if not user_id:
         return jsonify("No valid user_id valid"), 400
     scraper_cluster_instance = ScraperClusterEntity(user_id=user_id, 
-                                                    problem_description=body.problem_description, 
+                                                    problem_description=body.problem_exporation_description, 
                                                     target_audience=body.target_audience)
 
     scraper_cluster_id = get_scraper_cluster_repository().insert(scraper_cluster_instance).inserted_id

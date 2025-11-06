@@ -13,5 +13,5 @@ class CreateScraperRequest(BaseModel):
 
 
 class CreateScraperClusterRequest(BaseModel):
-    problem_description: str
+    problem_exporation_description: str
     target_audience: str

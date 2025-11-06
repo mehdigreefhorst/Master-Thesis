@@ -13,7 +13,7 @@ export default function DefinePage() {
   const authFetch = useAuthFetch();
 
   const [currentStep, setCurrentStep] = useState<Step>('problem-definition');
-  const [problemDescription, setProblemDescription] = useState('');
+  const [problemExplorationDescription, setProblemExplorationDescription] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
   const [subreddit, setSubreddit] = useState('');
   const [keywords, setKeywords] = useState<string[]>([]);
@@ -22,7 +22,7 @@ export default function DefinePage() {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canProceedToKeywords = problemDescription.trim() && targetAudience.trim();
+  const canProceedToKeywords = problemExplorationDescription.trim() && targetAudience.trim();
 
   const handleProceedToKeywords = () => {
     if (canProceedToKeywords) {
@@ -79,7 +79,7 @@ export default function DefinePage() {
       // Step 1: Create scraper cluster with problem description and target audience
       const clusterResponse = await scraperClusterApi.createScraperCluster(
         authFetch,
-        problemDescription,
+        problemExplorationDescription,
         targetAudience
       );
       const clusterData = await clusterResponse.json();
@@ -148,8 +148,8 @@ export default function DefinePage() {
                     Problem Description
                   </label>
                   <Textarea
-                    value={problemDescription}
-                    onChange={(e) => setProblemDescription(e.target.value)}
+                    value={problemExplorationDescription}
+                    onChange={(e) => setProblemExplorationDescription(e.target.value)}
                     placeholder="Describe the problem you want to investigate. What challenges or pain points are you exploring?"
                     rows={5}
                   />
@@ -280,7 +280,7 @@ export default function DefinePage() {
                   <div className="space-y-2 text-sm">
                     <div>
                       <span className="text-(--muted-foreground)">Problem:</span>{' '}
-                      <span className="text-(--foreground)">{problemDescription}</span>
+                      <span className="text-(--foreground)">{problemExplorationDescription}</span>
                     </div>
                     <div>
                       <span className="text-(--muted-foreground)">Audience:</span>{' '}
