@@ -1,7 +1,7 @@
 
 
 from datetime import datetime
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 from app.database.entities.base_entity import BaseEntity, PyObjectId
@@ -39,11 +39,18 @@ ClusterUnitCategoryFieldNames = Literal["problem_description",
                                         "none_of_the_above"]
 
 
-class ClusterUnitEntityPredictedCategory(ClusterUnitEntityCategory):
+class CategoryPrediction(ClusterUnitEntityCategory):
+    reason: str
+    tokens_used: Dict # Model dump from the token usage object from the LLM provider
+
+
+class ClusterUnitEntityPredictedCategory(BaseModel):
     """
     Combines the clusterunit category and the prompt id that predicted the category
     """
     experiment_id: PyObjectId
+    category_prediction: CategoryPrediction
+
 
 class ClusterUnitEntity(BaseEntity):
     cluster_entity_id: PyObjectId # ClusterInstanceEntity

@@ -11,6 +11,7 @@ class PromptCategory(str, Enum):
 
 
 class PromptEntity(BaseEntity):
-    user_id: PyObjectId
+    created_by_user_id: PyObjectId
+    public_policy: bool = True
     prompt: str
     category: PromptCategory
