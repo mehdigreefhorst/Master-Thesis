@@ -27,3 +27,9 @@ class CreatePrompt(BaseModel):
     prompt: str
     category: PromptCategory
     reasoning_effort: Optional[str] = None
+
+
+class CreateSample(BaseModel):
+    scraper_cluster_id: PyObjectId
+    picked_posts_cluster_unit_ids: List[PyObjectId]
+    sample_size: int

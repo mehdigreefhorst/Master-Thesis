@@ -2,12 +2,14 @@
 
 from flask import Blueprint, jsonify
 from flask_jwt_extended import get_jwt_identity, jwt_required
+import random
 
 from app.database import get_cluster_unit_repository, get_experiment_repository, get_prompt_repository, get_sample_repository, get_scraper_cluster_repository, get_user_repository
 from app.database.entities.experiment_entity import ExperimentEntity
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
+from app.database.entities.sample_entity import SampleEntity
 from app.requests.cluster_prep_requests import ScraperClusterId
-from app.requests.experiment_requests import CreateExperiment, CreatePrompt, GetExperiments, ParsePrompt
+from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, GetExperiments, ParsePrompt
 from app.services.experiment_service import ExperimentService
 from app.utils.api_validation import validate_request_body, validate_query_params
 from app.utils.types import StatusType
@@ -154,3 +156,34 @@ def create_prompt(body: CreatePrompt) -> PromptEntity:
     
     get_prompt_repository().insert(prompt_entity)
     return jsonify(prompt_entity.model_dump())
+
+
+@experiment_bp.route("/create_sample", methods=["POST"])
+@validate_request_body(CreateSample)
+@jwt_required
+def create_sample(body: CreateSample) -> SampleEntity:
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    
+
+    selected_cluster_units = get_cluster_unit_repository().find_many_by_ids(body.picked_posts_cluster_unit_ids)
+    selected_cluster_unit_post_ids = [cluster_unit.post_id for cluster_unit in selected_cluster_units]
+    cluster_unit_ids_with_corresponding_post_id = get_cluster_unit_repository().find_ids({"post_id": {"$in": selected_cluster_unit_post_ids}})
+    if len(cluster_unit_ids_with_corresponding_post_id) < body.sample_size:
+        return jsonify(error=f"Not enough cluster units. Found {len(cluster_unit_ids_with_corresponding_post_id)} but need {body.sample_size}"), 400
+    
+    sample_cluster_unit_ids = random.sample(cluster_unit_ids_with_corresponding_post_id, body.sample_size)
+    # randomly select body.sample_size cluster units from here. 
+    
+
+    sample_entity = SampleEntity(user_id=user_id,
+                                 picked_post_cluster_unit_ids=body.picked_posts_cluster_unit_ids,
+                                 sample_size=body.sample_size,
+                                 sample_cluster_unit_ids=sample_cluster_unit_ids
+                                 )
+    
+    sample_entity_id = get_sample_repository().insert(sample_entity).inserted_id
+    get_scraper_cluster_repository().update(body.scraper_cluster_id, {"sample_entity_id":sample_entity_id})
+    return jsonify(sample_entity.model_dump())
