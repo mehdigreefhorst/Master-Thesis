@@ -16,7 +16,7 @@ class ClusterTextThreadModeType(str, Enum):
 class ClusterEntity(BaseEntity):
     scraper_entity_id: PyObjectId
     text_thread_mode: ClusterTextThreadModeType # Literal["plain_text", "appended_text", "llm_parsed_text"]
-    prompt: Optional[str] = None
+    prompt_standalone_id: Optional[PyObjectId] = None
     status: StatusType #Literal["initialized", "ongoing", "paused", "completed", "error"]
     post_entity_ids_prep_status: Dict[PyObjectId, StatusType]
 
