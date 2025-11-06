@@ -9,5 +9,5 @@ class PromptRepository(BaseRepository[PromptEntity]):
         super().__init__(database, PromptEntity, "prompt")
 
     def find_by_user_id(self, user_id: PyObjectId) -> List[PromptEntity]:
-      return super().find({"user_id": user_id})
+      return super().find({"created_by_user_id": user_id})
     

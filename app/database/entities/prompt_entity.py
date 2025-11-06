@@ -1,6 +1,7 @@
 
 
 from enum import Enum
+from typing import Optional
 from app.database.entities.base_entity import BaseEntity, PyObjectId
 
 
@@ -13,5 +14,7 @@ class PromptCategory(str, Enum):
 class PromptEntity(BaseEntity):
     created_by_user_id: PyObjectId
     public_policy: bool = True
+    system_prompt: str
     prompt: str
     category: PromptCategory
+    reasoning_effort: Optional[str]

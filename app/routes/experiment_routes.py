@@ -5,9 +5,9 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.database import get_cluster_unit_repository, get_experiment_repository, get_prompt_repository, get_sample_repository, get_scraper_cluster_repository, get_user_repository
 from app.database.entities.experiment_entity import ExperimentEntity
-from app.database.entities.prompt_entity import PromptCategory
+from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.requests.cluster_prep_requests import ScraperClusterId
-from app.requests.experiment_requests import CreateExperiment, GetExperiments, ParsePrompt
+from app.requests.experiment_requests import CreateExperiment, CreatePrompt, GetExperiments, ParsePrompt
 from app.services.experiment_service import ExperimentService
 from app.utils.api_validation import validate_request_body, validate_query_params
 from app.utils.types import StatusType
@@ -134,4 +134,23 @@ def parse_prompt(body: ParsePrompt):
     parsed_prompt = ExperimentService.parse_classification_prompt(cluster_unit_entity, prompt_entity)
 
     return jsonify(parsed_prompt), 200
+
+
+@experiment_bp.route("/create_prompt", methods=["POST"])
+@validate_request_body(CreatePrompt)
+@jwt_required
+def create_prompt(body: CreatePrompt) -> PromptEntity:
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
     
+    prompt_entity = PromptEntity(created_by_user_id=user_id,
+                                 public_policy=True,
+                                 system_prompt=body.system_prompt,
+                                 prompt=body.prompt,
+                                 category=body.category,
+                                 reasoning_effort=body.reasoning_effort)
+    
+    get_prompt_repository().insert(prompt_entity)
+    return jsonify(prompt_entity.model_dump())

@@ -21,13 +21,13 @@ class LlmHelper:
     
 
     @staticmethod
-    def send_to_openai(prompt: str, model: str):
+    def send_to_openai(system_prompt: str, prompt:str, model: str):
         llm = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         model_name =model
         messages = [
-          {'role': 'system', 'content': prompt},
-          {'role': 'user', 'content': ''} ]
+          {'role': 'system', 'content': system_prompt},
+          {'role': 'user', 'content': prompt} ]
         response = llm.chat.completions.create(
-                    model=model_name, 
+                    model=model_name,
                     messages=messages)
         return response

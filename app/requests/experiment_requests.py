@@ -2,6 +2,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from app.database.entities.base_entity import PyObjectId
+from app.database.entities.prompt_entity import PromptCategory
 
 
 class GetExperiments(BaseModel):
@@ -19,3 +20,10 @@ class CreateExperiment(BaseModel):
 class ParsePrompt(BaseModel):
     prompt_id: PyObjectId
     cluster_unit_id: PyObjectId
+
+
+class CreatePrompt(BaseModel):
+    system_prompt: str
+    prompt: str
+    category: PromptCategory
+    reasoning_effort: Optional[str] = None

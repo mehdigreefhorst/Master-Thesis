@@ -727,3 +727,8 @@ Define Page → [Submit Keywords] → Scraping Progress Page (auto-navigate)
 
 ---
 
+
+
+## Prompt variations to for classification
+https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/long-context-tips
+Use XML tags to wrap the variables for example <reddit_message_to_evaluate>I hate fishes in the water</reddit_message_to_evaluate>
