@@ -11,7 +11,7 @@ import { LabelTable } from '@/components/label/LabelTable';
 import { InsightBox } from '@/components/ui/InsightBox';
 import { Button } from '@/components/ui/Button';
 import { ViewerSkeleton } from '@/components/ui/Skeleton';
-import { clusterApi } from '@/lib/api';
+import { clusterApi, experimentApi } from '@/lib/api';
 import type { ClusterUnitEntity, ClusterUnitEntityCategory } from '@/types/cluster-unit';
 import { useAuthFetch } from '@/utils/fetch';
 import Link from 'next/link';
@@ -32,16 +32,12 @@ function ViewerPageContent() {
   // Get URL parameters
   const scraperClusterId = searchParams.get('scraper_cluster_id');
   const clusterUnitEntityId = searchParams.get('cluster_unit_entity_id');
+  const experimentId = searchParams.get('experiment_id');
 
-  // Fetch data on mount or when scraper_cluster_id changes
+  // Fetch data on mount or when scraper_cluster_id or experiment_id changes
   useEffect(() => {
     async function fetchData() {
-      console.log("fetching data ")
-      if (!scraperClusterId) {
-        setError('Missing scraper_cluster_id parameter');
-        setIsLoading(false);
-        return;
-      }
+      console.log("fetching data ");
 
       // Check if we already have data for this scraper cluster
       if (cachedData?.scraperClusterId === scraperClusterId) {
@@ -53,19 +49,35 @@ function ViewerPageContent() {
         setIsLoading(true);
         setError(null);
 
-        //const response = await clusterApi.getClusterUnits(scraperClusterId);
-        interface cluster_unit_response {
-          cluster_unit_entities: ClusterUnitEntity[]
+        let clusterUnits: ClusterUnitEntity[] = [];
+        let finalScraperClusterId = scraperClusterId;
+
+        // If experiment_id is provided, fetch cluster units from the experiment's sample
+        if (experimentId && scraperClusterId) {
+          console.log("Fetching data for experiment:", experimentId);
+
+          
+          // 1. Fetch the experiment to get sample_id and scraper_cluster_id
+          clusterUnits =  await experimentApi.getSampleUnits(authFetch, scraperClusterId);
+          
+        }
+        // Otherwise, fetch all cluster units for the scraper_cluster_id
+        else if (finalScraperClusterId) {
+          console.log("Fetching all cluster units for scraper cluster:", finalScraperClusterId);
+
+          const response = await authFetch(`/clustering/get_cluster_units?scraper_cluster_id=${finalScraperClusterId}`);
+          const cluster_unit_entities_response: { cluster_unit_entities: ClusterUnitEntity[] } = await response.json();
+          console.log("cluster_unit_entities_response:", cluster_unit_entities_response);
+          clusterUnits = cluster_unit_entities_response.cluster_unit_entities;
+        } else {
+          setError('Missing scraper_cluster_id or experiment_id parameter');
+          setIsLoading(false);
+          return;
         }
 
-        const response =  await authFetch(`/clustering/get_cluster_units?scraper_cluster_id=${scraperClusterId}`)
-        const cluster_unit_entities_response: cluster_unit_response = await response.json()
-        console.log("cluster_unit_entities_response = ")
-        console.log(cluster_unit_entities_response)
-
         setCachedData({
-          clusterUnits: cluster_unit_entities_response.cluster_unit_entities,
-          scraperClusterId,
+          clusterUnits,
+          scraperClusterId: finalScraperClusterId!,
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch data');
@@ -75,7 +87,7 @@ function ViewerPageContent() {
     }
 
     fetchData();
-  }, [scraperClusterId]); // Only re-fetch if scraper_cluster_id changes
+  }, [scraperClusterId, experimentId]); // Re-fetch if scraper_cluster_id or experiment_id changes
 
   // Auto-redirect to first cluster unit if none is specified
   useEffect(() => {

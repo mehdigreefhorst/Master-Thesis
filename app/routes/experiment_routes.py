@@ -225,7 +225,7 @@ def create_sample(body: CreateSample) -> SampleEntity:
     return jsonify(sample_entity.model_dump())
 
 
-@experiment_bp.route("/get_sample_units", methods=["GET"])
+@experiment_bp.route("/get_cluster_units", methods=["GET"])
 @validate_query_params(GetSampleUnits)
 @jwt_required()
 def get_cluster_units(query: GetSampleUnits):

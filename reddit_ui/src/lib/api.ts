@@ -267,7 +267,7 @@ export const experimentApi = {
     return await authFetch('/experiment/get_prompts');
   },
   async getSampleUnits(authFetch: ReturnType<typeof useAuthFetch>, scraperClusterId: string): Promise<ClusterUnitEntity[]> {
-    const data = await authFetch(`/experiment/get_sample_units?scraper_cluster_id=${scraperClusterId}`);
+    const data = await authFetch(`/experiment/get_cluster_units?scraper_cluster_id=${scraperClusterId}`);
     return await data.json()
   },
   async createPrompt(
@@ -316,6 +316,28 @@ export const experimentApi = {
     scraperClusterId: string
   ) {
     const data = await authFetch(`/experiment?scraper_cluster_id=${scraperClusterId}`);
+    return await data.json();
+  },
+
+  /**
+   * Get a single experiment by ID
+   */
+  async getExperiment(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    experimentId: string
+  ) {
+    const data = await authFetch(`/experiment/${experimentId}`);
+    return await data.json();
+  },
+
+  /**
+   * Get a sample by ID
+   */
+  async getSample(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    sampleId: string
+  ) {
+    const data = await authFetch(`/experiment/sample/${sampleId}`);
     return await data.json();
   }
 };
