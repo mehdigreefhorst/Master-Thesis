@@ -126,16 +126,24 @@ export const ScraperClusterTable: React.FC<ScraperClusterTableProps> = ({
                   </td>
                 ))}
                 <td className="text-center">
-                  <Link
-                    href={`/results?scraper_cluster_id=${cluster.id}`}
-                    className="text-md text-blue-600 hover:text-blue-800 hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Button className='p-0 m-0'>
-                      {cluster.stages.clustering === "completed" ? "View Results" : "Next Step"}
-                    </Button>
-                    
-                  </Link>
+                  <div className="flex gap-2 justify-center">
+                    <Link
+                      href={`/dashboard?scraper_cluster_id=${cluster.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Button className='px-3 py-2'>
+                        Dashboard
+                      </Button>
+                    </Link>
+                    <Link
+                      href={nextStepRoute}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Button className='px-3 py-2'>
+                        {cluster.stages.clustering === "completed" ? "View Results" : "Next Step"}
+                      </Button>
+                    </Link>
+                  </div>
                 </td>
               </tr>
             );

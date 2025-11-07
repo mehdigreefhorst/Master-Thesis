@@ -8,6 +8,7 @@ export interface StageStatus {
   initialized: StatusType;
   scraping: StatusType;
   cluster_prep: StatusType;
+  experiment: StatusType;
   cluster_filter: StatusType;
   cluster_enrich: StatusType;
   clustering: StatusType;
@@ -18,6 +19,9 @@ export interface ScraperClusterEntity {
   user_id: string;
   cluster_entity_id: string | null;
   scraper_entity_id: string | null;
+  sample_entity_id: string | null;
+  problem_exporation_description: string | null;
+  target_audience: string | null;
   stages: StageStatus;
 }
 

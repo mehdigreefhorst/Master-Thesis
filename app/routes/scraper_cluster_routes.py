@@ -21,11 +21,26 @@ def get_scraper_cluster_instances():
     current_user = get_user_repository().find_by_id(user_id)
     if not current_user:
         return jsonify(error="No such user"), 401
-    
+
     scraper_instances = get_scraper_cluster_repository().find_by_user_id(user_id)
 
     returnable_instances = [instance.model_dump() for instance in scraper_instances]
     return jsonify(returnable_instances), 200
+
+@scraper_cluster_bp.route("/<scraper_cluster_id>", methods=["GET"])
+@jwt_required()
+def get_scraper_cluster_by_id(scraper_cluster_id: str):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+
+    scraper_cluster = get_scraper_cluster_repository().find_by_id_and_user(user_id, scraper_cluster_id)
+
+    if not scraper_cluster:
+        return jsonify(error=f"Scraper cluster with id {scraper_cluster_id} not found"), 404
+
+    return jsonify(scraper_cluster.model_dump()), 200
 
 @scraper_cluster_bp.route("/", methods=["POST"])
 @validate_request_body(CreateScraperClusterRequest)

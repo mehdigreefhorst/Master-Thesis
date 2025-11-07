@@ -59,19 +59,7 @@ export const Navbar = () => {
                   className="nav-link text-sm font-medium transition-all duration-200 relative group pb-1"
                   style={{ color: pathname === '/overview' ? 'var(--primary)' : 'var(--secondary-foreground)' }}
                 >
-                  Dashboard
-                  <span
-                    className="absolute bottom-0 left-0 w-0 h-0.5 transition-all duration-200 group-hover:w-full"
-                    style={{ background: 'var(--primary)' }}
-                  />
-                </Link>
-
-                <Link
-                  href="/viewer"
-                  className="nav-link text-sm font-medium transition-all duration-200 relative group pb-1"
-                  style={{ color: pathname === '/viewer' ? 'var(--primary)' : 'var(--secondary-foreground)' }}
-                >
-                  Viewer
+                  Overview
                   <span
                     className="absolute bottom-0 left-0 w-0 h-0.5 transition-all duration-200 group-hover:w-full"
                     style={{ background: 'var(--primary)' }}

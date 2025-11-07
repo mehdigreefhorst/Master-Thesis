@@ -3,16 +3,18 @@ import React from 'react';
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | "invisible";
   children: React.ReactNode;
+  size?: "sm" | "md" | "lg" | "xl"
 }
 
 export const Button: React.FC<ButtonProps> = ({
   variant = 'primary',
   children,
   className = '',
+  size = "lg",
   disabled,
   ...props
 }) => {
-  const baseStyles = 'px-5 py-3 rounded-lg font-semibold text-base transition-all duration-300 border-2 transform';
+  const baseStyles = `px-5 py-3 rounded-${size} font-semibold text-base transition-all duration-300 border-2 transform`;
   const disabledStyles = 'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:scale-100';
 
   const variantStyles = {

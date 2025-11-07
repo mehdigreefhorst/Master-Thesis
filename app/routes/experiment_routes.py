@@ -140,7 +140,7 @@ def parse_prompt(body: ParsePrompt):
 
 @experiment_bp.route("/create_prompt", methods=["POST"])
 @validate_request_body(CreatePrompt)
-@jwt_required
+@jwt_required()
 def create_prompt(body: CreatePrompt) -> PromptEntity:
     user_id = get_jwt_identity()
     current_user = get_user_repository().find_by_id(user_id)
@@ -158,9 +158,22 @@ def create_prompt(body: CreatePrompt) -> PromptEntity:
     return jsonify(prompt_entity.model_dump())
 
 
+@experiment_bp.route("/get_prompts", methods=["GET"])
+@jwt_required()
+def get_prompts():
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    
+    prompt_entities = get_prompt_repository().find()
+    prompt_entities = [prompt_entity.model_dump() for prompt_entity in prompt_entities]
+    return jsonify(prompt_entities)
+
+
 @experiment_bp.route("/create_sample", methods=["POST"])
 @validate_request_body(CreateSample)
-@jwt_required
+@jwt_required()
 def create_sample(body: CreateSample) -> SampleEntity:
     user_id = get_jwt_identity()
     current_user = get_user_repository().find_by_id(user_id)

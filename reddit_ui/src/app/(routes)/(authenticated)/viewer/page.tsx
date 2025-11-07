@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ThreadBox } from '@/components/thread/ThreadBox';
@@ -21,7 +21,7 @@ interface CachedData {
   scraperClusterId: string;
 }
 
-export default function ViewerPage() {
+function ViewerPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const authFetch = useAuthFetch()
@@ -393,7 +393,7 @@ export default function ViewerPage() {
           <Link href={"/prompts"}>
             <Button variant="primary">View Prompts & Edit</Button>
           </Link>
-          
+
           <Button
             variant="primary"
             onClick={handleNext}
@@ -404,5 +404,13 @@ export default function ViewerPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ViewerPage() {
+  return (
+    <Suspense fallback={<ViewerSkeleton />}>
+      <ViewerPageContent />
+    </Suspense>
   );
 }

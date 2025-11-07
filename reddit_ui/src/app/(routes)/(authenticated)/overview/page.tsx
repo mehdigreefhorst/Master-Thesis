@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { ScraperClusterTable } from '@/components/scraper/ScraperClusterTable';
+import { BatteryProgressTable } from '@/components/scraper/BatteryProgressTable';
 import { useAuthFetch } from '@/utils/fetch';
 import type { ScraperClusterEntity } from '@/types/scraper-cluster';
 
@@ -60,18 +60,27 @@ export default function OverviewPage() {
   }
 
   return (
-    <div className="p-2">
+    <div className="p-8">
       <div className="max-w-7xl mx-auto">
-        {/* Page Header */}
-        <div className="flex justify-between items-center mb-6 animate-[fadeInDown_0.5s_ease-out]">
-          <h1 className="text-4xl font-semibold">Scraper Cluster Instances</h1>
-          <Button
-            variant="primary"
-            onClick={handleCreateNew}
-            className="transform mt-2 transition-all duration-300 hover:scale-105 hover:shadow-lg"
-          >
-            + Create New Research Project
-          </Button>
+        {/* Header with CTA */}
+        <div className="mb-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 animate-[fadeInDown_0.5s_ease-out]">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-800 mb-1">
+                🎯 Ready to explore new insights?
+              </h1>
+              <p className="text-sm text-gray-600">
+                Create a new research project to discover patterns in Reddit discussions
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              onClick={handleCreateNew}
+              className="transform transition-all duration-300 hover:scale-105 hover:shadow-lg whitespace-nowrap ml-4"
+            >
+              + Create New Research Project
+            </Button>
+          </div>
         </div>
 
         {/* Error Display */}
@@ -81,37 +90,50 @@ export default function OverviewPage() {
           </Card>
         )}
 
-        {/* Info Card */}
-        <Card className="mb-6 p-5 bg-blue-50 border-blue-200 animate-[fadeIn_0.6s_ease-out_0.2s_both]">
-          <h3 className="font-semibold text-blue-900 mb-2">About Scraper Clusters</h3>
-          <p className="text-sm text-blue-800">
-            Scraper cluster instances allow you to manage different data collection and analysis workflows.
-            Each instance goes through multiple stages from initialization to clustering. Click on a row to
-            configure an instance, or create a new one to get started.
-          </p>
-        </Card>
+        {/* Battery Progress Table */}
+        <div className="animate-[fadeIn_0.6s_ease-out_0.2s_both]">
+          <BatteryProgressTable clusters={clusters} />
+        </div>
 
-        {/* Scraper Cluster Table */}
-        <Card className="overflow-hidden animate-[fadeIn_0.7s_ease-out_0.3s_both] shadow-lg hover:shadow-xl transition-shadow duration-300">
-          <ScraperClusterTable clusters={clusters} />
-        </Card>
-
-        {/* Stage Legend */}
-        <Card className="mt-6 p-5 animate-[fadeIn_0.8s_ease-out_0.4s_both]">
-          <h3 className="font-semibold mb-4 text-base">Stage Descriptions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+        {/* Color Legend */}
+        <Card className="mt-6 p-5 animate-[fadeIn_0.7s_ease-out_0.3s_both]">
+          <h3 className="font-semibold mb-4 text-base text-gray-800">Status Colors</h3>
+          <div className="flex flex-wrap gap-6 text-sm">
             {[
-              { name: 'Initialized', desc: 'Setup with all information to start', delay: '0.5s' },
-              { name: 'Scraping', desc: 'Scraping data from Reddit', delay: '0.55s' },
-              { name: 'Cluster Prep', desc: 'Converting to cluster units', delay: '0.6s' },
-              { name: 'Cluster Filter', desc: 'Filtering with prompts on sample data', delay: '0.65s' },
-              { name: 'Cluster Enrich', desc: 'Applying filtering and enrichment to all data', delay: '0.7s' },
-              { name: 'Clustering', desc: 'Clustering of standalone text', delay: '0.75s' },
-            ].map((stage) => (
+              { color: 'bg-gray-300', label: 'Initialized', desc: 'Not started yet' },
+              { color: 'bg-blue-500', label: 'Ongoing', desc: 'Currently in progress' },
+              { color: 'bg-pink-500', label: 'Paused', desc: 'Temporarily stopped' },
+              { color: 'bg-green-500', label: 'Completed', desc: 'Successfully finished' },
+              { color: 'bg-red-500', label: 'Error', desc: 'Failed or encountered issue' },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-2">
+                <div className={`w-6 h-6 ${item.color} rounded border border-gray-400`}></div>
+                <div>
+                  <span className="font-medium text-gray-900">{item.label}</span>
+                  <span className="text-gray-600"> - {item.desc}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Stage Descriptions */}
+        <Card className="mt-6 p-5 animate-[fadeIn_0.8s_ease-out_0.4s_both]">
+          <h3 className="font-semibold mb-4 text-base text-gray-800">Pipeline Stages</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 text-sm">
+            {[
+              { name: 'Initialized', desc: 'Setup with all information to start' },
+              { name: 'Scraping', desc: 'Scraping data from Reddit' },
+              { name: 'Cluster Prep', desc: 'Converting to cluster units' },
+              { name: 'Experiment', desc: 'Running experiments on sample data' },
+              { name: 'Cluster Filter', desc: 'Filtering with prompts on sample data' },
+              { name: 'Cluster Enrich', desc: 'Applying filtering and enrichment to all data' },
+              { name: 'Clustering', desc: 'Clustering of standalone text' },
+            ].map((stage, index) => (
               <div
                 key={stage.name}
-                className="p-3 rounded-lg bg-gray-50 border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-300 hover:scale-102"
-                style={{ animation: `fadeIn 0.5s ease-out ${stage.delay} both` }}
+                className="p-3 rounded-lg bg-gray-50 border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-300 hover:scale-105"
+                style={{ animation: `fadeIn 0.5s ease-out ${0.5 + index * 0.05}s both` }}
               >
                 <span className="font-medium text-gray-900">{stage.name}:</span>{' '}
                 <span className="text-gray-700">{stage.desc}</span>

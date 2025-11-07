@@ -117,7 +117,10 @@ class BaseRepository[T: BaseEntity]:
         filter_with_soft_delete = self._soft_delete_filter(filter)
         projection = {"_id": 1}
         projection.update(fields_to_include)
-        return self.collection.find(filter_with_soft_delete, projection)
+        cursor =  self.collection.find(filter_with_soft_delete, projection)
+        ids_list_dict = list(cursor)  # Consume the cursor into a list
+        
+        return [id_dict["_id"] for id_dict in ids_list_dict]
     
     def insert_list_element(self, filter: Dict[str, Any], mongo_db_variable_path: str, list_element_to_append: Any):
         """

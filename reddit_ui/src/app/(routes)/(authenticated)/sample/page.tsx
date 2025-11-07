@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthFetch } from '@/utils/fetch';
 import type { ClusterUnitEntity } from '@/types/cluster-unit';
@@ -8,13 +8,13 @@ import { VirtualizedHorizontalGrid } from '@/components/sample/VirtualizedHorizo
 import { SelectionCounter } from '@/components/sample/SelectionCounter';
 import { SubredditFilter } from '@/components/sample/SubredditFilter';
 import { Button } from '@/components/ui/Button';
-import { clusterApi } from '@/lib/api';
+import { clusterApi, experimentApi } from '@/lib/api';
 
 interface GetClusterUnitsResponse {
   cluster_unit_entities: ClusterUnitEntity[];
 }
 
-export default function SampleSelectorPage() {
+function SampleSelectorPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const authFetch = useAuthFetch();
@@ -24,6 +24,9 @@ export default function SampleSelectorPage() {
   const [selectedSubreddits, setSelectedSubreddits] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showSampleModal, setShowSampleModal] = useState(false);
+  const [sampleSize, setSampleSize] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const scraperClusterId = searchParams.get('scraper_cluster_id');
   const messageType = (searchParams.get('message_type') as 'post' | 'comment' | 'all') || 'all';
@@ -89,24 +92,51 @@ export default function SampleSelectorPage() {
     });
   }, []);
 
-  // Handle select sample button click
+  // Handle select sample button click - open modal
   const handleSelectSample = () => {
     if (selectedPosts.size === 0) {
       alert('Please select at least one post');
       return;
     }
+    setShowSampleModal(true);
+  };
 
-    // Convert Set to array for URL params
-    const selectedIds = Array.from(selectedPosts);
+  // Handle sample submission
+  const handleSubmitSample = async () => {
+    if (!scraperClusterId) {
+      alert('Missing scraper cluster ID');
+      return;
+    }
 
-    // Navigate to viewer page with selected posts
-    // You can pass the IDs via URL params or store in session/context
-    const params = new URLSearchParams({
-      scraper_cluster_id: scraperClusterId || '',
-      selected_ids: selectedIds.join(','),
-    });
+    const sampleSizeNum = parseInt(sampleSize);
+    if (isNaN(sampleSizeNum) || sampleSizeNum <= 0) {
+      alert('Please enter a valid sample size');
+      return;
+    }
 
-    router.push(`/viewer?${params.toString()}`);
+    if (sampleSizeNum > selectedPosts.size) {
+      alert(`Sample size cannot be larger than the number of selected posts (${selectedPosts.size})`);
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const selectedIds = Array.from(selectedPosts);
+
+      await experimentApi.createSample(
+        authFetch,
+        scraperClusterId,
+        selectedIds,
+        sampleSizeNum
+      );
+
+      // Navigate to prompts page after successful submission
+      router.push(`/prompts?scraper_cluster_id=${scraperClusterId}`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to create sample');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Clear all selections
@@ -297,6 +327,78 @@ export default function SampleSelectorPage() {
           </p>
         </div>
       </div>
+
+      {/* Sample Size Modal */}
+      {showSampleModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Configure Sample Size
+            </h2>
+            <p className="text-gray-600 mb-6">
+              You have selected <span className="font-semibold text-gray-900">{selectedPosts.size}</span> posts.
+              Enter the sample size for your experiment.
+            </p>
+
+            <div className="mb-6">
+              <label htmlFor="sampleSize" className="block text-sm font-medium text-gray-700 mb-2">
+                Sample Size
+              </label>
+              <input
+                id="sampleSize"
+                type="number"
+                min="1"
+                max={selectedPosts.size}
+                value={sampleSize}
+                onChange={(e) => setSampleSize(e.target.value)}
+                placeholder={`Enter a number (max: ${selectedPosts.size})`}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                disabled={isSubmitting}
+              />
+              <p className="mt-2 text-sm text-gray-500">
+                The sample will be randomly selected from your chosen posts.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowSampleModal(false);
+                  setSampleSize('');
+                }}
+                disabled={isSubmitting}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSubmitSample}
+                disabled={isSubmitting || !sampleSize}
+                className="flex-1"
+              >
+                {isSubmitting ? 'Creating Sample...' : 'Create Sample'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function SampleSelectorPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SampleSelectorPageContent />
+    </Suspense>
   );
 }
