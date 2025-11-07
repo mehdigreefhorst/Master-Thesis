@@ -186,3 +186,4 @@ cython_debug/
 config/base.env
 config/development.env
 plots/*
+node_modules/*
