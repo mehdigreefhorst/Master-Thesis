@@ -32,5 +32,5 @@ class ExperimentEntity(BaseEntity):
     sample_id: PyObjectId
     model: str
     reasoning_effort: Optional[str]
-    aggregate_result: Optional[AggregateResult]
+    aggregate_result: Optional[AggregateResult] = None
     runs_per_unit: int = 3

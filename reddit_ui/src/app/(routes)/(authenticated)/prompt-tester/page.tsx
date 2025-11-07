@@ -9,6 +9,7 @@ import { experimentApi } from '@/lib/api';
 import type { ClusterUnitEntity } from '@/types/cluster-unit';
 import { ThreadFromUnit } from '@/components/thread/ThreadFromUnit';
 import { useToast } from '@/components/ui/use-toast';
+import { useRouter } from 'next/navigation';
 
 interface PromptEntity {
   id: string;
@@ -33,6 +34,16 @@ export default function PromptTesterPage() {
   const [prompts, setPrompts] = useState<PromptEntity[]>([]);
   const [selectedPromptId, setSelectedPromptId] = useState<string>('');
   const [isLoadingPrompts, setIsLoadingPrompts] = useState(false);
+  const router = useRouter()
+  
+
+  // Model and runs configuration
+  const [selectedModel, setSelectedModel] = useState<string>('gpt-5-nano');
+  const [runsPerUnit, setRunsPerUnit] = useState<number>(3);
+  const [reasoningEffort, setReasoningEffort] = useState<string>('medium');
+
+  // Check if selected model supports reasoning effort
+  const supportsReasoningEffort = ['gpt-5', 'gpt-5-mini', 'gpt-5-nano'].includes(selectedModel);
 
   // Cluster unit pagination state
   const [clusterUnits, setClusterUnits] = useState<ClusterUnitEntity[]>([]);
@@ -205,16 +216,24 @@ export default function PromptTesterPage() {
     setSelectedPromptId('');
   };
 
-  const handleCreateExperiment = () => {
+  const handleCreateExperiment = async () => {
     console.log("created")
     if (!selectedPromptId){
-      toast({
+      return toast({
         title: "Error",
         description: "No prompt id is selected!",
         variant: "destructive"
       })
     }
-    experimentApi.createExperiment(authFetch, selectedPromptId, scraperClusterId)
+    if (!scraperClusterId){
+      return toast({
+        title: "Error",
+        description: "No scraper cluster id is selected!",
+        variant: "destructive"
+      })
+    }
+    experimentApi.createExperiment(authFetch, selectedPromptId, scraperClusterId, selectedModel, runsPerUnit, reasoningEffort)
+    router.push(`/experiments?scraper_cluster_id=${scraperClusterId}`)
   }
 
   const handleSavePrompt = async () => {
@@ -266,8 +285,9 @@ export default function PromptTesterPage() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-[95vw] mx-auto">
         {/* Page Header with Cluster Unit Pagination */}
+        <h1 className="text-2xl font-semibold">Prompt Tester</h1>
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold">Prompt Tester</h1>
+          
 
           {/* Cluster Unit Pagination */}
           {clusterUnits.length > 0 && (
@@ -292,7 +312,7 @@ export default function PromptTesterPage() {
               >
                 {clusterUnits.map((unit) => (
                   <option key={unit.id} value={unit.id}>
-                    {unit.author} | {unit.id.substring(0, 4)}... |
+                     {unit.author.substring(0, 4)}... |
                     {unit.type === 'post' ? ' Post' : ` Comment (depth: ${unit.thread_path_text?.length || 0})`} |
                     ↑{unit.upvotes}
                   </option>
@@ -321,7 +341,7 @@ export default function PromptTesterPage() {
             {isLoading ? 'Parsing...' : 'Parse Prompt'}
           </Button>
           
-          
+
           {/* Load Existing Prompt */}
           <Button
             variant="primary"
@@ -330,8 +350,80 @@ export default function PromptTesterPage() {
           >
             {isSaving ? 'Saving...' : 'Save Prompt'}
           </Button>
+
+          {/* Model Selector */}
           <div>
-            <label htmlFor="promptSelector" className="block text-sm font-bold  text-gray-700 mb-2">
+            <label htmlFor="modelSelector" className="block text-sm font-bold text-gray-700 mb-2">
+              Model
+            </label>
+            <select
+              id="modelSelector"
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="w-full h-12 px-4 py-2 border border-gray-300 rounded-lg
+                       bg-white text-gray-900 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                       cursor-pointer transition-shadow"
+            >
+              <option value="gpt-5-nano">GPT-5 Nano</option>
+              <option value="gpt-5-mini">GPT-5 Mini</option>
+              <option value="gpt-5">GPT-5</option>
+              <option value="claude-3-opus">Claude 3 Opus</option>
+              <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+              <option value="claude-3-haiku">Claude 3 Haiku</option>
+            </select>
+          </div>
+
+          {/* Runs Per Unit Selector */}
+          <div>
+            <label htmlFor="runsSelector" className="block text-sm font-bold text-gray-700 mb-2">
+              Runs per Unit
+            </label>
+            <select
+              id="runsSelector"
+              value={runsPerUnit}
+              onChange={(e) => setRunsPerUnit(Number(e.target.value))}
+              className="w-full h-12 px-4 py-2 border border-gray-300 rounded-lg
+                       bg-white text-gray-900 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                       cursor-pointer transition-shadow"
+            >
+              <option value={1}>1</option>
+              <option value={2}>2</option>
+              <option value={3}>3</option>
+              <option value={4}>4</option>
+              <option value={5}>5</option>
+            </select>
+          </div>
+
+          {/* Reasoning Effort Selector */}
+          <div>
+            <label htmlFor="reasoningSelector" className="block text-sm font-bold text-gray-700 mb-2">
+              Reasoning Effort
+            </label>
+            <select
+              id="reasoningSelector"
+              value={reasoningEffort}
+              onChange={(e) => setReasoningEffort(e.target.value)}
+              disabled={!supportsReasoningEffort}
+              className="w-full h-12 px-4 py-2 border border-gray-300 rounded-lg
+                       bg-white text-gray-900 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                       cursor-pointer transition-shadow disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+            {!supportsReasoningEffort && (
+              <p className="mt-1 text-xs text-gray-400">
+                Only available for GPT-5 models
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="promptSelector" className="block text-sm font-bold  text-gray-700">
               Load Existing Prompt
             </label>
             <select
@@ -353,9 +445,6 @@ export default function PromptTesterPage() {
                 </option>
               ))}
             </select>
-            <p className="mt-2 text-xs text-gray-500">
-              Select a prompt to auto-fill the system prompt and raw prompt fields
-            </p>
           </div>
           <Button
             variant="secondary"

@@ -157,7 +157,7 @@ export default function Home() {
 
         {/* Action Buttons */}
         <div className="flex gap-3 flex-wrap">
-          <Link href={"/prompts"}>
+          <Link href={"/experiments"}>
               <Button variant="primary">View Prompts & Edit</Button>
           </Link>
           <Button variant="secondary">Export Data</Button>

@@ -289,12 +289,12 @@ export const experimentApi = {
   async createExperiment(
     authFetch: ReturnType<typeof useAuthFetch>,
     prompt_id: string,
-    scraperClusterId: string, 
+    scraperClusterId: string,
     model: string,
     runs_per_unit: number,
     reasoning_effort: string | null,
   ){
-    const data = await authFetch('/experiment/create_experiment', {
+    const data = await authFetch('/experiment', {
       method: 'POST',
       body: {
         prompt_id: prompt_id,
@@ -306,6 +306,17 @@ export const experimentApi = {
     })
     return await data.json()
 
+  },
+
+  /**
+   * Get all experiments for a scraper cluster
+   */
+  async getExperiments(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    scraperClusterId: string
+  ) {
+    const data = await authFetch(`/experiment?scraper_cluster_id=${scraperClusterId}`);
+    return await data.json();
   }
 };
 

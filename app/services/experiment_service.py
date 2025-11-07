@@ -2,8 +2,9 @@
 
 import json
 from typing import List
-from app.database.entities.cluster_unit_entity import CategoryPrediction, CategoryPredictionTokens, ClusterUnitEntity, ClusterUnitEntityCategory
-from app.database.entities.experiment_entity import ExperimentEntity
+from app.database.entities.cluster_unit_entity import ClusterUnitEntityPredictedCategory, PredictionCategory, PredictionCategoryTokens, ClusterUnitEntity, ClusterUnitEntityCategory
+from app.database import get_cluster_unit_repository
+from app.database.entities.experiment_entity import AggregateResult, ExperimentEntity
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.utils.llm_helper import LlmHelper
 
@@ -16,11 +17,28 @@ class ExperimentService:
         """this function orchestrates the prediction of the cluster unit entity and propagates it into the experiement entity"""
         if not prompt_entity.category == PromptCategory.Classify_cluster_units:
             raise Exception("The prompt is of the wrong type!!!")
-        
+        total_cluster_unit_predicted_categories = []
         for cluster_unit_entity in cluster_unit_entities:
-            ExperimentService.predict_single_cluster_unit(experiment_entity,
+            predicted_categories = ExperimentService.predict_single_cluster_unit(experiment_entity,
                                                           cluster_unit_entity,
                                                           prompt_entity)
+            
+            cluster_unit_predicted_categories = ClusterUnitEntityPredictedCategory(
+                experiment_id=experiment_entity.id,
+                predicted_categories=predicted_categories
+                )
+            total_cluster_unit_predicted_categories.append(cluster_unit_predicted_categories)
+            
+            get_cluster_unit_repository().insert_predicted_category(cluster_unit_entity.id, cluster_unit_predicted_categories)
+
+        return ExperimentService.convert_total_predicted_into_aggregate_results(total_cluster_unit_predicted_categories)
+    
+
+    @staticmethod
+    def convert_total_predicted_into_aggregate_results(total_cluster_unit_predicted_categories: ClusterUnitEntityPredictedCategory) -> AggregateResult:
+        pass
+        # :TODO we don't have the ground truth implemented yet, so it will never work
+
 
     
     @staticmethod
@@ -28,15 +46,15 @@ class ExperimentService:
         if not prompt_entity.category == PromptCategory.Classify_cluster_units:
             raise Exception("The prompt is of the wrong type!!!")
         parsed_prompt = ExperimentService.parse_classification_prompt(cluster_unit_entity, prompt_entity)
-        category_predictions: List[CategoryPredictionTokens] = []
+        category_predictions: List[PredictionCategoryTokens] = []
         for run in range(experiment_entity.runs_per_unit):
             if "gpt" in experiment_entity.model:
                 response = LlmHelper.send_to_openai(prompt_entity.system_prompt, parsed_prompt, experiment_entity.model)
                 response_dict = json.loads(response.choices[0].message.content)
-                labels = response_dict.pop("labels")
+                labels = {category: True for category in response_dict.pop("labels")}
                 labels.update(response_dict)
                 token_usage = response.usage.to_dict()
-                category_prediction_tokens = CategoryPredictionTokens(**labels, tokens_used=token_usage)
+                category_prediction_tokens = PredictionCategoryTokens(**labels, tokens_used=token_usage)
                 category_predictions.append(category_prediction_tokens)
             else:
                 raise Exception("Wrong model is given, no implementation yet made for any other than openAI")

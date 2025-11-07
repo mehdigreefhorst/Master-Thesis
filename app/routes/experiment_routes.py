@@ -95,18 +95,20 @@ def create_experiment(body: CreateExperiment):
                                          prompt_id=prompt_entity.id,
                                          sample_id=sample_entity.id,
                                          model= body.model,
-                                         runs_per_unit=body.runs_per_unit)
+                                         runs_per_unit=body.runs_per_unit,
+                                         reasoning_effort=body.reasoning_effort)
     
     get_experiment_repository().insert(experiment_entity)
 
     cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_entity.sample_cluster_unit_ids)
 
     if not cluster_unit_entities or not len(cluster_unit_entities) == len(sample_entity.sample_cluster_unit_ids):
-        return jsonify(message=f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id}")    
+        return jsonify(message=f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id}")
     
-    ExperimentService.predict_categories_cluster_units(experiment_entity=experiment_entity,
+    total_cluster_unit_predicted_categories = ExperimentService.predict_categories_cluster_units(experiment_entity=experiment_entity,
                                                        cluster_unit_entities=cluster_unit_entities,
                                                        prompt_entity=prompt_entity)
+    return jsonify("succesfully processed the ")
 
 
 @experiment_bp.route("/parse_prompt", methods=["POST"])

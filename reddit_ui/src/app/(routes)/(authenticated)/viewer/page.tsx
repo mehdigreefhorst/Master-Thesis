@@ -390,7 +390,7 @@ function ViewerPageContent() {
 
         {/* Action Buttons */}
         <div className="flex gap-3 flex-wrap">
-          <Link href={"/prompts"}>
+          <Link href={"/prompt-tester"}>
             <Button variant="primary">View Prompts & Edit</Button>
           </Link>
 

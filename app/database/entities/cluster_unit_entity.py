@@ -39,11 +39,11 @@ ClusterUnitCategoryFieldNames = Literal["problem_description",
                                         "none_of_the_above"]
 
 
-class CategoryPrediction(ClusterUnitEntityCategory):
+class PredictionCategory(ClusterUnitEntityCategory):
     reason: str
     sentiment: Literal["negative", "neutral", "positive"]
 
-class CategoryPredictionTokens(CategoryPrediction):
+class PredictionCategoryTokens(PredictionCategory):
     tokens_used: Dict # Model dump from the token usage object from the LLM provider
 
 
@@ -52,7 +52,7 @@ class ClusterUnitEntityPredictedCategory(BaseModel):
     Combines the clusterunit category and the prompt id that predicted the category
     """
     experiment_id: PyObjectId
-    category_predictions: CategoryPredictionTokens
+    predicted_categories: List[PredictionCategoryTokens]
 
 
 class ClusterUnitEntity(BaseEntity):

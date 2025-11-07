@@ -164,7 +164,7 @@ function SampleSelectorPageContent() {
       );
 
       // Navigate to prompts page after successful submission
-      router.push(`/prompts?scraper_cluster_id=${scraperClusterId}`);
+      router.push(`/experiments?scraper_cluster_id=${scraperClusterId}`);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to create sample');
     } finally {
