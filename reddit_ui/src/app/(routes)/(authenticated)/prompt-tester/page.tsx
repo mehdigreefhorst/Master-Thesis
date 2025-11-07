@@ -202,6 +202,10 @@ export default function PromptTesterPage() {
     setSelectedPromptId('');
   };
 
+  const handleCreateExperiment = () => {
+    console.log("created")
+  }
+
   const handleSavePrompt = async () => {
     if (!rawPrompt.trim()) {
       setError('Please enter a prompt before saving');
@@ -307,13 +311,7 @@ export default function PromptTesterPage() {
             {isLoading ? 'Parsing...' : 'Parse Prompt'}
           </Button>
           
-          <Button
-            variant="secondary"
-            onClick={handleClear}
-            disabled={isLoading || isSaving}
-          >
-            Clear All
-          </Button>
+          
           {/* Load Existing Prompt */}
           <Button
             variant="primary"
@@ -349,6 +347,13 @@ export default function PromptTesterPage() {
               Select a prompt to auto-fill the system prompt and raw prompt fields
             </p>
           </div>
+          <Button
+            variant="secondary"
+            onClick={handleCreateExperiment}
+            disabled={isLoading || isSaving}
+          >
+            Create Experiment
+          </Button>
         </div>
         
         {/* Two-Column Layout: Raw Prompt (Left) | Parsed Prompt (Right) */}
