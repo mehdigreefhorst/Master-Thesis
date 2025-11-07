@@ -188,7 +188,7 @@ def get_prompts():
     if not current_user:
         return jsonify(error="No such user"), 401
     
-    prompt_entities = get_prompt_repository().find()
+    prompt_entities = get_prompt_repository().find({})
     prompt_entities = [prompt_entity.model_dump() for prompt_entity in prompt_entities]
     return jsonify(prompt_entities)
 

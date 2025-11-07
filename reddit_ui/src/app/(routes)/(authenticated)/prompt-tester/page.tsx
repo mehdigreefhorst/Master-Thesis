@@ -26,7 +26,9 @@ export default function PromptTesterPage() {
   const [rawPrompt, setRawPrompt] = useState('');
   const [parsedPrompt, setParsedPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [prompts, setPrompts] = useState<PromptEntity[]>([]);
   const [selectedPromptId, setSelectedPromptId] = useState<string>('');
   const [isLoadingPrompts, setIsLoadingPrompts] = useState(false);
@@ -105,9 +107,11 @@ export default function PromptTesterPage() {
     if (!rawPrompt.trim() || !selectedPromptId) return;
 
     try {
-      let parsed = rawPrompt;
-      parsed = parsed.replaceAll('{conversation_thread}', conversationThread);
-      parsed = parsed.replaceAll('{final_reddit_message}', finalRedditMessage);
+      setSuccess(null); // Clear success message
+      const parsed = await experimentApi.parseRawPrompt(authFetch, clusterUnits[currentUnitIndex].id, rawPrompt)
+      // let parsed = rawPrompt;
+      // parsed = parsed.replaceAll('{conversation_thread}', conversationThread);
+      // parsed = parsed.replaceAll('{final_reddit_message}', finalRedditMessage);
       setParsedPrompt(parsed);
     } catch (err) {
       console.error('Auto-parse failed:', err);
@@ -194,10 +198,55 @@ export default function PromptTesterPage() {
     setRawPrompt('');
     setParsedPrompt('');
     setError(null);
+    setSuccess(null);
     setSelectedPromptId('');
   };
 
+  const handleSavePrompt = async () => {
+    if (!rawPrompt.trim()) {
+      setError('Please enter a prompt before saving');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      setError(null);
+      setSuccess(null);
+
+      await experimentApi.createPrompt(
+        authFetch,
+        systemPrompt,
+        rawPrompt,
+        'classify_cluster_units',
+        null
+      );
+
+      setSuccess('Prompt saved successfully!');
+
+      // Refresh prompts list
+      const response = await experimentApi.getPrompts(authFetch);
+      const data = await response.json();
+      setPrompts(data.prompts || data.prompt_entities || data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save prompt');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const currentUnit = clusterUnits[currentUnitIndex];
+
+  // Loading state while fetching cluster units
+  if (isLoadingUnits) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Loading cluster units...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -252,8 +301,15 @@ export default function PromptTesterPage() {
           )}
 
           {/* Load Existing Prompt */}
+          <Button
+                variant="primary"
+                onClick={handleSavePrompt}
+                disabled={isSaving || !rawPrompt.trim()}
+              >
+                {isSaving ? 'Saving...' : 'Save Prompt'}
+              </Button>
           <div>
-            <label htmlFor="promptSelector" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="promptSelector" className="block text-sm font-bold  text-gray-700 mb-2">
               Load Existing Prompt
             </label>
             <select
@@ -278,6 +334,44 @@ export default function PromptTesterPage() {
             <p className="mt-2 text-xs text-gray-500">
               Select a prompt to auto-fill the system prompt and raw prompt fields
             </p>
+          </div>
+        </div>
+        
+        {/* Two-Column Layout: Raw Prompt (Left) | Parsed Prompt (Right) */}
+        <div className="grid grid-cols-2 gap-6">
+          {/* Left: Raw Prompt */}
+          <div>
+            <label htmlFor="rawPrompt" className="block text-sm font-medium text-gray-700 mb-2">
+              Raw Prompt (with variables)
+            </label>
+            <textarea
+              id="rawPrompt"
+              value={rawPrompt}
+              onChange={(e) => setRawPrompt(e.target.value)}
+              placeholder="Enter your prompt here with variables like {conversation_thread}, {final_reddit_message}..."
+              className="w-full h-[400px] px-4 py-3 border border-gray-300 rounded-lg
+                       bg-white text-gray-900 text-sm font-mono
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                       resize-none transition-shadow"
+            />
+          </div>
+
+          {/* Right: Parsed Prompt */}
+          <div>
+            <label htmlFor="parsedPrompt" className="block text-sm font-medium text-gray-700 mb-2">
+              Parsed Prompt (with substituted values)
+            </label>
+            <div
+              className="w-full h-[400px] px-4 py-3 border border-gray-300 rounded-lg
+                       bg-gray-50 text-gray-900 text-sm font-mono
+                       overflow-y-auto whitespace-pre-wrap"
+            >
+              {parsedPrompt || (
+                <span className="text-gray-400">
+                  Parsed prompt will appear here after clicking "Parse Prompt"...
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -309,10 +403,11 @@ export default function PromptTesterPage() {
               >
                 {isLoading ? 'Parsing...' : 'Parse Prompt'}
               </Button>
+              
               <Button
                 variant="secondary"
                 onClick={handleClear}
-                disabled={isLoading}
+                disabled={isLoading || isSaving}
               >
                 Clear All
               </Button>
@@ -321,8 +416,8 @@ export default function PromptTesterPage() {
           
           {/* Variables Configuration */}
         <div className="mb-6 space-y-4">
-          <ThreadFromUnit currentUnit={clusterUnits[currentUnitIndex]}/>
-
+          {currentUnit && <ThreadFromUnit currentUnit={currentUnit}/>}
+          
           </div>
 
           {/* Right: Prompt Selector Dropdown */}
@@ -338,46 +433,14 @@ export default function PromptTesterPage() {
           </div>
         )}
 
+        {/* Success Display */}
+        {success && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm text-green-700">{success}</p>
+          </div>
+        )}
+
         
-
-        {/* Two-Column Layout: Raw Prompt (Left) | Parsed Prompt (Right) */}
-        <div className="grid grid-cols-2 gap-6">
-          {/* Left: Raw Prompt */}
-          <div>
-            <label htmlFor="rawPrompt" className="block text-sm font-medium text-gray-700 mb-2">
-              Raw Prompt (with variables)
-            </label>
-            <textarea
-              id="rawPrompt"
-              value={rawPrompt}
-              onChange={(e) => setRawPrompt(e.target.value)}
-              placeholder="Enter your prompt here with variables like {conversation_thread}, {final_reddit_message}..."
-              className="w-full h-[500px] px-4 py-3 border border-gray-300 rounded-lg
-                       bg-white text-gray-900 text-sm font-mono
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                       resize-none transition-shadow"
-            />
-          </div>
-
-          {/* Right: Parsed Prompt */}
-          <div>
-            <label htmlFor="parsedPrompt" className="block text-sm font-medium text-gray-700 mb-2">
-              Parsed Prompt (with substituted values)
-            </label>
-            <div
-              className="w-full h-[500px] px-4 py-3 border border-gray-300 rounded-lg
-                       bg-gray-50 text-gray-900 text-sm font-mono
-                       overflow-y-auto whitespace-pre-wrap"
-            >
-              {parsedPrompt || (
-                <span className="text-gray-400">
-                  Parsed prompt will appear here after clicking "Parse Prompt"...
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
         {/* Help Text */}
         <div className="mt-6 p-4 bg-gray-100 border border-gray-200 rounded-lg">
           <p className="text-sm text-gray-700">
