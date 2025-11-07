@@ -101,13 +101,38 @@ export default function PromptTesterPage() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-[95vw] mx-auto">
         {/* Page Header */}
-        <PageHeader
-          title="Prompt Tester"
-          className="mb-6"
-        />
-        <p className="text-sm text-gray-600 mb-6">
-          Test and preview your prompts with variable substitution. No entities are created or saved.
-        </p>
+          <div className={`flex justify-between items-center`}>
+            <h1 className="text-2xl font-semibold">Prompt Tester</h1>
+            <div>
+              <label htmlFor="promptSelector" className="block text-sm font-medium text-gray-700 mb-2">
+                Load Existing Prompt
+              </label>
+              <select
+                id="promptSelector"
+                value={selectedPromptId}
+                onChange={(e) => handlePromptSelect(e.target.value)}
+                disabled={isLoadingPrompts}
+                className="w-full h-12 px-4 py-2 border border-gray-300 rounded-lg
+                        bg-white text-gray-900 text-sm
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                        cursor-pointer transition-shadow disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {isLoadingPrompts ? 'Loading prompts...' : 'Select a prompt from database'}
+                </option>
+                {prompts.map((prompt) => (
+                  <option key={prompt.id} value={prompt.id}>
+                    {prompt.name || `Prompt ${prompt.id}`}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs text-gray-500">
+                Select a prompt to auto-fill the system prompt and raw prompt fields
+              </p>
+            </div>
+          </div>
+
+
 
         {/* System Prompt Section - Split into two columns */}
         <div className="grid grid-cols-2 gap-6 mb-6">
@@ -126,64 +151,26 @@ export default function PromptTesterPage() {
                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
                        resize-y transition-shadow"
             />
+            {/* Action Buttons */}
+            <div className="flex gap-3 mt-6">
+              <Button
+                variant="primary"
+                onClick={handleParsePrompt}
+                disabled={isLoading || !rawPrompt.trim()}
+              >
+                {isLoading ? 'Parsing...' : 'Parse Prompt'}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleClear}
+                disabled={isLoading}
+              >
+                Clear All
+              </Button>
+            </div>
           </div>
-
-          {/* Right: Prompt Selector Dropdown */}
-          <div>
-            <label htmlFor="promptSelector" className="block text-sm font-medium text-gray-700 mb-2">
-              Load Existing Prompt
-            </label>
-            <select
-              id="promptSelector"
-              value={selectedPromptId}
-              onChange={(e) => handlePromptSelect(e.target.value)}
-              disabled={isLoadingPrompts}
-              className="w-full h-12 px-4 py-2 border border-gray-300 rounded-lg
-                       bg-white text-gray-900 text-sm
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                       cursor-pointer transition-shadow disabled:bg-gray-100 disabled:cursor-not-allowed"
-            >
-              <option value="">
-                {isLoadingPrompts ? 'Loading prompts...' : 'Select a prompt from database'}
-              </option>
-              {prompts.map((prompt) => (
-                <option key={prompt.id} value={prompt.id}>
-                  {prompt.name || `Prompt ${prompt.id}`}
-                </option>
-              ))}
-            </select>
-            <p className="mt-2 text-xs text-gray-500">
-              Select a prompt to auto-fill the system prompt and raw prompt fields
-            </p>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-3 mb-6">
-          <Button
-            variant="primary"
-            onClick={handleParsePrompt}
-            disabled={isLoading || !rawPrompt.trim()}
-          >
-            {isLoading ? 'Parsing...' : 'Parse Prompt'}
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={handleClear}
-            disabled={isLoading}
-          >
-            Clear All
-          </Button>
-        </div>
-
-        {/* Error Display */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        )}
-
-        {/* Variables Configuration */}
+          
+          {/* Variables Configuration */}
         <div className="mb-6 space-y-4">
           <h3 className="text-sm font-semibold text-gray-900">Test Data (Cluster Unit Variables):</h3>
 
@@ -216,7 +203,23 @@ export default function PromptTesterPage() {
                        resize-y transition-shadow"
             />
           </div>
+          
         </div>
+
+          {/* Right: Prompt Selector Dropdown */}
+          
+        </div>
+
+        
+
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
+        
 
         {/* Two-Column Layout: Raw Prompt (Left) | Parsed Prompt (Right) */}
         <div className="grid grid-cols-2 gap-6">
