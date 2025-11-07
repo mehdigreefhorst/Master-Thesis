@@ -17,4 +17,3 @@ class PromptEntity(BaseEntity):
     system_prompt: str
     prompt: str
     category: PromptCategory
-    reasoning_effort: Optional[str]
