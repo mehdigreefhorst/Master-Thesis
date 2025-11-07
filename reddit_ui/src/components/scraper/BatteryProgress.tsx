@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { JSX } from 'react';
 import type { StatusType, StageStatus } from '@/types/scraper-cluster';
 
 interface BatteryProgressProps {
@@ -9,7 +9,7 @@ interface BatteryProgressProps {
 }
 
 const stageOrder: (keyof StageStatus)[] = [
-  'initialized',
+  'define',
   'scraping',
   'cluster_prep',
   'experiment',
@@ -19,9 +19,9 @@ const stageOrder: (keyof StageStatus)[] = [
 ];
 
 const stageLabels: Record<keyof StageStatus, string> = {
-  initialized: 'Init',
+  define: 'Define',
   scraping: 'Scrape',
-  cluster_prep: 'Prep',
+  cluster_prep: 'Prep & Sample',
   experiment: 'Experiment',
   cluster_filter: 'Filter',
   cluster_enrich: 'Enrich',

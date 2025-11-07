@@ -37,8 +37,8 @@ def start_app():
 
     app.config["JWT_SECRET_KEY"] = get_env_variable("JWT_SECRET_KEY", str)
     app.config["JWT_TOKEN_LOCATION"] = ["headers"]
-    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=10)
-    app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(minutes=120)
+    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=60)
+    app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(minutes=1200)
 
     JWTManager(app)
 

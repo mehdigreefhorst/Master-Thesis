@@ -7,7 +7,7 @@ from app.database.entities.base_entity import BaseEntity, PyObjectId
 from app.utils.types import StatusType
 
 class StageStatus(BaseModel):
-    initialized: StatusType = StatusType.Initialized
+    define: StatusType = StatusType.Initialized
     scraping: StatusType = StatusType.Initialized
     cluster_prep: StatusType = StatusType.Initialized
     experiment: StatusType = StatusType.Initialized

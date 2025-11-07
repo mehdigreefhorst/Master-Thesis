@@ -5,7 +5,7 @@
 export type StatusType = 'initialized' | 'ongoing' | 'paused' | 'completed' | 'error';
 
 export interface StageStatus {
-  initialized: StatusType;
+  define: StatusType;
   scraping: StatusType;
   cluster_prep: StatusType;
   experiment: StatusType;

@@ -1,170 +1,93 @@
 'use client';
 
 import { useState } from 'react';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { ThreadBox } from '@/components/thread/ThreadBox';
-import { ThreadPost } from '@/components/thread/ThreadPost';
-import { ThreadComment } from '@/components/thread/ThreadComment';
-import { ThreadTarget } from '@/components/thread/ThreadTarget';
-import { Badge } from '@/components/ui/Badge';
-import { LabelTable } from '@/components/label/LabelTable';
-import { InsightBox } from '@/components/ui/InsightBox';
-import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
+import { HeroSection } from '@/components/landing/HeroSection';
+import { FeatureGrid } from '@/components/landing/FeatureGrid';
+import { StorySection } from '@/components/landing/StorySection';
+import { TestimonialCarousel } from '@/components/landing/TestimonialCarousel';
+import { PricingSection } from '@/components/landing/PricingSection';
+import { FAQSection } from '@/components/landing/FAQSection';
+import { CTABar } from '@/components/landing/CTABar';
+import { LandingFooter } from '@/components/landing/LandingFooter';
 
-export default function Home() {
-  const [currentSample, setCurrentSample] = useState(47);
-  const totalSamples = 250;
+export default function LandingPage() {
+  const [email, setEmail] = useState('');
 
-  // Mock data for the example
-  const models = [
-    { name: 'GPT-4', version: 'Prompt v1.2' },
-    { name: 'GPT-4', version: 'Prompt v2.0' },
-    { name: 'Claude-3', version: 'Prompt v1.2' }
-  ];
-
-  const labels = [
-    {
-      labelName: 'problem_description',
-      groundTruth: false,
-      results: [
-        {
-          count: 2,
-          total: 3,
-          reasoning: (
-            <div>
-              <div className="text-xs font-semibold mb-2">Reasoning across runs:</div>
-              <div className="text-xs mb-1">
-                <strong>Run 1 & 2:</strong> &quot;User describes the ongoing problem of blue screens.&quot;
-              </div>
-              <div className="text-xs">
-                <strong>Run 3:</strong> &quot;This is solution_attempted, not problem_description.&quot;
-              </div>
-            </div>
-          )
-        },
-        null,
-        null
-      ]
-    },
-    {
-      labelName: 'frustration_expression',
-      groundTruth: true,
-      results: [
-        { count: 3, total: 3 },
-        { count: 3, total: 3 },
-        { count: 3, total: 3 }
-      ]
-    },
-    {
-      labelName: 'solution_seeking',
-      groundTruth: false,
-      results: [
-        { count: 1, total: 3 },
-        null,
-        null
-      ]
-    },
-    {
-      labelName: 'solution_attempted',
-      groundTruth: true,
-      results: [
-        { count: 3, total: 3 },
-        { count: 3, total: 3 },
-        { count: 3, total: 3 }
-      ]
-    },
-    {
-      labelName: 'solution_proposing',
-      groundTruth: false,
-      results: [null, null, null]
-    },
-    {
-      labelName: 'agreement_empathy',
-      groundTruth: false,
-      results: [null, null, { count: 1, total: 3 }]
-    }
-  ];
-
-  const stats = [
-    { accuracy: 72, consistency: 'Medium' },
-    { accuracy: 100, consistency: 'Perfect', isHighlighted: true },
-    { accuracy: 94, consistency: 'Good' }
-  ];
-
-  const handlePrevious = () => {
-    setCurrentSample((prev) => Math.max(1, prev - 1));
-  };
-
-  const handleNext = () => {
-    setCurrentSample((prev) => Math.min(totalSamples, prev + 1));
+  const handleGetStarted = (inputValue: string) => {
+    console.log('Getting started with:', inputValue);
+    // TODO: Navigate to signup or handle email submission
   };
 
   return (
-    <div className="p-8 animate-[pageLoad_400ms_ease-out]">
-      <div className="max-w-7xl mx-auto">
-        {/* Page Header */}
-        <PageHeader
-          title="Label Accuracy Viewer"
-          currentSample={currentSample}
-          totalSamples={totalSamples}
-          onPrevious={handlePrevious}
-          onNext={handleNext}
-          className="mb-6"
-        />
+    <div className="min-h-screen bg-white">
+      {/* Navigation */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            {/* Logo */}
+            <Link href="/landing" className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-gradient-to-br from-[#E63946] to-[#F9844A] rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <span className="text-xl font-bold text-gray-900">VibeResearch</span>
+            </Link>
 
-        {/* Thread Context */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-semibold">r/techsupport Thread:</h2>
-            <Button className="text-sm text-blue-600" variant='invisible'>
-              View Full ▼
-            </Button>
-          </div>
-
-          <ThreadBox>
-            <ThreadPost
-              username="u/techuser123"
-              content="My laptop keeps crashing when I run Adobe Premiere. I've tried everything but nothing seems to work."
-            />
-            <ThreadComment
-              username="u/helper42"
-              content="Have you tried updating your graphics drivers? That usually fixes rendering crashes."
-            />
-            <ThreadTarget
-              username="u/techuser123"
-              content="Yes I updated them yesterday but still getting blue screens. So frustrated this keeps happening during renders..."
-            />
-          </ThreadBox>
-        </div>
-
-        {/* Label Comparison Table */}
-        <div className="mb-6">
-
-          <LabelTable models={models} labels={labels} stats={stats} cluster_unit_id='1'/>
-          <div className="mt-3 text-sm text-gray-600">
-            💬 = Click to view reasoning | ⚠️ = Inconsistent across runs | ✓ = All runs match
+            {/* Nav Links */}
+            <div className="hidden md:flex items-center gap-8">
+              <a href="#features" className="text-gray-600 hover:text-[#E63946] transition-colors font-medium">
+                Features
+              </a>
+              <a href="#how-it-works" className="text-gray-600 hover:text-[#E63946] transition-colors font-medium">
+                How It Works
+              </a>
+              <a href="#faq" className="text-gray-600 hover:text-[#E63946] transition-colors font-medium">
+                FAQ
+              </a>
+              <Link
+                href="/login"
+                className="px-6 py-2.5 bg-gradient-to-r from-[#E63946] to-[#F9844A] text-white font-semibold rounded-lg hover:shadow-lg hover:scale-105 transition-all duration-200"
+              >
+                Get Started Free
+              </Link>
+            </div>
           </div>
         </div>
+      </nav>
 
-        {/* AI Insight Box */}
-        <InsightBox className="mb-6">
-          Prompt v2.0 fixes the core issue from v1.2: false positive labeling.
-          v1.2 inconsistently adds &quot;problem_description&quot; and &quot;solution_seeking&quot;
-          when the user is actually reporting a failed solution attempt.
-          v2.0 achieves <strong>100% accuracy</strong> with perfect consistency across all runs.
-        </InsightBox>
+      {/* Main Content */}
+      <main className="pt-20">
+        <HeroSection onGetStarted={handleGetStarted} />
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 flex-wrap">
-          <Link href={"/prompts"}>
-              <Button variant="primary">View Prompts & Edit</Button>
-          </Link>
-          <Button variant="secondary">Export Data</Button>
-          <Button variant="secondary">Flag Sample</Button>
-          <Button variant="primary">Next Sample →</Button>
-        </div>
-      </div>
+        {/* Quick Snapshot */}
+        <section className="py-16 bg-gray-50">
+          <div className="max-w-4xl mx-auto px-6 text-center">
+            <p className="text-lg text-gray-700 leading-relaxed mb-6">
+              <strong className="text-gray-900">VibeResearch scans Reddit to uncover what people actually struggle with inside your target niche.</strong> You enter a subreddit or audience idea — we map related communities, extract problem-focused discussions, and quantify unmet needs. Perfect for founders, marketers, and researchers validating new products.
+            </p>
+            <a
+              href="#features"
+              className="inline-flex items-center gap-2 text-[#E63946] font-semibold hover:gap-3 transition-all"
+            >
+              See how it works
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </a>
+          </div>
+        </section>
+
+        <FeatureGrid />
+        <StorySection />
+        <TestimonialCarousel />
+        <PricingSection />
+        <FAQSection />
+      </main>
+
+      <CTABar onSubmit={handleGetStarted} />
+      <LandingFooter />
     </div>
   );
 }

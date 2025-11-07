@@ -122,7 +122,7 @@ export default function OverviewPage() {
           <h3 className="font-semibold mb-4 text-base text-gray-800">Pipeline Stages</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 text-sm">
             {[
-              { name: 'Initialized', desc: 'Setup with all information to start' },
+              { name: 'Define', desc: 'Setup with all information to start' },
               { name: 'Scraping', desc: 'Scraping data from Reddit' },
               { name: 'Cluster Prep', desc: 'Converting to cluster units' },
               { name: 'Experiment', desc: 'Running experiments on sample data' },

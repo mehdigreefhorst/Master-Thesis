@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuthFetch } from '@/utils/fetch';
 import type { ScraperClusterEntity, StatusType } from '@/types/scraper-cluster';
+import { scraperApi, scraperClusterApi } from '@/lib/api';
 
 interface StageData {
   name: string;
@@ -18,8 +19,8 @@ interface StageData {
 
 // Stage configuration
 const stageConfig = {
-  initialized: {
-    name: 'INITIALIZED',
+  define: {
+    name: 'DEFINE',
     route: '/define',
     description: 'Project configuration and setup',
   },
@@ -29,7 +30,7 @@ const stageConfig = {
     description: 'Collecting data from Reddit',
   },
   cluster_prep: {
-    name: 'CLUSTER PREP',
+    name: 'CLUSTER PREP & SAMPLE',
     route: '/sample',
     description: 'Converting to cluster units',
   },
@@ -80,24 +81,19 @@ export default function DashboardPage() {
         setError(null);
 
         // Fetch all clusters and find the one matching the ID
-        const clusterResponse = await authFetch('/scraper_cluster/');
-        const clusters: ScraperClusterEntity[] = await clusterResponse.json();
+        const scraperCluster = await scraperClusterApi.getScraperClusterById(authFetch, scraperClusterId)
 
-        const cluster = clusters.find(c => c.id === scraperClusterId);
-
-        if (!cluster) {
+        if (!scraperCluster) {
           setError('Scraper cluster not found');
           return;
         }
 
-        setClusterData(cluster);
+        setClusterData(scraperCluster);
 
         // Fetch scraper data if scraper_entity_id exists
-        if (cluster.scraper_entity_id) {
+        if (scraperCluster.scraper_entity_id) {
           try {
-            const scraperResponse = await authFetch('/scraper/');
-            const scrapers = await scraperResponse.json();
-            const scraper = scrapers.find((s: any) => s.id === cluster.scraper_entity_id);
+            const scraper = await scraperApi.getScraperByClusterId(authFetch, scraperCluster.id)
             if (scraper) {
               setScraperData(scraper);
             }
@@ -124,7 +120,7 @@ export default function DashboardPage() {
 
     // Base metrics based on stage
     switch (stageKey) {
-      case 'initialized':
+      case 'define':
         const metrics = [
           { label: 'Problem', value: clusterData.problem_exporation_description || 'Not set' },
           { label: 'Target Audience', value: clusterData.target_audience || 'Not set' },
@@ -156,7 +152,7 @@ export default function DashboardPage() {
         return [
           { label: 'Scraper Entity', value: clusterData.scraper_entity_id || 'Not started' },
           { label: 'Status', value: status === 'ongoing' ? 'In progress...' : status === 'completed' ? '✓ Complete' : 'Not started' },
-          { label: 'Dependencies', value: clusterData.stages.initialized === 'completed' ? '✓ Initialized' : '✗ Pending' },
+          { label: 'Dependencies', value: clusterData.stages.define === 'completed' ? '✓ Initialized' : '✗ Pending' },
         ];
 
       case 'cluster_prep':
@@ -339,7 +335,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <span className="font-semibold text-[var(--foreground)]">Cluster ID: </span>
-              <span className="text-[var(--muted-foreground)] font-mono text-sm">{clusterData.id}</span>
+              <span className="text-(--muted-foreground) font-mono text-sm">{clusterData.id}</span>
             </div>
           </div>
         </Card>
@@ -354,7 +350,7 @@ export default function DashboardPage() {
             >
               {/* Stage Header with Status Badge */}
               <div className="flex items-start justify-between mb-4">
-                <h2 className="text-xl font-bold text-[var(--foreground)]">{stage.name}</h2>
+                <h2 className="text-xl font-bold text-foreground">{stage.name}</h2>
                 <div
                   className={`px-3 py-1 rounded-md text-white font-semibold text-sm flex items-center gap-2 ${getStatusColor(
                     stage.status
@@ -366,7 +362,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Description */}
-              <p className="text-sm text-[var(--muted-foreground)] mb-4 border-b border-[var(--border)] pb-3">
+              <p className="text-sm text-(--muted-foreground) mb-4 border-b border-[var(--border)] pb-3">
                 {stage.description}
               </p>
 
@@ -397,23 +393,23 @@ export default function DashboardPage() {
           <div className="flex flex-wrap gap-6 justify-center text-sm">
             <div className="flex items-center gap-2">
               <span className="text-lg">✓</span>
-              <span className="text-[var(--foreground)]">Completed</span>
+              <span className="text-foreground">Completed</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-lg">///</span>
-              <span className="text-[var(--foreground)]">Ongoing</span>
+              <span className="text-foreground">Ongoing</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-lg">◼</span>
-              <span className="text-[var(--foreground)]">Paused</span>
+              <span className="text-foreground">Paused</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-lg">⚠</span>
-              <span className="text-[var(--foreground)]">Error</span>
+              <span className="text-foreground">Error</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-lg">□</span>
-              <span className="text-[var(--foreground)]">Initialized</span>
+              <span className="text-foreground">Initialized</span>
             </div>
           </div>
         </Card>

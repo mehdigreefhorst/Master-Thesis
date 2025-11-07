@@ -10,7 +10,7 @@ interface BatteryProgressTableProps {
 }
 
 const stageLabels: Record<keyof StageStatus, string> = {
-  initialized: 'Init',
+  define: 'Define',
   scraping: 'Scrape',
   cluster_prep: 'Prep',
   experiment: 'Experiment',

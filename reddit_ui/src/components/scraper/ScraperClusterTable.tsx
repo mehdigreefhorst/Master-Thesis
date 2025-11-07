@@ -10,7 +10,7 @@ interface ScraperClusterTableProps {
 }
 
 const stageLabels = {
-  initialized: 'Initialized',
+  define: 'Define',
   scraping: 'Scraping',
   cluster_prep: 'Cluster Prep',
   cluster_filter: 'Cluster Filter',
@@ -19,7 +19,7 @@ const stageLabels = {
 };
 
 const stageDescriptions = {
-  initialized: 'Setup with all information to start',
+  define: 'Setup with all information to start',
   scraping: 'Scraping data from Reddit',
   cluster_prep: 'Converting to cluster units',
   cluster_filter: 'Filtering with prompts on sample data',
@@ -29,7 +29,7 @@ const stageDescriptions = {
 
 // Map stage names to their respective routes
 const stageRoutes = {
-  initialized: '/define',
+  define: '/define',
   scraping: '/scraping-progress',
   cluster_prep: '/sample',
   cluster_filter: '/viewer',
@@ -45,7 +45,7 @@ const getStageRoute = (stage: keyof typeof stageRoutes, clusterId: string): stri
 // Helper function to determine the next step to navigate to
 const getNextStepRoute = (cluster: ScraperClusterEntity): string => {
   const stageOrder: (keyof typeof stageRoutes)[] = [
-    'initialized',
+    'define',
     'scraping',
     'cluster_prep',
     'cluster_filter',

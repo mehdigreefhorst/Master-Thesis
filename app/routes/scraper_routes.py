@@ -61,7 +61,7 @@ def create_scraper_instance(body: CreateScraperRequest):
     scraper_instance = ScraperService.create_scraper_instance(body, user_id)
     inserted_id = get_scraper_repository().insert(scraper_instance).inserted_id
 
-    scraper_cluster_entity.stages.initialized = StatusType.Completed
+    scraper_cluster_entity.stages.define = StatusType.Completed
     scraper_cluster_entity.scraper_entity_id = inserted_id
 
     get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity) # TODO: this is not correct ,we also want to update the stages
@@ -114,7 +114,7 @@ def start_scraper(body: ScraperClusterId):
     
     if not scraper_cluster_entity.scraper_entity_id:
         return jsonify(message="scraper entity has not been created "), 409
-    scraper_cluster_entity.stages.initialized = StatusType.Completed
+    scraper_cluster_entity.stages.define = StatusType.Completed
     scraper_cluster_entity.stages.scraping = StatusType.Ongoing
     get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
 
