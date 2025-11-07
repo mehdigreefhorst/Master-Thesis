@@ -274,18 +274,38 @@ export const experimentApi = {
     authFetch: ReturnType<typeof useAuthFetch>,
     system_prompt: string,
     prompt: string,
-    category: "classify_cluster_units" | "rewrite_cluster_unit_standalone" | "summarize_prediction_notes",
-    reasoning_effort: string | null){
+    category: "classify_cluster_units" | "rewrite_cluster_unit_standalone" | "summarize_prediction_notes"
+  ){
     const data =  await authFetch('/experiment/create_prompt', {
       method: 'POST',
       body: {
         system_prompt: system_prompt,
         prompt: prompt,
         category: category,
-        reasoning_effort: reasoning_effort
       }
     });
     return await data.json()
   },
+  async createExperiment(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    prompt_id: string,
+    scraperClusterId: string, 
+    model: string,
+    runs_per_unit: number,
+    reasoning_effort: string | null,
+  ){
+    const data = await authFetch('/experiment/create_experiment', {
+      method: 'POST',
+      body: {
+        prompt_id: prompt_id,
+        scraper_cluster_id: scraperClusterId,
+        model: model,
+        runs_per_unit,
+        reasoning_effort: reasoning_effort
+      }
+    })
+    return await data.json()
+
+  }
 };
 

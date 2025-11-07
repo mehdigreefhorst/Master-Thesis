@@ -101,7 +101,6 @@ Final message to classify: {{final_reddit_message}}
 
 Classify this message according to the categories defined in the system prompt.""",
         public_policy=True,
-        reasoning_effort=None
     )
 
     cluster_unit_entity = ClusterUnitEntity(

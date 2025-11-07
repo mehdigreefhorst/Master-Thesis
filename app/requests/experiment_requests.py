@@ -15,6 +15,8 @@ class CreateExperiment(BaseModel):
     prompt_id: PyObjectId
     model: str
     runs_per_unit: int = 3
+    reasoning_effort: Optional[str]
+
 
 
 class ParsePrompt(BaseModel):
@@ -31,7 +33,6 @@ class CreatePrompt(BaseModel):
     system_prompt: str
     prompt: str
     category: PromptCategory
-    reasoning_effort: Optional[str] = None
 
 
 class CreateSample(BaseModel):

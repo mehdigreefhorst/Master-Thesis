@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { experimentApi } from '@/lib/api';
 import type { ClusterUnitEntity } from '@/types/cluster-unit';
 import { ThreadFromUnit } from '@/components/thread/ThreadFromUnit';
+import { useToast } from '@/components/ui/use-toast';
 
 interface PromptEntity {
   id: string;
@@ -37,6 +38,8 @@ export default function PromptTesterPage() {
   const [clusterUnits, setClusterUnits] = useState<ClusterUnitEntity[]>([]);
   const [currentUnitIndex, setCurrentUnitIndex] = useState<number>(0);
   const [isLoadingUnits, setIsLoadingUnits] = useState(false);
+
+  const { toast } = useToast()
 
   // Sample cluster unit variables matching backend parse_classification_prompt
   const [conversationThread, setConversationThread] = useState(
@@ -204,6 +207,14 @@ export default function PromptTesterPage() {
 
   const handleCreateExperiment = () => {
     console.log("created")
+    if (!selectedPromptId){
+      toast({
+        title: "Error",
+        description: "No prompt id is selected!",
+        variant: "destructive"
+      })
+    }
+    experimentApi.createExperiment(authFetch, selectedPromptId, scraperClusterId)
   }
 
   const handleSavePrompt = async () => {
@@ -222,7 +233,6 @@ export default function PromptTesterPage() {
         systemPrompt,
         rawPrompt,
         'classify_cluster_units',
-        null
       );
 
       setSuccess('Prompt saved successfully!');

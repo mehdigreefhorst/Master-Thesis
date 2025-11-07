@@ -173,8 +173,7 @@ def create_prompt(body: CreatePrompt) -> PromptEntity:
                                  public_policy=True,
                                  system_prompt=body.system_prompt,
                                  prompt=body.prompt,
-                                 category=body.category,
-                                 reasoning_effort=body.reasoning_effort)
+                                 category=body.category)
     
     get_prompt_repository().insert(prompt_entity)
     return jsonify(prompt_entity.model_dump())
