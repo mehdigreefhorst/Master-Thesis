@@ -299,15 +299,29 @@ export default function PromptTesterPage() {
               </span>
             </div>
           )}
-
+          <Button
+            variant="primary"
+            onClick={handleParsePrompt}
+            disabled={isLoading || !rawPrompt.trim()}
+          >
+            {isLoading ? 'Parsing...' : 'Parse Prompt'}
+          </Button>
+          
+          <Button
+            variant="secondary"
+            onClick={handleClear}
+            disabled={isLoading || isSaving}
+          >
+            Clear All
+          </Button>
           {/* Load Existing Prompt */}
           <Button
-                variant="primary"
-                onClick={handleSavePrompt}
-                disabled={isSaving || !rawPrompt.trim()}
-              >
-                {isSaving ? 'Saving...' : 'Save Prompt'}
-              </Button>
+            variant="primary"
+            onClick={handleSavePrompt}
+            disabled={isSaving || !rawPrompt.trim()}
+          >
+            {isSaving ? 'Saving...' : 'Save Prompt'}
+          </Button>
           <div>
             <label htmlFor="promptSelector" className="block text-sm font-bold  text-gray-700 mb-2">
               Load Existing Prompt
@@ -394,24 +408,7 @@ export default function PromptTesterPage() {
                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
                        resize-y transition-shadow"
             />
-            {/* Action Buttons */}
-            <div className="flex gap-3 mt-6">
-              <Button
-                variant="primary"
-                onClick={handleParsePrompt}
-                disabled={isLoading || !rawPrompt.trim()}
-              >
-                {isLoading ? 'Parsing...' : 'Parse Prompt'}
-              </Button>
-              
-              <Button
-                variant="secondary"
-                onClick={handleClear}
-                disabled={isLoading || isSaving}
-              >
-                Clear All
-              </Button>
-            </div>
+            
           </div>
           
           {/* Variables Configuration */}
