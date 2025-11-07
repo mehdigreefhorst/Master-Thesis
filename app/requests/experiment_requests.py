@@ -33,3 +33,7 @@ class CreateSample(BaseModel):
     scraper_cluster_id: PyObjectId
     picked_posts_cluster_unit_ids: List[PyObjectId]
     sample_size: int
+
+
+class GetSampleUnits(BaseModel):
+    scraper_cluster_id: PyObjectId

@@ -12,7 +12,6 @@ class GetClusterUnitsRequest(BaseModel):
     reddit_message_type: Literal["post", "comment", "all"] = "all"
 
 
-
 class UpdateGroundTruthRequest(BaseModel):
     cluster_entity_id: PyObjectId
     ground_truth_category: ClusterUnitCategoryFieldNames

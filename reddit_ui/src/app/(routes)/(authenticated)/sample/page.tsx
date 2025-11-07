@@ -20,6 +20,7 @@ function SampleSelectorPageContent() {
   const authFetch = useAuthFetch();
 
   const [posts, setPosts] = useState<ClusterUnitEntity[]>([]);
+  const [sample, setSample] = useState<ClusterUnitEntity[]>([]);
   const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
   const [selectedSubreddits, setSelectedSubreddits] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
@@ -29,6 +30,7 @@ function SampleSelectorPageContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const scraperClusterId = searchParams.get('scraper_cluster_id');
+  const sampleId = searchParams.get('sample_id');
   const messageType = (searchParams.get('message_type') as 'post' | 'comment' | 'all') || 'all';
 
   // Extract unique subreddits from posts
@@ -76,7 +78,38 @@ function SampleSelectorPageContent() {
       }
     }
 
-    fetchPosts();
+    async function fetchSampleUnits() {
+      if (!sampleId) {
+        setError('Missing sample_id parameter');
+        setIsLoading(false);
+        return;
+      }
+      if (!scraperClusterId) {
+        setError('Missing scraper_cluster_id parameter');
+        setIsLoading(false);
+        return;
+      }
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const clusterUnitsEntities: ClusterUnitEntity[] = await experimentApi.getSampleUnits(authFetch, scraperClusterId)
+
+        setSample(clusterUnitsEntities);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch posts');
+      } finally {
+        setIsLoading(false);
+      }
+    
+    }
+    if (!sampleId) {
+      fetchPosts();
+    } else {
+      fetchSampleUnits();
+
+    }
+    
   }, [scraperClusterId, messageType, authFetch]);
 
   // Toggle post selection
@@ -209,6 +242,68 @@ function SampleSelectorPageContent() {
             <Button variant="primary" onClick={() => window.location.reload()}>
               Retry
             </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Sample already exists - show sample view
+  if (sample.length > 0) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Fixed header with counter and action button */}
+        <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
+          <div className="max-w-[1920px] mx-auto px-8 py-6">
+            <div className="flex items-center justify-between gap-6">
+              {/* Left: Title and counter */}
+              <div className="flex items-center gap-6">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-1">
+                    Sample Size
+                  </h1>
+                  <p className="text-sm text-gray-600">
+                    Viewing sample from cluster
+                  </p>
+                </div>
+                <SelectionCounter
+                  selectedCount={sample.length}
+                  totalCount={sample.length}
+                />
+              </div>
+
+              {/* Right: Next step button */}
+              <div className="flex items-center gap-3">
+                <Button onClick={() => router.push(`/dashboard?scraper_cluster_id=${scraperClusterId}`)} variant="secondary" size="lg">
+                  ← Go Back
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={() => router.push(`/prompt-tester?scraper_cluster_id=${scraperClusterId}`)}
+                  className="animate-pulse"
+                >
+                  Go to Next Step
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main content: Virtualized horizontal scroll grid - all posts pre-selected */}
+        <div className="py-12">
+          <VirtualizedHorizontalGrid
+            posts={sample}
+            selectedPosts={new Set(sample.map(post => post.id))}
+            onToggleSelect={() => {}} // Disabled - all posts are in the sample
+          />
+        </div>
+
+        {/* Help text */}
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-10">
+          <div className="bg-white border border-gray-200 rounded-lg px-4 py-2 shadow-lg">
+            <p className="text-sm text-gray-600">
+              <span className="font-medium">Note:</span> All posts shown are part of your sample
+            </p>
           </div>
         </div>
       </div>

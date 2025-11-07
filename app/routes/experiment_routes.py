@@ -9,7 +9,7 @@ from app.database.entities.experiment_entity import ExperimentEntity
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.requests.cluster_prep_requests import ScraperClusterId
-from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, GetExperiments, ParsePrompt
+from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, GetExperiments, GetSampleUnits, ParsePrompt
 from app.services.experiment_service import ExperimentService
 from app.utils.api_validation import validate_request_body, validate_query_params
 from app.utils.types import StatusType
@@ -200,3 +200,44 @@ def create_sample(body: CreateSample) -> SampleEntity:
     sample_entity_id = get_sample_repository().insert(sample_entity).inserted_id
     get_scraper_cluster_repository().update(body.scraper_cluster_id, {"sample_entity_id":sample_entity_id})
     return jsonify(sample_entity.model_dump())
+
+
+@experiment_bp.route("/get_sample_units", methods=["GET"])
+@validate_query_params(GetSampleUnits)
+@jwt_required()
+def get_cluster_units(query: GetSampleUnits):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    
+    scraper_cluster_entity = get_scraper_cluster_repository().find_by_id_and_user(user_id, query.scraper_cluster_id)
+    
+    if not scraper_cluster_entity:
+        return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {query.scraper_cluster_id}"), 400
+    
+    if not scraper_cluster_entity.scraper_entity_id:
+        return jsonify(message="scraper is not yet initialized"), 409
+    
+    if not scraper_cluster_entity.stages.scraping == StatusType.Completed:
+        return jsonify(message="scraper is not completed yet"), 409
+    
+    if not scraper_cluster_entity.stages.cluster_prep == StatusType.Completed:
+        return jsonify(message="Cluster preparation is no completed"), 409
+    
+    if not scraper_cluster_entity.sample_entity_id:
+        return jsonify(message="you must first create a sample entity"), 400
+    
+    sample_enity = get_sample_repository().find_by_id(scraper_cluster_entity.sample_entity_id)
+
+    if not sample_enity:
+        return jsonify(message="the sample entity id that is associated cannot be found"), 400
+    
+    cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_enity.sample_cluster_unit_ids)
+    returnable_cluster_units = [cluster_unit_entity.model_dump() for cluster_unit_entity in cluster_unit_entities]
+    print("a total of units = ", len(returnable_cluster_units))
+    if returnable_cluster_units:
+        return jsonify(returnable_cluster_units), 200
+    else:
+        return jsonify(error="The sample does not contain real cluster unit entities for the scraper cluster instance"), 400
+

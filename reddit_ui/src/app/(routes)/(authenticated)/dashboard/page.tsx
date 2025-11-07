@@ -301,7 +301,7 @@ export default function DashboardPage() {
       name: config.name,
       key: stageKey,
       status: clusterData.stages[stageKey],
-      route: `${config.route}?scraper_cluster_id=${scraperClusterId}`,
+      route: `${config.route}?scraper_cluster_id=${scraperClusterId}${stageKey === "cluster_prep" && clusterData.stages[stageKey] === "completed" ? `&sample_id=${clusterData.sample_entity_id}`: ""}`,
       description: config.description,
       metrics: getStageMetrics(stageKey),
     };
