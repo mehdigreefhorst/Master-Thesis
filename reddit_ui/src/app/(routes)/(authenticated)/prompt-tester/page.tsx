@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuthFetch } from '@/utils/fetch';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { experimentApi } from '@/lib/api';
+import type { ClusterUnitEntity } from '@/types/cluster-unit';
 
 interface PromptEntity {
   id: string;
@@ -16,6 +18,8 @@ interface PromptEntity {
 
 export default function PromptTesterPage() {
   const authFetch = useAuthFetch();
+  const searchParams = useSearchParams();
+  const scraperClusterId = searchParams.get('scraper_cluster_id');
 
   const [systemPrompt, setSystemPrompt] = useState('');
   const [rawPrompt, setRawPrompt] = useState('');
@@ -26,6 +30,11 @@ export default function PromptTesterPage() {
   const [selectedPromptId, setSelectedPromptId] = useState<string>('');
   const [isLoadingPrompts, setIsLoadingPrompts] = useState(false);
 
+  // Cluster unit pagination state
+  const [clusterUnits, setClusterUnits] = useState<ClusterUnitEntity[]>([]);
+  const [currentUnitIndex, setCurrentUnitIndex] = useState<number>(0);
+  const [isLoadingUnits, setIsLoadingUnits] = useState(false);
+
   // Sample cluster unit variables matching backend parse_classification_prompt
   const [conversationThread, setConversationThread] = useState(
     'User: My laptop keeps crashing when I run Adobe Premiere.\n' +
@@ -35,6 +44,31 @@ export default function PromptTesterPage() {
   const [finalRedditMessage, setFinalRedditMessage] = useState(
     'Yes I updated them yesterday but still getting blue screens. So frustrated this keeps happening during renders...'
   );
+
+  // Fetch sample units on mount
+  useEffect(() => {
+    async function fetchSampleUnits() {
+      if (!scraperClusterId) return;
+
+      try {
+        setIsLoadingUnits(true);
+        const units = await experimentApi.getSampleUnits(authFetch, scraperClusterId);
+        setClusterUnits(units);
+
+        // Initialize with first unit if available
+        if (units.length > 0) {
+          updateClusterUnitData(units[0]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch sample units:', err);
+        setError('Failed to load cluster units');
+      } finally {
+        setIsLoadingUnits(false);
+      }
+    }
+
+    fetchSampleUnits();
+  }, [scraperClusterId, authFetch]);
 
   // Fetch prompts on mount
   useEffect(() => {
@@ -54,6 +88,65 @@ export default function PromptTesterPage() {
     fetchPrompts();
   }, [authFetch]);
 
+  // Update conversation thread and final message from cluster unit
+  const updateClusterUnitData = (unit: ClusterUnitEntity) => {
+    // Set conversation thread from enriched_comment_thread_text or thread_path_text
+    const thread = unit.enriched_comment_thread_text ||
+                   (unit.thread_path_text ? unit.thread_path_text.join('\n') : '');
+    setConversationThread(thread);
+
+    // Set final message from the unit's text
+    setFinalRedditMessage(unit.text);
+  };
+
+  // Auto-parse prompt when cluster unit or prompt changes
+  const autoParsePrompt = async () => {
+    if (!rawPrompt.trim() || !selectedPromptId) return;
+
+    try {
+      let parsed = rawPrompt;
+      parsed = parsed.replaceAll('{conversation_thread}', conversationThread);
+      parsed = parsed.replaceAll('{final_reddit_message}', finalRedditMessage);
+      setParsedPrompt(parsed);
+    } catch (err) {
+      console.error('Auto-parse failed:', err);
+    }
+  };
+
+  // Handle cluster unit navigation
+  const handlePrevUnit = () => {
+    if (currentUnitIndex > 0) {
+      const newIndex = currentUnitIndex - 1;
+      setCurrentUnitIndex(newIndex);
+      updateClusterUnitData(clusterUnits[newIndex]);
+      if (selectedPromptId && rawPrompt) {
+        setTimeout(autoParsePrompt, 0);
+      }
+    }
+  };
+
+  const handleNextUnit = () => {
+    if (currentUnitIndex < clusterUnits.length - 1) {
+      const newIndex = currentUnitIndex + 1;
+      setCurrentUnitIndex(newIndex);
+      updateClusterUnitData(clusterUnits[newIndex]);
+      if (selectedPromptId && rawPrompt) {
+        setTimeout(autoParsePrompt, 0);
+      }
+    }
+  };
+
+  const handleSelectUnit = (unitId: string) => {
+    const unitIndex = clusterUnits.findIndex(u => u.id === unitId);
+    if (unitIndex !== -1) {
+      setCurrentUnitIndex(unitIndex);
+      updateClusterUnitData(clusterUnits[unitIndex]);
+      if (selectedPromptId && rawPrompt) {
+        setTimeout(autoParsePrompt, 0);
+      }
+    }
+  };
+
   // Handle prompt selection from dropdown
   const handlePromptSelect = (promptId: string) => {
     setSelectedPromptId(promptId);
@@ -62,6 +155,11 @@ export default function PromptTesterPage() {
       setSystemPrompt(selectedPrompt.system_prompt || '');
       setRawPrompt(selectedPrompt.prompt || '');
       setParsedPrompt(''); // Clear parsed prompt when selecting new prompt
+
+      // Auto-parse with current cluster unit data
+      if (clusterUnits.length > 0) {
+        setTimeout(autoParsePrompt, 0);
+      }
     }
   };
 
@@ -97,40 +195,89 @@ export default function PromptTesterPage() {
     setSelectedPromptId('');
   };
 
+  const currentUnit = clusterUnits[currentUnitIndex];
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-[95vw] mx-auto">
-        {/* Page Header */}
-          <div className={`flex justify-between items-center`}>
-            <h1 className="text-2xl font-semibold">Prompt Tester</h1>
-            <div>
-              <label htmlFor="promptSelector" className="block text-sm font-medium text-gray-700 mb-2">
-                Load Existing Prompt
-              </label>
-              <select
-                id="promptSelector"
-                value={selectedPromptId}
-                onChange={(e) => handlePromptSelect(e.target.value)}
-                disabled={isLoadingPrompts}
-                className="w-full h-12 px-4 py-2 border border-gray-300 rounded-lg
-                        bg-white text-gray-900 text-sm
-                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                        cursor-pointer transition-shadow disabled:bg-gray-100 disabled:cursor-not-allowed"
+        {/* Page Header with Cluster Unit Pagination */}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-semibold">Prompt Tester</h1>
+
+          {/* Cluster Unit Pagination */}
+          {clusterUnits.length > 0 && (
+            <div className="flex items-center gap-4">
+              <Button
+                variant="secondary"
+                onClick={handlePrevUnit}
+                disabled={currentUnitIndex === 0 || isLoadingUnits}
+                className="px-3 py-2"
               >
-                <option value="">
-                  {isLoadingPrompts ? 'Loading prompts...' : 'Select a prompt from database'}
-                </option>
-                {prompts.map((prompt) => (
-                  <option key={prompt.id} value={prompt.id}>
-                    {prompt.name || `Prompt ${prompt.id}`}
+                &lt;
+              </Button>
+
+              <select
+                value={currentUnit?.id || ''}
+                onChange={(e) => handleSelectUnit(e.target.value)}
+                disabled={isLoadingUnits}
+                className="h-10 px-3 py-2 border border-gray-300 rounded-lg
+                         bg-white text-gray-900 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         cursor-pointer transition-shadow disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                {clusterUnits.map((unit) => (
+                  <option key={unit.id} value={unit.id}>
+                    {unit.author} | {unit.id.substring(0, 4)}... |
+                    {unit.type === 'post' ? ' Post' : ` Comment (depth: ${unit.thread_path_text?.length || 0})`} |
+                    ↑{unit.upvotes}
                   </option>
                 ))}
               </select>
-              <p className="mt-2 text-xs text-gray-500">
-                Select a prompt to auto-fill the system prompt and raw prompt fields
-              </p>
+
+              <Button
+                variant="secondary"
+                onClick={handleNextUnit}
+                disabled={currentUnitIndex === clusterUnits.length - 1 || isLoadingUnits}
+                className="px-3 py-2"
+              >
+                &gt;
+              </Button>
+
+              <span className="text-sm text-gray-600">
+                {currentUnitIndex + 1} / {clusterUnits.length}
+              </span>
             </div>
+          )}
+
+          {/* Load Existing Prompt */}
+          <div>
+            <label htmlFor="promptSelector" className="block text-sm font-medium text-gray-700 mb-2">
+              Load Existing Prompt
+            </label>
+            <select
+              id="promptSelector"
+              value={selectedPromptId}
+              onChange={(e) => handlePromptSelect(e.target.value)}
+              disabled={isLoadingPrompts}
+              className="w-full h-12 px-4 py-2 border border-gray-300 rounded-lg
+                       bg-white text-gray-900 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                       cursor-pointer transition-shadow disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="">
+                {isLoadingPrompts ? 'Loading prompts...' : 'Select a prompt from database'}
+              </option>
+              {prompts.map((prompt) => (
+                <option key={prompt.id} value={prompt.id}>
+                  {prompt.name || `Prompt ${prompt.id}`}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-gray-500">
+              Select a prompt to auto-fill the system prompt and raw prompt fields
+            </p>
           </div>
+        </div>
 
 
 
