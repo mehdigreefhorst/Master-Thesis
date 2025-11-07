@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { experimentApi } from '@/lib/api';
 import type { ClusterUnitEntity } from '@/types/cluster-unit';
+import { ThreadFromUnit } from '@/components/thread/ThreadFromUnit';
 
 interface PromptEntity {
   id: string;
@@ -175,9 +176,10 @@ export default function PromptTesterPage() {
 
       // Client-side parsing using the same variables as backend parse_classification_prompt
       // Replace {conversation_thread} and {final_reddit_message}
-      let parsed = rawPrompt;
-      parsed = parsed.replaceAll('{conversation_thread}', conversationThread);
-      parsed = parsed.replaceAll('{final_reddit_message}', finalRedditMessage);
+      // let parsed = rawPrompt;
+      // parsed = parsed.replaceAll('{conversation_thread}', conversationThread);
+      // parsed = parsed.replaceAll('{final_reddit_message}', finalRedditMessage);
+      const parsed = await experimentApi.parseRawPrompt(authFetch, clusterUnits[currentUnitIndex].id, rawPrompt)
 
       setParsedPrompt(parsed);
     } catch (err) {
@@ -319,39 +321,9 @@ export default function PromptTesterPage() {
           
           {/* Variables Configuration */}
         <div className="mb-6 space-y-4">
-          <h3 className="text-sm font-semibold text-gray-900">Test Data (Cluster Unit Variables):</h3>
+          <ThreadFromUnit currentUnit={clusterUnits[currentUnitIndex]}/>
 
-          <div>
-            <label htmlFor="conversationThread" className="block text-xs font-medium text-gray-700 mb-1">
-              Conversation Thread <code className="text-blue-600">{'{conversation_thread}'}</code>
-            </label>
-            <textarea
-              id="conversationThread"
-              value={conversationThread}
-              onChange={(e) => setConversationThread(e.target.value)}
-              className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg
-                       bg-white text-gray-900 text-xs font-mono
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                       resize-y transition-shadow"
-            />
           </div>
-
-          <div>
-            <label htmlFor="finalMessage" className="block text-xs font-medium text-gray-700 mb-1">
-              Final Reddit Message <code className="text-blue-600">{'{final_reddit_message}'}</code>
-            </label>
-            <textarea
-              id="finalMessage"
-              value={finalRedditMessage}
-              onChange={(e) => setFinalRedditMessage(e.target.value)}
-              className="w-full h-20 px-3 py-2 border border-gray-300 rounded-lg
-                       bg-white text-gray-900 text-xs font-mono
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                       resize-y transition-shadow"
-            />
-          </div>
-          
-        </div>
 
           {/* Right: Prompt Selector Dropdown */}
           

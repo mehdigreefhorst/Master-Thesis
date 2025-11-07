@@ -9,9 +9,10 @@ from app.database.entities.experiment_entity import ExperimentEntity
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.requests.cluster_prep_requests import ScraperClusterId
-from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, GetExperiments, GetSampleUnits, ParsePrompt
+from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, GetExperiments, GetSampleUnits, ParsePrompt, ParseRawPrompt
 from app.services.experiment_service import ExperimentService
 from app.utils.api_validation import validate_request_body, validate_query_params
+from app.utils.llm_helper import LlmHelper
 from app.utils.types import StatusType
 
 
@@ -137,6 +138,27 @@ def parse_prompt(body: ParsePrompt):
 
     return jsonify(parsed_prompt), 200
 
+
+@experiment_bp.route("/parse_raw_prompt", methods=["POST"])
+@validate_request_body(ParseRawPrompt)
+@jwt_required()
+def parse_raw_prompt(body: ParseRawPrompt):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    
+    cluster_unit_entity = get_cluster_unit_repository().find_by_id(body.cluster_unit_id)
+
+    if not cluster_unit_entity:
+        return jsonify(message=f"cluster unit entity is not found id: {body.cluster_unit_id}"), 400
+    
+    parsed_prompt = LlmHelper.custom_formatting(
+            prompt=body.prompt,
+            conversation_thread=str(cluster_unit_entity.thread_path_text),
+            final_reddit_message=cluster_unit_entity.text)
+
+    return jsonify(parsed_prompt), 200
 
 @experiment_bp.route("/create_prompt", methods=["POST"])
 @validate_request_body(CreatePrompt)

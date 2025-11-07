@@ -360,7 +360,7 @@ function ViewerPageContent() {
           </div>
 
           {renderThread()}
-        </div>
+        </div>  
 
 
         {/* Label Comparison Table */}

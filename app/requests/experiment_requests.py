@@ -22,6 +22,11 @@ class ParsePrompt(BaseModel):
     cluster_unit_id: PyObjectId
 
 
+class ParseRawPrompt(BaseModel):
+    prompt: str
+    cluster_unit_id: PyObjectId
+
+
 class CreatePrompt(BaseModel):
     system_prompt: str
     prompt: str
