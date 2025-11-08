@@ -1,5 +1,6 @@
 
 
+from typing import List
 from flask import Blueprint, jsonify
 from flask_jwt_extended import get_jwt_identity, jwt_required
 import random
@@ -8,6 +9,7 @@ from app.database import get_cluster_unit_repository, get_experiment_repository,
 from app.database.entities.experiment_entity import ExperimentEntity
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
+from app.database.entities.scraper_cluster_entity import StageStatus
 from app.requests.cluster_prep_requests import ScraperClusterId
 from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, GetExperiments, GetSampleUnits, ParsePrompt, ParseRawPrompt
 from app.responses.get_experiments_response import GetExperimentsResponse
@@ -22,7 +24,7 @@ experiment_bp = Blueprint("experiment", __name__, url_prefix="/experiment")
 @experiment_bp.route("/", methods=["GET"])
 @validate_query_params(GetExperiments)
 @jwt_required()
-def get_experiment_instances(query: GetExperiments) -> GetExperimentsResponse:
+def get_experiment_instances(query: GetExperiments) -> List[GetExperimentsResponse]:
     user_id = get_jwt_identity()
     current_user = get_user_repository().find_by_id(user_id)
     if not current_user:
@@ -45,9 +47,15 @@ def get_experiment_instances(query: GetExperiments) -> GetExperimentsResponse:
         
     experiment_entities = get_experiment_repository().find(filter)
 
+    if not scraper_cluster_entity.sample_entity_id:
+        return jsonify(f"Scraper cluster entity: {scraper_cluster_entity.id} is missing a sample entity id")
     
+    sample_entity = get_sample_repository().find_by_id(scraper_cluster_entity.sample_entity_id)
 
-    returnable_instances = ExperimentService.convert_experiment_entities_for_user_interface(experiment_entities)
+    if not sample_entity:
+        return jsonify(f"Scraper cluster entity: {scraper_cluster_entity.id} with sample_entity_id: {scraper_cluster_entity.sample_entity_id} is not findable")        
+
+    returnable_instances = ExperimentService.convert_experiment_entities_for_user_interface(experiment_entities, sample_entity, query.user_threshold)
     return jsonify(returnable_instances), 200
 
 
@@ -100,7 +108,9 @@ def create_experiment(body: CreateExperiment):
                                          model= body.model,
                                          runs_per_unit=body.runs_per_unit,
                                          reasoning_effort=body.reasoning_effort)
-    
+    if scraper_cluster_entity.stages.experiment == StatusType.Initialized:
+        scraper_cluster_entity.stages.experiment == StatusType.Ongoing
+        get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
     get_experiment_repository().insert(experiment_entity)
 
     cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_entity.sample_cluster_unit_ids)
@@ -111,7 +121,7 @@ def create_experiment(body: CreateExperiment):
     total_cluster_unit_predicted_categories = ExperimentService.predict_categories_cluster_units(experiment_entity=experiment_entity,
                                                        cluster_unit_entities=cluster_unit_entities,
                                                        prompt_entity=prompt_entity)
-    return jsonify("succesfully processed the ")
+    return jsonify(f"succesfully predicted a total of {total_cluster_unit_predicted_categories} categories for units")
 
 
 @experiment_bp.route("/parse_prompt", methods=["POST"])

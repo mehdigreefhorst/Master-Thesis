@@ -2,7 +2,7 @@ import React from 'react';
 import { CertaintyBar } from './CertaintyBar';
 import { ConfusionMatrix } from './ConfusionMatrix';
 
-export interface LabelMetric {
+export interface PredictionMetric {
   labelName: string;
   prevalence: number;
   prevalenceCount: number;
@@ -21,12 +21,12 @@ export interface LabelMetric {
   };
 }
 
-interface LabelMetricsProps {
-  metrics: LabelMetric[];
+interface PredictionMetricVisualizationProps {
+  metrics: PredictionMetric[];
   className?: string;
 }
 
-export const LabelMetrics: React.FC<LabelMetricsProps> = ({
+export const PredictionMetricVisualization: React.FC<PredictionMetricVisualizationProps> = ({
   metrics,
   className = ''
 }) => {

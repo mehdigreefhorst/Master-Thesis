@@ -14,8 +14,8 @@ const mockPrompts: ExperimentData[] = [
     created: '2024-01-15',
     totalSamples: 523,
     overallAccuracy: 89.4,
-    overallConsistency: 86.2,
-    labelMetrics: [
+    overallKappa: 86.2,
+    predictionMetrics: [
       {
         labelName: 'problem_description',
         prevalence: 93,
@@ -70,8 +70,8 @@ const mockPrompts: ExperimentData[] = [
     created: '2024-01-10',
     totalSamples: 523,
     overallAccuracy: 78.2,
-    overallConsistency: 73.4,
-    labelMetrics: [
+    overallKappa: 73.4,
+    predictionMetrics: [
       {
         labelName: 'problem_description',
         prevalence: 98,
@@ -126,8 +126,8 @@ const mockPrompts: ExperimentData[] = [
     created: '2024-01-12',
     totalSamples: 201,
     overallAccuracy: 84.7,
-    overallConsistency: 80.1,
-    labelMetrics: [
+    overallKappa: 80.1,
+    predictionMetrics: [
       {
         labelName: 'problem_description',
         prevalence: 91,

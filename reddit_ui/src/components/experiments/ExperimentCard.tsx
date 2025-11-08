@@ -3,7 +3,7 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { MetricBar } from './MetricBar';
-import { LabelMetrics, LabelMetric } from './LabelMetrics';
+import { PredictionMetricVisualization, PredictionMetric } from './PredictionMetrics';
 
 export interface ExperimentData {
   id: string;
@@ -12,8 +12,8 @@ export interface ExperimentData {
   created: string;
   totalSamples: number;
   overallAccuracy: number;
-  overallConsistency: number;
-  labelMetrics: LabelMetric[];
+  overallKappa: number;
+  predictionMetrics: PredictionMetric[];
 }
 
 interface ExperimentCardProps {
@@ -70,8 +70,8 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
           value={experiment.overallAccuracy}
         />
         <MetricBar
-          label="Overall Consistency"
-          value={experiment.overallConsistency}
+          label="Overall Kappa"
+          value={experiment.overallKappa}
         />
       </div>
 
@@ -87,7 +87,7 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
       {/* Expandable Label Metrics */}
       {isExpanded && (
         <div className="mt-3 pt-3 border-t border-(--border) animate-[panelExpand_300ms_ease-out]">
-          <LabelMetrics metrics={experiment.labelMetrics} />
+          <PredictionMetricVisualization metrics={experiment.predictionMetrics} />
         </div>
       )}
     </Card>
