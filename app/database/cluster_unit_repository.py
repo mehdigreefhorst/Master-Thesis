@@ -19,20 +19,21 @@ class ClusterUnitRepository(BaseRepository[ClusterUnitEntity]):
 
         return self.collection.update_one(filter, update)
     
-    def insert_predicted_category(self, cluster_unit_entity_id: PyObjectId, cluster_unit_predicted_categories: ClusterUnitEntityPredictedCategory):
+    def insert_predicted_category(self, cluster_unit_entity_id: PyObjectId, experiment_id: PyObjectId, cluster_unit_predicted_categories: ClusterUnitEntityPredictedCategory):
         filter = {"_id": cluster_unit_entity_id}
 
-        # First, check if the field is null and initialize it as an empty array if needed
+        # First, check if the field is null and initialize it as an empty dictionary if needed
         # This handles the case where predicted_category exists but is null
         self.collection.update_one(
             {"_id": cluster_unit_entity_id, "predicted_category": None},
-            {"$set": {"predicted_category": []}}
+            {"$set": {"predicted_category": {}}}
         )
 
-        # Now push the new prediction to the array
+        # Now set the prediction for this specific experiment_id as a dictionary key
+        # This uses dot notation to set a specific key in the dictionary
         update = {
-            "$push": {
-                "predicted_category": cluster_unit_predicted_categories.model_dump(by_alias=True)
+            "$set": {
+                f"predicted_category.{str(experiment_id)}": cluster_unit_predicted_categories.model_dump(by_alias=True)
             }
         }
 

@@ -46,10 +46,8 @@ class ClusterPrepService:
             return cluster_entity
 
     @staticmethod
-    def start_preparing_clustering(scraper_cluster_entity: ScraperClusterEntity, prompt: str) -> int:
+    def start_preparing_clustering(scraper_cluster_entity: ScraperClusterEntity) -> int:
         cluster_entity = ClusterPrepService.get_or_create_cluster_entity(scraper_cluster_entity)
-        cluster_entity.prompt = prompt
-        get_cluster_repository().update(cluster_entity.id, {"prompt": prompt})
 
         # Retrieve all cluster units that have already been created
         all_previously_added_cluster_units = get_cluster_unit_repository().find({"cluster_entity_id": cluster_entity.id})

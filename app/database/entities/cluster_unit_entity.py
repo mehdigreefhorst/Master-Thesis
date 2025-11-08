@@ -18,17 +18,17 @@ class ClusterUnitEntityCategory(BaseModel):
     agreement_empathy (The user is emphathetic towards another user)
     none_of_the_above
     """
-    problem_description: bool | None = None
-    frustration_expression: bool | None = None
-    solution_seeking: bool | None = None
-    solution_attempted: bool | None = None
-    solution_proposing: bool | None = None
-    agreement_empathy: bool | None = None
-    none_of_the_above: bool | None = None
+    problem_description: bool = False
+    frustration_expression: bool  = False
+    solution_seeking: bool  = False
+    solution_attempted: bool  = False
+    solution_proposing: bool  = False
+    agreement_empathy: bool  = False
+    none_of_the_above: bool  = False
 
     @classmethod
-    def field_names(cls) -> list[str]:
-        return list(cls.model_fields.keys()) 
+    def category_field_names(cls) -> list[str]:
+        return list(ClusterUnitEntityCategory.model_fields.keys()) 
 
 ClusterUnitCategoryFieldNames = Literal["problem_description", 
                                         "frustration_expression", 
@@ -68,7 +68,7 @@ class ClusterUnitEntity(BaseEntity):
     created_utc: int
     thread_path_text: List[str] | None # the full prior thread (post -> comment -> reply --> ...) up until the current comment
     enriched_comment_thread_text: str | None # what the LLM made from the thread path text & text
-    predicted_category: List[ClusterUnitEntityPredictedCategory] | None = None
+    predicted_category: Dict[PyObjectId, ClusterUnitEntityPredictedCategory] | None = None # experiment_id: PyObjectId as key
     ground_truth: ClusterUnitEntityCategory  = Field(default_factory=ClusterUnitEntityCategory)
     text: str # the author's individual text contribution to reddit
     total_nested_replies: Optional[int] = None # Total nr of replies on the post summed up, replies to replies also count

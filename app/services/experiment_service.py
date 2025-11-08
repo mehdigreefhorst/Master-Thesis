@@ -1,12 +1,13 @@
 
 
 import json
-from typing import List
+from typing import Dict, List
 from app.database.entities.cluster_unit_entity import ClusterUnitEntityPredictedCategory, PredictionCategory, PredictionCategoryTokens, ClusterUnitEntity, ClusterUnitEntityCategory
-from app.database import get_cluster_unit_repository
-from app.database.entities.experiment_entity import AggregateResult, ExperimentEntity
+from app.database import get_cluster_unit_repository, get_experiment_repository
+from app.database.entities.experiment_entity import AggregateResult, ExperimentEntity, PredictionResult
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.utils.llm_helper import LlmHelper
+from collections import defaultdict
 
 
 class ExperimentService:
@@ -17,7 +18,7 @@ class ExperimentService:
         """this function orchestrates the prediction of the cluster unit entity and propagates it into the experiement entity"""
         if not prompt_entity.category == PromptCategory.Classify_cluster_units:
             raise Exception("The prompt is of the wrong type!!!")
-        total_cluster_unit_predicted_categories = []
+        
         for cluster_unit_entity in cluster_unit_entities:
             predicted_categories = ExperimentService.predict_single_cluster_unit(experiment_entity,
                                                           cluster_unit_entity,
@@ -27,18 +28,50 @@ class ExperimentService:
                 experiment_id=experiment_entity.id,
                 predicted_categories=predicted_categories
                 )
-            total_cluster_unit_predicted_categories.append(cluster_unit_predicted_categories)
             
-            get_cluster_unit_repository().insert_predicted_category(cluster_unit_entity.id, cluster_unit_predicted_categories)
+            if cluster_unit_entity.predicted_category is None:
+                cluster_unit_entity.predicted_category = {experiment_entity.id: cluster_unit_predicted_categories}
+            else:
+                cluster_unit_entity.predicted_category[experiment_entity.id] = cluster_unit_predicted_categories
+            
+            get_cluster_unit_repository().insert_predicted_category(cluster_unit_entity.id, experiment_entity.id, cluster_unit_predicted_categories)
 
-        return ExperimentService.convert_total_predicted_into_aggregate_results(total_cluster_unit_predicted_categories)
+        return ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities, experiment_entity)
     
 
     @staticmethod
-    def convert_total_predicted_into_aggregate_results(total_cluster_unit_predicted_categories: ClusterUnitEntityPredictedCategory) -> AggregateResult:
-        pass
-        # :TODO we don't have the ground truth implemented yet, so it will never work
+    def convert_total_predicted_into_aggregate_results(cluster_unit_entities: List[ClusterUnitEntity], 
+                                                       experiment_entity: ExperimentEntity) -> int:
+        for cluster_unit_entity in cluster_unit_entities:
+            if cluster_unit_entity.predicted_category is None:
+                raise Exception(f"We cannot calculate the predicted category if this category is None, an issue must be there \n experiment_id: {experiment_entity.id} \n cluster_unit_entity: {cluster_unit_entity.id}")
+            prediction_counter_single_unit = ExperimentService.create_prediction_counter_from_cluster_unit(cluster_unit_entity, experiment_entity)
+            # Below we go over the possible categories, and how often they have been counted. Then we find the corresponding variable in aggregate results
+            # Then we increase the counter of aggregate results with 1. This allows us to track how many runs have predicted that label.
+            for prediction_category_name, count_value in prediction_counter_single_unit.items():
+                prediction_category_prediction_result: PredictionResult = getattr(experiment_entity.aggregate_result, prediction_category_name)
+                count_key = str(count_value)  # Convert to string for MongoDB compatibility
+                prediction_category_prediction_result.prevelance_dict[count_key] = prediction_category_prediction_result.prevelance_dict.get(count_key, 0) + 1
 
+                # Now we add the ground truth to the prediction result as a counter
+                ground_truth_value: bool = getattr(cluster_unit_entity.ground_truth, prediction_category_name)
+                if ground_truth_value:
+                    prediction_category_prediction_result.sum_ground_truth += 1
+        print(f"the new experiment entity looks like : {experiment_entity.model_dump_json(indent=4)}")
+        return get_experiment_repository().update(experiment_entity.id, experiment_entity).modified_count
+
+
+    @staticmethod
+    def create_prediction_counter_from_cluster_unit(cluster_unit_entity: ClusterUnitEntity, experiment_entity: ExperimentEntity) -> Dict[str, int]:
+        """counts how often each of the classes in the prediction category are true accross the runs of the prediction. 
+        Works in a way that allows for changing of the prediction category variables or naming"""
+        prediction_counter = defaultdict(int)
+        for prediction_category in cluster_unit_entity.predicted_category[experiment_entity.id].predicted_categories:
+            for variable_name in prediction_category.category_field_names(): 
+                print("variable_name = ", variable_name)
+                value = getattr(prediction_category, variable_name)
+                prediction_counter[variable_name] += 1 if value else 0
+        return prediction_counter
 
     
     @staticmethod

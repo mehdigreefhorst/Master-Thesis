@@ -53,12 +53,8 @@ def prepare_cluster(body: ScraperClusterId):
     scraper_cluster_entity.stages.cluster_prep = StatusType.Ongoing
 
     get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
-
-    prompt = f"""
-    # Instruction for creating a standalone LLM prompt
-    """
     
-    cluster_units_created = ClusterPrepService.start_preparing_clustering(scraper_cluster_entity, prompt)
+    cluster_units_created = ClusterPrepService.start_preparing_clustering(scraper_cluster_entity)
     scraper_cluster_entity.stages.cluster_prep = StatusType.Completed
 
     get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
