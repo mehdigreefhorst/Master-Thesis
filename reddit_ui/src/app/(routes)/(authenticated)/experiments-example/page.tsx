@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
-import { PromptCard, PromptData } from '@/components/prompts/PromptCard';
+import { ExperimentCard, ExperimentData } from '@/components/experiments/ExperimentCard';
 
 // Mock data - replace with actual API calls
-const mockPrompts: PromptData[] = [
+const mockPrompts: ExperimentData[] = [
   {
     id: '1',
     name: 'GPT-4 Prompt v2.0',
@@ -258,8 +258,8 @@ export default function PromptsPage() {
                 style={{ animationDelay: `${index * 50}ms` }}
                 className="animate-[insightAppear_300ms_ease-out] shrink-0 w-[500px]"
               >
-                <PromptCard
-                  prompt={prompt}
+                <ExperimentCard
+                  experiment={prompt}
                   onView={handleView}
                   onClone={handleClone}
                 />

@@ -4,12 +4,12 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
-import { PromptCard, PromptData } from '@/components/prompts/PromptCard';
+import { ExperimentCard, ExperimentData } from '@/components/experiments/ExperimentCard';
 import { experimentApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
 
 // Keep mock data as fallback
-const mockPrompts: PromptData[] = [
+const mockPrompts: ExperimentData[] = [
   {
     id: '1',
     name: 'GPT-4 Prompt v2.0',
@@ -188,7 +188,7 @@ function ExperimentsPageContent() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterModel, setFilterModel] = useState<string>('all');
-  const [experiments, setExperiments] = useState<PromptData[]>([]);
+  const [experiments, setExperiments] = useState<ExperimentData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -206,8 +206,8 @@ function ExperimentsPageContent() {
         setError(null);
         const data = await experimentApi.getExperiments(authFetch, scraperClusterId);
 
-        // Transform backend data to PromptData format
-        const transformedData: PromptData[] = (data.experiments || data || []).map((exp: any) => ({
+        // Transform backend data to ExperimentData format
+        const transformedData: ExperimentData[] = (data.experiments || data || []).map((exp: any) => ({
           id: exp.id || exp.experiment_id,
           name: exp.name || `Experiment ${exp.id?.substring(0, 8)}`,
           model: exp.model || 'Unknown',
@@ -249,10 +249,10 @@ function ExperimentsPageContent() {
     }
   };
 
-  const filteredPrompts = experiments.filter(prompt => {
-    const matchesSearch = prompt.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         prompt.model.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filterModel === 'all' || prompt.model === filterModel;
+  const filteredExperiments = experiments.filter(experiment => {
+    const matchesSearch = experiment.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         experiment.model.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = filterModel === 'all' || experiment.model === filterModel;
     return matchesSearch && matchesFilter;
   });
 
@@ -345,20 +345,20 @@ function ExperimentsPageContent() {
 
         {/* Results Count */}
         <div className="text-sm text-(--muted-foreground) mb-4">
-          🔍 Showing {filteredPrompts.length} of {experiments.length} experiments • Scroll horizontally to compare →
+          🔍 Showing {filteredExperiments.length} of {experiments.length} experiments • Scroll horizontally to compare →
         </div>
 
         {/* Prompt Cards - Horizontal Scrolling */}
         <div className="overflow-x-auto pb-4">
           <div className="flex gap-6 min-w-min">
-            {filteredPrompts.map((prompt, index) => (
+            {filteredExperiments.map((experiment, index) => (
               <div
-                key={prompt.id}
+                key={experiment.id}
                 style={{ animationDelay: `${index * 50}ms` }}
                 className="animate-[insightAppear_300ms_ease-out] shrink-0 w-[500px]"
               >
-                <PromptCard
-                  prompt={prompt}
+                <ExperimentCard
+                  experiment={experiment}
                   onView={handleView}
                   onClone={handleClone}
                 />
@@ -368,7 +368,7 @@ function ExperimentsPageContent() {
         </div>
 
         {/* Empty State */}
-        {filteredPrompts.length === 0 && (
+        {filteredExperiments.length === 0 && (
           <div className="text-center py-12 text-(--muted-foreground)">
             <p className="text-2xl mb-2">No experiments found</p>
             <p className="text-sm">Try adjusting your search or filters, or create a new experiment</p>
