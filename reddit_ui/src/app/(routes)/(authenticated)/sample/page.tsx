@@ -279,7 +279,7 @@ function SampleSelectorPageContent() {
                 </Button>
                 <Button
                   variant="primary"
-                  onClick={() => router.push(`/prompt-tester?scraper_cluster_id=${scraperClusterId}`)}
+                  onClick={() => router.push(`/experiments?scraper_cluster_id=${scraperClusterId}`)}
                   className="animate-pulse"
                 >
                   Go to Next Step

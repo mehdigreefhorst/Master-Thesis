@@ -53,12 +53,12 @@ function ViewerPageContent() {
         let finalScraperClusterId = scraperClusterId;
 
         // If experiment_id is provided, fetch cluster units from the experiment's sample
-        if (experimentId && scraperClusterId) {
+        if (experimentId && finalScraperClusterId) {
           console.log("Fetching data for experiment:", experimentId);
 
           
           // 1. Fetch the experiment to get sample_id and scraper_cluster_id
-          clusterUnits =  await experimentApi.getSampleUnits(authFetch, scraperClusterId);
+          clusterUnits =  await experimentApi.getSampleUnits(authFetch, finalScraperClusterId);
           
         }
         // Otherwise, fetch all cluster units for the scraper_cluster_id
@@ -402,8 +402,8 @@ function ViewerPageContent() {
 
         {/* Action Buttons */}
         <div className="flex gap-3 flex-wrap">
-          <Link href={"/prompt-tester"}>
-            <Button variant="primary">View Prompts & Edit</Button>
+          <Link href={`/experiments?${scraperClusterId}`}>
+            <Button variant="primary">View Experiments</Button>
           </Link>
 
           <Button

@@ -243,9 +243,9 @@ function ExperimentsPageContent() {
     // TODO: Open clone experiment dialog
   };
 
-  const handleNewPrompt = () => {
+  const handleNewExperiment = () => {
     if (scraperClusterId) {
-      router.push(`/prompt-tester?scraper_cluster_id=${scraperClusterId}`);
+      router.push(`/experiments/create?scraper_cluster_id=${scraperClusterId}`);
     }
   };
 
@@ -338,8 +338,8 @@ function ExperimentsPageContent() {
               ))}
             </select>
           </div>
-          <Button variant="primary" onClick={handleNewPrompt}>
-            + New Prompt
+          <Button variant="primary" onClick={handleNewExperiment}>
+            + New Experiment
           </Button>
         </div>
 
@@ -370,8 +370,11 @@ function ExperimentsPageContent() {
         {/* Empty State */}
         {filteredPrompts.length === 0 && (
           <div className="text-center py-12 text-(--muted-foreground)">
-            <p className="text-lg mb-2">No experiments found</p>
+            <p className="text-2xl mb-2">No experiments found</p>
             <p className="text-sm">Try adjusting your search or filters, or create a new experiment</p>
+            <Button variant="primary" px={"px-14"} py={"py-10"} className="mt-4" onClick={handleNewExperiment}>
+              + New Experiment
+            </Button>
           </div>
         )}
       </div>

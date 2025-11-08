@@ -36,7 +36,7 @@ const stageConfig = {
   },
   experiment: {
     name: 'EXPERIMENT',
-    route: '/prompt-tester',
+    route: '/experiments',
     description: 'Testing prompts and models',
   },
   cluster_filter: {
