@@ -8,6 +8,51 @@ import { ExperimentCard, ExperimentData } from '@/components/experiments/Experim
 import { experimentApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
 
+// Helper function to transform prevalence distribution to certainty distribution
+function transformCertaintyDistribution(
+  prevalenceDistribution: Record<string, number>
+): { certain: number; uncertain: number; split: number } {
+  // prevalenceDistribution is like {"0": 10, "1": 20, "2": 40, "3": 120}
+  // where the key is the number of runs that predicted true
+  // We need to convert this to certainty categories:
+  // - certain: All runs agree (e.g., "3" for 3 runs, or "0" for 3 runs all false)
+  // - uncertain: Majority agree (e.g., "2" for 3 runs)
+  // - split: No clear majority or equal split
+
+  const dist = prevalenceDistribution || {};
+  const total = Object.values(dist).reduce((sum, count) => sum + count, 0);
+
+  if (total === 0) {
+    return { certain: 0, uncertain: 0, split: 0 };
+  }
+
+  // Determine total number of runs per unit by finding the max key
+  const maxRuns = Math.max(...Object.keys(dist).map(k => parseInt(k)));
+
+  let certain = 0;
+  let uncertain = 0;
+  let split = 0;
+
+  Object.entries(dist).forEach(([runsTrue, count]) => {
+    const runs = parseInt(runsTrue);
+
+    // All runs agree (either all true or all false)
+    if (runs === maxRuns || runs === 0) {
+      certain += count;
+    }
+    // Majority agree (e.g., 2 out of 3)
+    else if (runs > maxRuns / 2) {
+      uncertain += count;
+    }
+    // Split or minority
+    else {
+      split += count;
+    }
+  });
+
+  return { certain, uncertain, split };
+}
+
 // Keep mock data as fallback
 const mockPrompts: ExperimentData[] = [
   {
@@ -207,16 +252,34 @@ function ExperimentsPageContent() {
         const data = await experimentApi.getExperiments(authFetch, scraperClusterId);
 
         // Transform backend data to ExperimentData format
-        const transformedData: ExperimentData[] = (data.experiments || data || []).map((exp: any) => ({
-          id: exp.id || exp.experiment_id,
-          name: exp.name || `Experiment ${exp.id?.substring(0, 8)}`,
-          model: exp.model || 'Unknown',
-          created: exp.created_at || exp.created || new Date().toISOString(),
-          totalSamples: exp.total_samples || 0,
-          overallAccuracy: exp.overall_accuracy || 0,
-          overallConsistency: exp.overall_kappa || 0,
-          labelMetrics: exp.label_metrics || []
-        }));
+        const transformedData: ExperimentData[] = (data.experiments || data || []).map((exp: any) => {
+          // Transform prediction_metrics to match frontend PredictionMetric interface
+          const predictionMetrics = (exp.prediction_metrics || []).map((pm: any) => ({
+            labelName: pm.prediction_category_name,
+            prevalence: pm.prevalence * 100, // Convert to percentage
+            prevalenceCount: pm.prevalence_count,
+            totalSamples: pm.total_samples,
+            accuracy: pm.accuracy * 100, // Convert to percentage
+            certaintyDistribution: transformCertaintyDistribution(pm.prevelance_distribution),
+            confusionMatrix: {
+              tp: pm.confusion_matrix?.tp || 0,
+              fp: pm.confusion_matrix?.fp || 0,
+              fn: pm.confusion_matrix?.fn || 0,
+              tn: pm.confusion_matrix?.tn || 0
+            }
+          }));
+
+          return {
+            id: exp.id,
+            name: exp.name,
+            model: exp.model,
+            created: new Date(exp.created).toLocaleDateString(),
+            totalSamples: exp.total_samples,
+            overallAccuracy: exp.overall_accuracy * 100, // Convert to percentage
+            overallKappa: exp.overall_kappa * 100, // Convert to percentage
+            predictionMetrics
+          };
+        });
 
         setExperiments(transformedData);
       } catch (err) {

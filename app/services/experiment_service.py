@@ -141,6 +141,7 @@ class ExperimentService:
                                                          name=f"{experiment.model} V{index}",
                                                          model=experiment.model,
                                                          created=experiment.created_at,
+                                                         total_samples=sample_entity.sample_size,
                                                          overall_accuracy=overall_accuracy,
                                                          overall_kappa=overall_kappa,
                                                          prediction_metrics=prediction_metrics)
@@ -157,7 +158,8 @@ class ExperimentService:
             combined_accuracy += prediction_metric.accuracy * prediction_metric.prevalence_count
         
         combined_prevalance = sum([prediction_metric.prevalence_count for prediction_metric in prediction_metrics])
-        combined_accuracy /= combined_prevalance
+        if combined_prevalance:
+            combined_accuracy /= combined_prevalance
         return combined_accuracy
     
 
@@ -169,7 +171,8 @@ class ExperimentService:
             combined_kappa += prediction_metric.kappa * prediction_metric.prevalence_count
         
         combined_prevalance = sum([prediction_metric.prevalence_count for prediction_metric in prediction_metrics])
-        combined_kappa /= combined_prevalance
+        if combined_prevalance:
+            combined_kappa /= combined_prevalance
         return combined_kappa
     
     
@@ -201,7 +204,7 @@ class ExperimentService:
         """
         total_times_predicted = 0
         for runs_predicted_true_count, occurences in prediction_result.prevelance_distribution.items():
-            total_times_predicted += runs_predicted_true_count * occurences
+            total_times_predicted += int(runs_predicted_true_count) * int(occurences)
         
         return total_times_predicted
 
@@ -219,7 +222,6 @@ class ExperimentService:
         
         confusion_matrix = ExperimentService.calculate_confusion_matrix(prediction_result=prediction_result,
                                                                         user_threshold=user_threshold,
-                                                                        sample_size=sample_entity.sample_size,
         )
                                                
         prediction_metric = PredictionMetric(prediction_category_name=prediction_result_variable_name, 
