@@ -10,6 +10,7 @@ from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.requests.cluster_prep_requests import ScraperClusterId
 from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, GetExperiments, GetSampleUnits, ParsePrompt, ParseRawPrompt
+from app.responses.get_experiments_response import GetExperimentsResponse
 from app.services.experiment_service import ExperimentService
 from app.utils.api_validation import validate_request_body, validate_query_params
 from app.utils.llm_helper import LlmHelper
@@ -21,7 +22,7 @@ experiment_bp = Blueprint("experiment", __name__, url_prefix="/experiment")
 @experiment_bp.route("/", methods=["GET"])
 @validate_query_params(GetExperiments)
 @jwt_required()
-def get_experiment_instances(query: GetExperiments):
+def get_experiment_instances(query: GetExperiments) -> GetExperimentsResponse:
     user_id = get_jwt_identity()
     current_user = get_user_repository().find_by_id(user_id)
     if not current_user:
@@ -44,7 +45,9 @@ def get_experiment_instances(query: GetExperiments):
         
     experiment_entities = get_experiment_repository().find(filter)
 
-    returnable_instances = [experiment.model_dump() for experiment in experiment_entities]
+    
+
+    returnable_instances = ExperimentService.convert_experiment_entities_for_user_interface(experiment_entities)
     return jsonify(returnable_instances), 200
 
 

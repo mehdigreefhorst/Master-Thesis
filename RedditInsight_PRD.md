@@ -732,3 +732,20 @@ Define Page → [Submit Keywords] → Scraping Progress Page (auto-navigate)
 ## Prompt variations to for classification
 https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/long-context-tips
 Use XML tags to wrap the variables for example <reddit_message_to_evaluate>I hate fishes in the water</reddit_message_to_evaluate>
+
+
+### Step experiments from GET to user interface update
+  Todos
+  ☐ Add user-configurable threshold setting for prediction certainty (e.g., 2/3, 3/5)
+  ☐ Create backend endpoint to calculate experiment metrics with configurable threshold
+  ☐ Add utility function to calculate confusion matrix from prevalence_dict and ground_truth
+  ☐ Add utility function to calculate accuracy from confusion matrix
+  ☐ Add utility function to calculate prevalence from ground_truth data
+  ☐ Add utility function to transform prevalence_dict into certainty distribution based on threshold
+  ☐ Update ExperimentEntity to store calculated metrics (optional caching)
+  ☐ Create GET /experiments/:id/metrics endpoint with threshold parameter
+  ☐ Update frontend ExperimentData interface to match new backend response
+  ☐ Add threshold input field to frontend experiments page
+  ☐ Update API call to pass threshold parameter to backend
+  ☐ Update CertaintyBar component to handle variable runs_per_unit
+  ☐ Test end-to-end flow with different threshold values

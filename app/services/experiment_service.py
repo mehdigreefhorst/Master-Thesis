@@ -6,6 +6,7 @@ from app.database.entities.cluster_unit_entity import ClusterUnitEntityPredicted
 from app.database import get_cluster_unit_repository, get_experiment_repository
 from app.database.entities.experiment_entity import AggregateResult, ExperimentEntity, PredictionResult
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
+from app.responses.get_experiments_response import GetExperimentsResponse
 from app.utils.llm_helper import LlmHelper
 from collections import defaultdict
 
@@ -106,6 +107,33 @@ class ExperimentService:
             final_reddit_message=cluster_unit_entity.text)
 
         return formatted_prompt
+    
+
+    @staticmethod
+    def convert_experiment_entities_for_user_interface(experiment_entities: List[ExperimentEntity]) -> List[GetExperimentsResponse]:
+        returnable_experiments = []
+        sorted_experiment_entities = sorted(experiment_entities, key=lambda x: x.created_at, reverse=True)
+
+        for index, experiment in enumerate(sorted_experiment_entities):
+            overall_accuracy = ExperimentService.calculate_overal_accuracy(experiment)
+            overall_consistency = ExperimentService.calculate_overall_consistency(experiment)
+            prediction_metric = ExperimentService.calcualte_prediction_metric(experiment)
+            #:TODO Fix that I keep track of what version of prompt I am using
+            experiment_response = GetExperimentsResponse(id=experiment.id,
+                                                         name=f"{experiment.model} V{index}",
+                                                         model=experiment.model,
+                                                         created=experiment.created_at,
+                                                         overall_accuracy=overall_accuracy,
+                                                         overall_consistency=overall_consistency,
+                                                         prediction_metric=prediction_metric)
+            
+            returnable_experiments.append(experiment_response)
+
+        return [experiment.model_dump() for experiment in returnable_experiments]
+    
+    @staticmethod
+    def calculate_overal_accuracy(experiment_entity: ExperimentEntity):
+        pass
 
 
 # Test function to verify the prediction workflow
