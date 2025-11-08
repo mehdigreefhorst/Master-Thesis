@@ -63,7 +63,7 @@ export default function OverviewPage() {
     <div className="p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header with CTA */}
-        <div className="mb-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 animate-[fadeInDown_0.5s_ease-out]">
+        <div className="mb-6 p-6 bg-linear-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 animate-[fadeInDown_0.5s_ease-out]">
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-semibold text-gray-800 mb-1">
