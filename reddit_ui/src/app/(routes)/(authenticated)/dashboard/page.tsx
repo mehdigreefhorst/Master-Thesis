@@ -262,7 +262,7 @@ export default function DashboardPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="p-6 min-h-screen bg-[var(--background)]">
+      <div className="p-6 min-h-screen bg-background">
         <div className="max-w-[1600px] mx-auto">
           <Card className="p-8 text-center">
             <div className="animate-pulse">
@@ -278,7 +278,7 @@ export default function DashboardPage() {
   // Error state
   if (error || !clusterData) {
     return (
-      <div className="p-6 min-h-screen bg-[var(--background)]">
+      <div className="p-6 min-h-screen bg-background">
         <div className="max-w-[1600px] mx-auto">
           <Card className="p-8 bg-red-50 border-red-200">
             <p className="text-red-600 text-center">{error || 'Failed to load cluster data'}</p>
@@ -308,11 +308,11 @@ export default function DashboardPage() {
   });
 
   return (
-    <div className="p-6 min-h-screen bg-[var(--background)]">
+    <div className="p-6 min-h-screen bg-background">
       <div className="max-w-[1600px] mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-6 animate-fadeInDown">
-          <h1 className="text-4xl font-bold text-[var(--foreground)]">Pipeline Dashboard</h1>
+          <h1 className="text-4xl font-bold text-foreground">Pipeline Dashboard</h1>
           <Button variant="secondary" onClick={() => router.push('/overview')}>
             ← Back to Overview
           </Button>
@@ -322,19 +322,19 @@ export default function DashboardPage() {
         <Card className="mb-8 p-6 animate-fadeIn">
           <div className="space-y-2">
             <div>
-              <span className="font-semibold text-[var(--foreground)]">Research Project: </span>
-              <span className="text-[var(--muted-foreground)]">
+              <span className="font-semibold text-foreground">Research Project: </span>
+              <span className="text-(--muted-foreground)">
                 {clusterData.problem_exporation_description || 'Not specified'}
               </span>
             </div>
             <div>
-              <span className="font-semibold text-[var(--foreground)]">Target Audience: </span>
-              <span className="text-[var(--muted-foreground)]">
+              <span className="font-semibold text-foreground">Target Audience: </span>
+              <span className="text-(--muted-foreground)">
                 {clusterData.target_audience || 'Not specified'}
               </span>
             </div>
             <div>
-              <span className="font-semibold text-[var(--foreground)]">Cluster ID: </span>
+              <span className="font-semibold text-foreground">Cluster ID: </span>
               <span className="text-(--muted-foreground) font-mono text-sm">{clusterData.id}</span>
             </div>
           </div>
@@ -362,7 +362,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Description */}
-              <p className="text-sm text-(--muted-foreground) mb-4 border-b border-[var(--border)] pb-3">
+              <p className="text-sm text-(--muted-foreground) mb-4 border-b border-(--border) pb-3">
                 {stage.description}
               </p>
 
@@ -370,8 +370,8 @@ export default function DashboardPage() {
               <div className="space-y-3 mb-6 min-h-[180px]">
                 {stage.metrics.map((metric, idx) => (
                   <div key={idx} className="text-sm">
-                    <span className="font-semibold text-[var(--foreground)]">{metric.label}: </span>
-                    <span className="text-[var(--muted-foreground)] whitespace-pre-line">{metric.value}</span>
+                    <span className="font-semibold text-foreground">{metric.label}: </span>
+                    <span className="text-(--muted-foreground) whitespace-pre-line">{metric.value}</span>
                   </div>
                 ))}
               </div>
