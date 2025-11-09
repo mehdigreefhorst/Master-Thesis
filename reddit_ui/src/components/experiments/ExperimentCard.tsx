@@ -14,6 +14,7 @@ export interface ExperimentData {
   overallAccuracy: number;
   overallKappa: number;
   predictionMetrics: PredictionMetric[];
+  runsPerUnit: 1 | 2 | 3 | 4 | 5
 }
 
 interface ExperimentCardProps {
@@ -87,7 +88,7 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
       {/* Expandable Label Metrics */}
       {isExpanded && (
         <div className="mt-3 pt-3 border-t border-(--border) animate-[panelExpand_300ms_ease-out]">
-          <PredictionMetricVisualization metrics={experiment.predictionMetrics} />
+          <PredictionMetricVisualization metrics={experiment.predictionMetrics} runsPerUnit={experiment.runsPerUnit}/>
         </div>
       )}
     </Card>

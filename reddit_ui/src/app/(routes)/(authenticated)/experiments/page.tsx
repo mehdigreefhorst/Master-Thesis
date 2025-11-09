@@ -9,51 +9,6 @@ import { experimentApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
 import { HeaderStep } from '@/components/layout/HeaderStep';
 
-// Helper function to transform prevalence distribution to certainty distribution
-function transformCertaintyDistribution(
-  prevalenceDistribution: Record<string, number>
-): { certain: number; uncertain: number; split: number } {
-  // prevalenceDistribution is like {"0": 10, "1": 20, "2": 40, "3": 120}
-  // where the key is the number of runs that predicted true
-  // We need to convert this to certainty categories:
-  // - certain: All runs agree (e.g., "3" for 3 runs, or "0" for 3 runs all false)
-  // - uncertain: Majority agree (e.g., "2" for 3 runs)
-  // - split: No clear majority or equal split
-
-  const dist = prevalenceDistribution || {};
-  const total = Object.values(dist).reduce((sum, count) => sum + count, 0);
-
-  if (total === 0) {
-    return { certain: 0, uncertain: 0, split: 0 };
-  }
-
-  // Determine total number of runs per unit by finding the max key
-  const maxRuns = Math.max(...Object.keys(dist).map(k => parseInt(k)));
-
-  let certain = 0;
-  let uncertain = 0;
-  let split = 0;
-
-  Object.entries(dist).forEach(([runsTrue, count]) => {
-    const runs = parseInt(runsTrue);
-
-    // All runs agree (either all true or all false)
-    if (runs === maxRuns || runs === 0) {
-      certain += count;
-    }
-    // Majority agree (e.g., 2 out of 3)
-    else if (runs > maxRuns / 2) {
-      uncertain += count;
-    }
-    // Split or minority
-    else {
-      split += count;
-    }
-  });
-
-  return { certain, uncertain, split };
-}
-
 // Keep mock data as fallback
 const mockPrompts: ExperimentData[] = [
   {
@@ -261,7 +216,7 @@ function ExperimentsPageContent() {
             prevalenceCount: pm.prevalence_count,
             totalSamples: pm.total_samples,
             accuracy: pm.accuracy * 100, // Convert to percentage
-            certaintyDistribution: transformCertaintyDistribution(pm.prevelance_distribution),
+            certaintyDistribution:pm.prevelance_distribution,
             confusionMatrix: {
               tp: pm.confusion_matrix?.tp || 0,
               fp: pm.confusion_matrix?.fp || 0,
@@ -278,7 +233,8 @@ function ExperimentsPageContent() {
             totalSamples: exp.total_samples,
             overallAccuracy: exp.overall_accuracy * 100, // Convert to percentage
             overallKappa: exp.overall_kappa * 100, // Convert to percentage
-            predictionMetrics
+            predictionMetrics: predictionMetrics,
+            runsPerUnit: exp.runs_per_unit
           };
         });
 

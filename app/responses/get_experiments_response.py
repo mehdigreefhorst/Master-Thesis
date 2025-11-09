@@ -666,6 +666,7 @@ class GetExperimentsResponse(BaseModel):
     name: str
     model: str
     created: datetime
+    runs_per_unit: int
     total_samples: int
     overall_accuracy: float
     overall_kappa: float

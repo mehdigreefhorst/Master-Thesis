@@ -144,7 +144,8 @@ class ExperimentService:
                                                          total_samples=sample_entity.sample_size,
                                                          overall_accuracy=overall_accuracy,
                                                          overall_kappa=overall_kappa,
-                                                         prediction_metrics=prediction_metrics)
+                                                         prediction_metrics=prediction_metrics,
+                                                         runs_per_unit=experiment.runs_per_unit)
             
             returnable_experiments.append(experiment_response)
         

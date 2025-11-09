@@ -8,11 +8,7 @@ export interface PredictionMetric {
   prevalenceCount: number;
   totalSamples: number;
   accuracy: number;
-  certaintyDistribution: {
-    certain: number;
-    uncertain: number;
-    split: number;
-  };
+  certaintyDistribution: Record<1 | 2 | 3 | 4 | 5, number>;
   confusionMatrix: {
     tp: number;
     fp: number;
@@ -23,11 +19,13 @@ export interface PredictionMetric {
 
 interface PredictionMetricVisualizationProps {
   metrics: PredictionMetric[];
+  runsPerUnit: 1 | 2 | 3 | 4 | 5;
   className?: string;
 }
 
 export const PredictionMetricVisualization: React.FC<PredictionMetricVisualizationProps> = ({
   metrics,
+  runsPerUnit,
   className = ''
 }) => {
   return (
@@ -61,9 +59,8 @@ export const PredictionMetricVisualization: React.FC<PredictionMetricVisualizati
               <div>
                 <div className="text-(--muted-foreground) mb-1">Certainty:</div>
                 <CertaintyBar
-                  certain={metric.certaintyDistribution.certain}
-                  uncertain={metric.certaintyDistribution.uncertain}
-                  split={metric.certaintyDistribution.split}
+                  certaintyDistribution={metric.certaintyDistribution}
+                  runsPerUnit={runsPerUnit}
                   total={metric.prevalenceCount}
                 />
               </div>
@@ -84,9 +81,9 @@ export const PredictionMetricVisualization: React.FC<PredictionMetricVisualizati
       ))}
 
       <div className="text-[10px] text-(--muted-foreground) pt-2 border-t border-(--border)">
-        💡 Certainty: <span className="font-mono">▓</span> 3/3 runs agree •
-        <span className="font-mono">▒</span> 2/3 runs •
-        <span className="font-mono">░</span> split/uncertain
+        💡 Certainty: <span className="font-mono">▓</span> 5/{runsPerUnit} runs agree •
+        <span className="font-mono">▒</span> 3/{runsPerUnit} runs •
+        <span className="font-mono">░</span> split/uncertain {runsPerUnit} runs
       </div>
     </div>
   );
