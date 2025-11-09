@@ -54,6 +54,11 @@ export interface KeywordSearchObjective {
   keyword_subreddit_searches: Record<string, KeywordSearchSubreddit>;
 }
 
+export interface  KeywordSearches {
+  keyword_search_post_ids: Record<string, string[]>// # e.g. key = "problems around videos", value = ["post_id1", "post_id2", "post_id3", ...]
+
+
+}    
 export interface ScraperEntity {
   id: string;
   user_id: string;

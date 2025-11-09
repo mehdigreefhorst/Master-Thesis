@@ -3,7 +3,7 @@
  */
 
 import { useAuthFetch } from "@/utils/fetch";
-import type { ScraperClusterEntity, ScraperEntity } from "@/types/scraper-cluster";
+import type { KeywordSearches, ScraperClusterEntity, ScraperEntity } from "@/types/scraper-cluster";
 import { ScraperClusterTable } from "@/components/scraper";
 import { ClusterUnitEntity } from "@/types/cluster-unit";
 
@@ -267,6 +267,13 @@ export const scraperApi = {
         scraper_cluster_id: scraperClusterId
       }
     });
+    return await data.json()
+  },
+  async getKeywordSearches(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    scraper_cluster_id: string
+  ): Promise<KeywordSearches> {
+    const data = await authFetch(`/scraper/get_keyword_searches?scraper_cluster_id=${scraper_cluster_id}`);
     return await data.json()
   }
 };

@@ -10,8 +10,10 @@ import { KeywordMatrix } from '@/components/progress/KeywordMatrix';
 import { Button } from '@/components/ui/Button';
 import type { ScraperEntity, ScrapingProgressStats } from '@/types/scraper-cluster';
 import { HeaderStep } from '@/components/layout/HeaderStep';
-import { clusterApi, scraperApi } from '@/lib/api';
+import { clusterApi, scraperApi, scraperClusterApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
+import { Modal } from '@/components/ui/Modal';
+import { AsymptoticProgressBar } from '@/components/ui/AsymptoticProgressBar';
 
 export default function ScrapingProgressPage() {
   const searchParams = useSearchParams();
@@ -24,6 +26,8 @@ export default function ScrapingProgressPage() {
   const [error, setError] = useState<string | null>(null);
   const [startTime] = useState(new Date(Date.now() - 600000)); // Started 10 min ago
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [showPreparationModal, setShowPreparationModal] = useState(false);
+  const [isPreparingCluster, setIsPreparingCluster] = useState(false);
 
   // Fetch scraper data
   const fetchScraperData = async () => {
@@ -96,12 +100,55 @@ export default function ScrapingProgressPage() {
 
     try {
       setIsActionLoading(true);
+      setShowPreparationModal(true);
+      setIsPreparingCluster(true);
+
+      // Start cluster preparation
       await clusterApi.prepareCluster(authFetch, scraperClusterId);
-      router.push(`/sample?scraper_cluster_id=${scraperClusterId}`)
-      
+
+      // Poll for cluster preparation status
+      const checkClusterStatus = async () => {
+        try {
+          const scraperCluster = await scraperClusterApi.getScraperClusterById(authFetch, scraperClusterId);
+
+          // Check if cluster_prep stage is completed
+          if (scraperCluster.stages?.cluster_prep === 'completed') {
+            setIsPreparingCluster(false);
+            setShowPreparationModal(false);
+            router.push(`/sample?scraper_cluster_id=${scraperClusterId}`);
+            return true;
+          }
+          return false;
+        } catch (err) {
+          console.error('Error checking cluster status:', err);
+          return false;
+        }
+      };
+
+      // Poll every 2 seconds
+      const pollInterval = setInterval(async () => {
+        const isComplete = await checkClusterStatus();
+        if (isComplete) {
+          clearInterval(pollInterval);
+        }
+      }, 2000);
+
+      // Timeout after 2 minutes
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        if (isPreparingCluster) {
+          setError('Cluster preparation timed out. Please try again.');
+          setShowPreparationModal(false);
+          setIsPreparingCluster(false);
+          setIsActionLoading(false);
+        }
+      }, 120000);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to prepare the cluster');
-
+      setShowPreparationModal(false);
+      setIsPreparingCluster(false);
+      setIsActionLoading(false);
     }
   }
 
@@ -250,8 +297,13 @@ export default function ScrapingProgressPage() {
               {buttonConfig.text}
             </Button>
             {scraperData.status === 'completed' &&
-              <Button variant="primary" className='ml-4' disabled={scraperData.status !== 'completed'} onClick={handleContinueToAnalysis}>
-                Continue to Analysis →
+              <Button
+                variant="primary"
+                className='ml-4'
+                disabled={isActionLoading || scraperData.status !== 'completed'}
+                onClick={handleContinueToAnalysis}
+              >
+                {isActionLoading ? 'Preparing...' : 'Continue to Analysis →'}
               </Button>
             }
           
@@ -367,9 +419,35 @@ export default function ScrapingProgressPage() {
           subreddits={scraperData.subreddits}
           keywordSearchObjective={scraperData.keyword_search_objective}
         />
-
-        
       </div>
+
+      {/* Cluster Preparation Modal */}
+      <Modal isOpen={showPreparationModal} showCloseButton={false} blurBackground={true}>
+        <div className="text-center">
+          <div className="flex justify-center mb-6">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 border-t-4 border-t-transparent"></div>
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">
+            Preparing Cluster Data
+          </h3>
+          <p className="text-gray-600 mb-6">
+            Analyzing and organizing your scraped data for analysis...
+          </p>
+
+          {/* Asymptotic Progress Bar */}
+          <div className="mb-4">
+            <AsymptoticProgressBar
+              isActive={isPreparingCluster}
+              duration={60000}
+              maxProgress={95}
+            />
+          </div>
+
+          <p className="text-sm text-gray-500">
+            This may take a few moments. Please don't close this window.
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 }

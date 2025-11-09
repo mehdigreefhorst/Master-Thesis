@@ -8,6 +8,7 @@ from app.database import get_scraper_cluster_repository, get_scraper_repository,
 from app.database.entities.scraper_cluster_entity import ScraperClusterEntity
 from app.requests.scraping_commands import ScraperClusterId, ScrapingId
 from app.requests.scraper_requests import CreateScraperRequest, GetScraper
+from app.responses.get_keyword_searches import GetKeywordSearches
 from app.responses.reddit_post_comments_response import RedditResponse
 from app.services.scraper_service import ScraperService
 
@@ -138,5 +139,28 @@ def start_scraper(body: ScraperClusterId):
     get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
     return jsonify(scraper_response.model_dump()), 200
     return jsonify(message="successfully scraped the scraper instance on reddit")
+ 
 
+@scraper_bp.route("/get_keyword_searches", methods=["GET"])
+@validate_query_params(ScraperClusterId)
+@jwt_required()
+def get_keyword_searches(query: ScraperClusterId) -> GetKeywordSearches:
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
     
+    scraper_cluster_entity = get_scraper_cluster_repository().find_by_id_and_user(user_id, query.scraper_cluster_id)
+
+    if not scraper_cluster_entity:
+        return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {query.scraper_cluster_id}"), 400
+    
+    if not scraper_cluster_entity.scraper_entity_id:
+        return jsonify(message="scraper entity has not been created "), 409
+    
+    scraper_entity = get_scraper_repository().find_by_id_and_user(user_id, scraper_cluster_entity.scraper_entity_id)
+
+    if not scraper_entity:
+        return jsonify(message="scraper entity is not findable"), 409
+    
+    return jsonify(ScraperService.get_all_post_ids_for_keyword_searches(scraper_entity).model_dump()), 200

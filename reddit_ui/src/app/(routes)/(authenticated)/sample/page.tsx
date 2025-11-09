@@ -7,9 +7,11 @@ import type { ClusterUnitEntity } from '@/types/cluster-unit';
 import { VirtualizedHorizontalGrid } from '@/components/sample/VirtualizedHorizontalGrid';
 import { SelectionCounter } from '@/components/sample/SelectionCounter';
 import { SubredditFilter } from '@/components/sample/SubredditFilter';
+import { KeywordFilter } from '@/components/sample/KeywordFilter';
 import { Button } from '@/components/ui/Button';
-import { clusterApi, experimentApi } from '@/lib/api';
+import { clusterApi, experimentApi, scraperApi } from '@/lib/api';
 import { HeaderStep } from '@/components/layout/HeaderStep';
+import type { KeywordSearches } from '@/types/scraper-cluster';
 
 interface GetClusterUnitsResponse {
   cluster_unit_entities: ClusterUnitEntity[];
@@ -24,11 +26,15 @@ function SampleSelectorPageContent() {
   const [sample, setSample] = useState<ClusterUnitEntity[]>([]);
   const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
   const [selectedSubreddits, setSelectedSubreddits] = useState<Set<string>>(new Set());
+  const [selectedKeywords, setSelectedKeywords] = useState<Set<string>>(new Set());
+  const [keywordSearches, setKeywordSearches] = useState<KeywordSearches | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSampleModal, setShowSampleModal] = useState(false);
   const [sampleSize, setSampleSize] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasInitializedSubreddits, setHasInitializedSubreddits] = useState(false);
+  const [hasInitializedKeywords, setHasInitializedKeywords] = useState(false);
 
   const scraperClusterId = searchParams.get('scraper_cluster_id');
   const sampleId = searchParams.get('sample_id');
@@ -40,20 +46,81 @@ function SampleSelectorPageContent() {
     return Array.from(subreddits).sort();
   }, [posts]);
 
-  // Initialize selected subreddits when posts load (select all by default)
-  useEffect(() => {
-    if (posts.length > 0 && selectedSubreddits.size === 0) {
-      setSelectedSubreddits(new Set(uniqueSubreddits));
-    }
-  }, [posts, uniqueSubreddits, selectedSubreddits.size]);
+  // Extract unique keywords from keyword searches
+  const uniqueKeywords = useMemo(() => {
+    if (!keywordSearches) return [];
+    return Object.keys(keywordSearches.keyword_search_post_ids).sort();
+  }, [keywordSearches]);
 
-  // Filter posts by selected subreddits
-  const filteredPosts = useMemo(() => {
-    if (selectedSubreddits.size === 0 || selectedSubreddits.size === uniqueSubreddits.length) {
-      return posts; // Show all if none selected or all selected
+  // Initialize selected subreddits when posts load (select all by default) - ONLY ONCE
+  useEffect(() => {
+    if (posts.length > 0 && !hasInitializedSubreddits && selectedSubreddits.size === 0) {
+      setSelectedSubreddits(new Set(uniqueSubreddits));
+      setHasInitializedSubreddits(true);
     }
-    return posts.filter(post => selectedSubreddits.has(post.subreddit));
-  }, [posts, selectedSubreddits, uniqueSubreddits.length]);
+  }, [posts, uniqueSubreddits, selectedSubreddits.size, hasInitializedSubreddits]);
+
+  // Initialize selected keywords when keyword searches load (select all by default) - ONLY ONCE
+  useEffect(() => {
+    if (uniqueKeywords.length > 0 && !hasInitializedKeywords && selectedKeywords.size === 0) {
+      setSelectedKeywords(new Set(uniqueKeywords));
+      setHasInitializedKeywords(true);
+    }
+  }, [uniqueKeywords, selectedKeywords.size, hasInitializedKeywords]);
+
+  // Filter posts by selected subreddits and keywords
+  const filteredPosts = useMemo(() => {
+    let filtered = posts;
+
+    // Filter by subreddits - if none selected, show nothing
+    if (selectedSubreddits.size === 0) {
+      return [];
+    } else if (selectedSubreddits.size < uniqueSubreddits.length) {
+      filtered = filtered.filter(post => selectedSubreddits.has(post.subreddit));
+    }
+
+    // Filter by keywords - only show posts that match selected keyword searches
+    // If none selected, show nothing
+    if (keywordSearches) {
+      if (selectedKeywords.size === 0) {
+        return [];
+      } else if (selectedKeywords.size < uniqueKeywords.length) {
+        const allowedPostIds = new Set<string>();
+
+        // Collect all post IDs from selected keywords
+        selectedKeywords.forEach(keyword => {
+          const postIds = keywordSearches.keyword_search_post_ids[keyword];
+          if (postIds) {
+            postIds.forEach(postId => allowedPostIds.add(postId));
+          }
+        });
+
+        // Filter posts to only include those in allowed post IDs
+        filtered = filtered.filter(post => allowedPostIds.has(post.post_id));
+      }
+    }
+
+    return filtered;
+  }, [posts, selectedSubreddits, uniqueSubreddits.length, selectedKeywords, uniqueKeywords.length, keywordSearches]);
+
+  // Fetch keyword searches on mount
+  useEffect(() => {
+    async function fetchKeywordSearches() {
+      if (!scraperClusterId) return;
+
+      try {
+        const data = await scraperApi.getKeywordSearches(authFetch, scraperClusterId);
+        // The response is a single GetKeywordSearches object
+        if (data?.keyword_search_post_ids) {
+          setKeywordSearches(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch keyword searches:', err);
+      }
+    }
+
+    fetchKeywordSearches();
+  }, [scraperClusterId, authFetch]);
 
   // Fetch cluster units on mount
   useEffect(() => {
@@ -203,6 +270,27 @@ function SampleSelectorPageContent() {
 
   const handleClearAllSubreddits = useCallback(() => {
     setSelectedSubreddits(new Set());
+  }, []);
+
+  // Keyword filter handlers
+  const handleToggleKeyword = useCallback((keyword: string) => {
+    setSelectedKeywords(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(keyword)) {
+        newSet.delete(keyword);
+      } else {
+        newSet.add(keyword);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleSelectAllKeywords = useCallback(() => {
+    setSelectedKeywords(new Set(uniqueKeywords));
+  }, [uniqueKeywords]);
+
+  const handleClearAllKeywords = useCallback(() => {
+    setSelectedKeywords(new Set());
   }, []);
 
   // Loading state
@@ -376,6 +464,15 @@ function SampleSelectorPageContent() {
                 onSelectAll={handleSelectAllSubreddits}
                 onClearAll={handleClearAllSubreddits}
               />
+              {uniqueKeywords.length > 0 && (
+                <KeywordFilter
+                  keywords={uniqueKeywords}
+                  selectedKeywords={selectedKeywords}
+                  onToggleKeyword={handleToggleKeyword}
+                  onSelectAll={handleSelectAllKeywords}
+                  onClearAll={handleClearAllKeywords}
+                />
+              )}
               <div className="w-px h-8 bg-gray-300" />
               <Button
                 variant="secondary"
@@ -406,23 +503,75 @@ function SampleSelectorPageContent() {
         </div>
       </div>
 
-      {/* Main content: Virtualized horizontal scroll grid */}
-      <div className="py-12">
-        <VirtualizedHorizontalGrid
-          posts={filteredPosts}
-          selectedPosts={selectedPosts}
-          onToggleSelect={handleToggleSelect}
-        />
-      </div>
+      {/* Main content: Virtualized horizontal scroll grid or empty state */}
+      {filteredPosts.length === 0 ? (
+        <div className="min-h-[400px] flex items-center justify-center p-8">
+          <div className="max-w-md w-full bg-white border-2 border-orange-200 rounded-xl p-8 text-center">
+            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg
+                className="w-8 h-8 text-orange-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">No Posts Match Filters</h2>
+            <p className="text-gray-600 mb-4">
+              {selectedSubreddits.size === 0 && selectedKeywords.size === 0
+                ? 'Please select at least one subreddit and one keyword to view posts.'
+                : selectedSubreddits.size === 0
+                ? 'Please select at least one subreddit to view posts.'
+                : selectedKeywords.size === 0
+                ? 'Please select at least one keyword to view posts.'
+                : 'No posts match your current filter selection. Try adjusting your filters.'}
+            </p>
+            <div className="flex gap-2 justify-center">
+              {selectedSubreddits.size === 0 && (
+                <button
+                  onClick={handleSelectAllSubreddits}
+                  className="px-4 py-2 text-sm font-medium text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors"
+                >
+                  Select All Subreddits
+                </button>
+              )}
+              {selectedKeywords.size === 0 && uniqueKeywords.length > 0 && (
+                <button
+                  onClick={handleSelectAllKeywords}
+                  className="px-4 py-2 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                >
+                  Select All Keywords
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="py-12">
+          <VirtualizedHorizontalGrid
+            posts={filteredPosts}
+            selectedPosts={selectedPosts}
+            onToggleSelect={handleToggleSelect}
+          />
+        </div>
+      )}
 
       {/* Help text */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-10">
-        <div className="bg-white border border-gray-200 rounded-lg px-4 py-2 shadow-lg">
-          <p className="text-sm text-gray-600">
-            <span className="font-medium">Tip:</span> Click on posts to select them, then click "Select Sample" to continue
-          </p>
+      {filteredPosts.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-10">
+          <div className="bg-white border border-gray-200 rounded-lg px-4 py-2 shadow-lg">
+            <p className="text-sm text-gray-600">
+              <span className="font-medium">Tip:</span> Click on posts to select them, then click "Select Sample" to continue
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Sample Size Modal */}
       {showSampleModal && (

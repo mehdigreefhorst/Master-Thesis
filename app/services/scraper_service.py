@@ -1,12 +1,14 @@
 
 
-from typing import List
+from collections import defaultdict
+from typing import Dict, List
 from flask import jsonify
 from pydantic import BaseModel
 from app.database.entities.base_entity import PyObjectId
 from app.database.entities.scraper_entity import KeyWordSearchObjective, ScraperEntity, KeyWordSearchSubreddit, KeyWordSearch
 from app.database import get_post_repository, get_scraper_repository
 from app.requests.scraper_requests import CreateScraperRequest
+from app.responses.get_keyword_searches import GetKeywordSearches
 from app.responses.reddit_post_comments_response import RedditPost
 from app.services.post_service import PostService
 from app.utils.reddit_scraper_api import RedditAPIManager
@@ -121,6 +123,15 @@ class ScraperService(BaseModel):
         get_scraper_repository().update(scraper_instance.id, {"status": scraper_instance.status})
 
         return ScrapingMessage(message="successfully scraped the scraper instance on reddit", processed=index+1, total=total_keyword_searches, paused=False)
+    
+    @staticmethod
+    def get_all_post_ids_for_keyword_searches(scraper_instance: ScraperEntity) -> GetKeywordSearches:
+        """retrieves a dictionary for keyword searches and the associated"""
+        keywords_post_id_dict: Dict[str, List] = defaultdict(list)
+        for subreddit, subreddit_keyword_search in scraper_instance.keyword_search_objective.keyword_subreddit_searches.items():
+            for keyword, keyword_search in subreddit_keyword_search.keyword_searches.items():
+                keywords_post_id_dict[keyword].extend(keyword_search.found_post_ids)
+        return GetKeywordSearches(keyword_search_post_ids=keywords_post_id_dict)
 
 
 
