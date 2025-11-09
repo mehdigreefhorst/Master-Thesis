@@ -93,7 +93,7 @@ export default function DashboardPage() {
         // Fetch scraper data if scraper_entity_id exists
         if (scraperCluster.scraper_entity_id) {
           try {
-            const scraper = await scraperApi.getScraperByClusterId(authFetch, scraperCluster.id)
+            const scraper = await scraperApi.getScraperByScraperClusterId(authFetch, scraperCluster.id)
             if (scraper) {
               setScraperData(scraper);
             }

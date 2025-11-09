@@ -16,6 +16,7 @@ export default function DefinePage() {
   const authFetch = useAuthFetch();
 
   const [currentStep, setCurrentStep] = useState<Step>('problem-definition');
+  const [scraperClusterId, setScraperClusterId] = useState<string>("");
   const [problemExplorationDescription, setProblemExplorationDescription] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
   const [subreddits, setSubreddits] = useState<string[]>([]);
@@ -33,31 +34,36 @@ export default function DefinePage() {
 
   // Fetch existing data if scraper_cluster_id is provided
   useEffect(() => {
-    const clusterId = searchParams.get('scraper_cluster_id');
-    if (!clusterId) return;
+    const searchParamScraperClusterId = searchParams.get('scraper_cluster_id');
+    if (!searchParamScraperClusterId) return;
+    
+    if (searchParamScraperClusterId) {
+      setScraperClusterId(searchParamScraperClusterId)
+    }
+
 
     const fetchData = async () => {
       setIsLoading(true);
       try {
         // Fetch scraper cluster data
-        const clusterData = await scraperClusterApi.getScraperClusterById(authFetch, clusterId);
-        console.log('Fetched cluster data:', clusterData);
-        console.log('Cluster stages:', clusterData.stages);
-        console.log('Scraping status:', clusterData.stages?.scraping);
+        const scraperClusterData = await scraperClusterApi.getScraperClusterById(authFetch, searchParamScraperClusterId);
+        console.log('Fetched cluster data:', scraperClusterData);
+        console.log('Cluster stages:', scraperClusterData.stages);
+        console.log('Scraping status:', scraperClusterData.stages?.scraping);
 
-        setScraperCluster(clusterData);
-        setProblemExplorationDescription(clusterData.problem_exporation_description || '');
-        setTargetAudience(clusterData.target_audience || '');
+        setScraperCluster(scraperClusterData);
+        setProblemExplorationDescription(scraperClusterData.problem_exporation_description || '');
+        setTargetAudience(scraperClusterData.target_audience || '');
 
-        if (clusterData.stages && clusterData.stages.scraping) {
-          setScrapingStatus(clusterData.stages.scraping);
+        if (scraperClusterData.stages && scraperClusterData.stages.scraping) {
+          setScrapingStatus(scraperClusterData.stages.scraping);
         } else {
-          console.error('stages or stages.scraping is undefined!', clusterData);
+          console.error('stages or stages.scraping is undefined!', scraperClusterData);
         }
 
         // Fetch scraper data if it exists
-        if (clusterData.scraper_entity_id) {
-          const scraperData = await scraperApi.getScraperByClusterId(authFetch, clusterId);
+        if (scraperClusterData.scraper_entity_id) {
+          const scraperData = await scraperApi.getScraperByScraperClusterId(authFetch, searchParamScraperClusterId);
           console.log('Fetched scraper data:', scraperData);
           setScraper(scraperData);
           setKeywords(scraperData.keywords || []);
@@ -144,12 +150,42 @@ export default function DefinePage() {
     }
   };
 
-  const handleStartScraping = async () => {
+  const handleUpdateScraperCluster = async () => {
     setIsCreating(true);
     setError(null);
-
+    
     try {
       // Step 1: Create scraper cluster with problem description and target audience
+      
+      const clusterData = await scraperClusterApi.updateScraperCluster(
+        authFetch,
+        scraperClusterId,
+        problemExplorationDescription,
+        targetAudience,
+        keywords,
+        subreddits
+      );
+
+      
+
+      // Step 3: Start scraping (optional - you can do this on a separate page)
+      // await scraperApi.startScraper(authFetch, scraperClusterId);
+
+      // Navigate to the scraping progress page or next step
+      router.push(`/scraping-progress?scraper_cluster_id=${scraperClusterId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create scraper');
+      setIsCreating(false);
+    }
+  };
+
+  const handlCreateScraperCluster = async () => {
+    setIsCreating(true);
+    setError(null);
+    
+    try {
+      // Step 1: Create scraper cluster with problem description and target audience
+      
       const clusterData = await scraperClusterApi.createScraperCluster(
         authFetch,
         problemExplorationDescription,
@@ -298,13 +334,18 @@ export default function DefinePage() {
         {/* Header with Progress */}
         <div className="mb-8">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Define Your Research
-            </h1>
-            <p className="text-muted-foreground">
-              {currentStep === 'problem-definition'
+            {scraperClusterId 
+            ? <HeaderStep title='Research Definition' subtitle={currentStep === 'problem-definition'
                 ? 'Step 1 of 2: Describe the problem and target audience'
-                : 'Step 2 of 2: Add keywords for Reddit search'}
+                : 'Step 2 of 2: Add keywords for Reddit search'}/> 
+            : <h1 className="text-3xl font-bold text-foreground mb-2">
+                Define Your Research
+              </h1>
+            }
+
+            
+            <p className="text-muted-foreground">
+              
             </p>
           </div>
 
@@ -518,11 +559,12 @@ export default function DefinePage() {
               <Button onClick={handleBackToProblem} variant="secondary">
                 ← Back
               </Button>
+              
               <Button
-                onClick={handleStartScraping}
+                onClick={scraperClusterId ? handleUpdateScraperCluster : handlCreateScraperCluster}
                 disabled={keywords.length === 0 || isCreating}
               >
-                {isCreating ? 'Creating...' : 'Start Scraping'}
+                {isCreating ? (scraperClusterId ? 'Updating...' : 'Creating...' ) : (scraperClusterId ? 'Update Scraper Cluster' : 'Create Scraper Cluster')}
               </Button>
             </div>
           </div>

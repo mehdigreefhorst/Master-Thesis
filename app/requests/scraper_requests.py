@@ -19,3 +19,11 @@ class CreateScraperRequest(BaseModel):
 class CreateScraperClusterRequest(BaseModel):
     problem_exporation_description: str
     target_audience: str
+
+
+class UpdateScraperClusterRequest(BaseModel):
+    scraper_cluster_id: PyObjectId
+    problem_exporation_description: Optional[str] = None
+    target_audience: Optional[str] = None
+    keywords: Optional[List[str]] = None
+    subreddits:  Optional[List[str]] = None

@@ -150,6 +150,28 @@ export const scraperClusterApi = {
       }
     });
     return await data.json()
+  },
+  async updateScraperCluster(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    scraperClusterId: string,
+    problemExplorationDescription: string,
+    targetAudience: string,
+    keywords: string[],
+    subreddits: string[]
+
+  ):Promise<{ scraper_cluster_id: string }> {
+    const data =  await authFetch('/scraper_cluster/', {
+      method: 'PUT',
+      body: {
+        scraper_cluster_id:scraperClusterId,
+        problem_exporation_description: problemExplorationDescription,
+        target_audience: targetAudience,
+        keywords: keywords,
+        subreddits: subreddits
+      }
+    });
+    return await data.json() 
+    
   }
 };
 
@@ -172,7 +194,7 @@ export const scraperApi = {
    * Get scraper by scraper cluster ID
    * @returns Single scraper entity
    */
-  async getScraperByClusterId(
+  async getScraperByScraperClusterId(
     authFetch: ReturnType<typeof useAuthFetch>,
     scraperClusterId: string
   ): Promise<ScraperEntity> {

@@ -124,7 +124,7 @@ export const BatteryProgressTable: React.FC<BatteryProgressTableProps> = ({ clus
                   </td>
                   <td className="px-6 py-5 text-sm text-gray-800 font-medium" style={{ width: '250px' }}>
                     <div className="truncate" title={cluster.problem_exporation_description || cluster.target_audience || 'Untitled Project'}>
-                      {cluster.problem_exporation_description || cluster.target_audience || 'Untitled Project'}
+                      {cluster.target_audience && cluster.target_audience.substring(0, 20) + (cluster.target_audience.length > 20  ? "..." : "") || 'Untitled Project'}
                     </div>
                   </td>
                   <td className="px-4 py-5" colSpan={7}>
