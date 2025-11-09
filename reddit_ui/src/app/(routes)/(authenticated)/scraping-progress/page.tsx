@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ProgressBar } from '@/components/progress/ProgressBar';
 import { StatCard } from '@/components/progress/StatCard';
@@ -10,12 +10,13 @@ import { KeywordMatrix } from '@/components/progress/KeywordMatrix';
 import { Button } from '@/components/ui/Button';
 import type { ScraperEntity, ScrapingProgressStats } from '@/types/scraper-cluster';
 import { HeaderStep } from '@/components/layout/HeaderStep';
-import { scraperApi } from '@/lib/api';
+import { clusterApi, scraperApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
 
 export default function ScrapingProgressPage() {
   const searchParams = useSearchParams();
   const scraperClusterId = searchParams.get('scraper_cluster_id');
+  const router = useRouter()
   const authFetch = useAuthFetch();
 
   const [scraperData, setScraperData] = useState<ScraperEntity | null>(null);
@@ -34,7 +35,11 @@ export default function ScrapingProgressPage() {
 
     try {
       setLoading(true);
-      const data = await scraperApi.getScraperByScraperClusterId(authFetch, scraperClusterId);
+      const data: ScraperEntity = await scraperApi.getScraperByScraperClusterId(authFetch, scraperClusterId);
+      if (data?.error) {
+        setError(data.error)
+        return
+      }
       setScraperData(data);
       setError(null);
     } catch (err) {
@@ -86,6 +91,20 @@ export default function ScrapingProgressPage() {
     }
   };
 
+  const handleContinueToAnalysis = async () => {
+    if (!scraperClusterId) return;
+
+    try {
+      setIsActionLoading(true);
+      await clusterApi.prepareCluster(authFetch, scraperClusterId);
+      router.push(`/sample?scraper_cluster_id=${scraperClusterId}`)
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to prepare the cluster');
+
+    }
+  }
+
   // Loading state
   if (loading && !scraperData) {
     return (
@@ -107,7 +126,7 @@ export default function ScrapingProgressPage() {
       </div>
     );
   }
-
+  console.log("scraperData = ", scraperData)
   // No data state
   if (!scraperData) {
     return (
@@ -221,15 +240,27 @@ export default function ScrapingProgressPage() {
           title='Scraping Progress'
           subtitle='View, monitor, and control the scraper'
           children={
-            <Button
+              <div className="flex justify-end">
+                <Button
               variant={buttonConfig.variant}
               px='px-40'
               disabled={buttonConfig.disabled}
               onClick={buttonConfig.onClick}
             >
               {buttonConfig.text}
-            </Button>}
+            </Button>
+            {scraperData.status === 'completed' &&
+              <Button variant="primary" className='ml-4' disabled={scraperData.status !== 'completed'} onClick={handleContinueToAnalysis}>
+                Continue to Analysis →
+              </Button>
+            }
+          
+          
+            
+            </div>
+            }
           />
+        {/* Action Button */}
         
 
 
@@ -337,12 +368,7 @@ export default function ScrapingProgressPage() {
           keywordSearchObjective={scraperData.keyword_search_objective}
         />
 
-        {/* Action Button */}
-        <div className="flex justify-end">
-          <Button variant="primary" disabled={scraperData.status !== 'completed'}>
-            Continue to Analysis →
-          </Button>
-        </div>
+        
       </div>
     </div>
   );

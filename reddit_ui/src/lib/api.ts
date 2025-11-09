@@ -103,6 +103,19 @@ export const clusterApi = {
           "cluster_entity_id": cluster_entity_id,
           "ground_truth_category": groundTruthCategory,
           "ground_truth": groundTruth}})
+  },
+  async prepareCluster(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    scraper_cluster_id: string
+  ): Promise<ScraperClusterEntity[]> {
+    const data = await authFetch("/clustering/prepare_cluster",
+      {method: "POST",
+        body: {
+          scraper_cluster_id: scraper_cluster_id
+        }
+      }
+    );
+    return await data.json()
   }
 };
 

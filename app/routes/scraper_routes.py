@@ -29,9 +29,11 @@ def get_scraper_instance(query: GetScraper):
     # If scraper_cluster_id is provided, find scraper by cluster id
     if query.scraper_cluster_id:
         scraper_cluster_instance = get_scraper_cluster_repository().find_by_id_and_user(user_id, query.scraper_cluster_id)
+        if not scraper_cluster_instance:
+            return jsonify(error=f"ScraperCluster for scrapercluster id {query.scraper_cluster_id} not found"), 400
         scraper = get_scraper_repository().find_by_id_and_user(user_id, scraper_cluster_instance.scraper_entity_id)
         if not scraper:
-            return jsonify(error=f"Scraper for cluster id {query.scraper_cluster_id} not found"), 404
+            return jsonify(error=f"Scraper for scrapercluster id {query.scraper_cluster_id} not found"), 404
         return jsonify(scraper.model_dump()), 200
 
     # Otherwise, return all scrapers for the user
