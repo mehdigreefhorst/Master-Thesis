@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { clusterApi, experimentApi, scraperApi } from '@/lib/api';
 import { HeaderStep } from '@/components/layout/HeaderStep';
 import type { KeywordSearches } from '@/types/scraper-cluster';
+import { Modal } from '@/components/ui/Modal';
 
 interface GetClusterUnitsResponse {
   cluster_unit_entities: ClusterUnitEntity[];
@@ -25,6 +26,7 @@ function SampleSelectorPageContent() {
   const [posts, setPosts] = useState<ClusterUnitEntity[]>([]);
   const [sample, setSample] = useState<ClusterUnitEntity[]>([]);
   const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
+  const [maxSampleSize, setMaxSampleSize] = useState<number>(0);
   const [selectedSubreddits, setSelectedSubreddits] = useState<Set<string>>(new Set());
   const [selectedKeywords, setSelectedKeywords] = useState<Set<string>>(new Set());
   const [keywordSearches, setKeywordSearches] = useState<KeywordSearches | null>(null);
@@ -199,6 +201,17 @@ function SampleSelectorPageContent() {
       alert('Please select at least one post');
       return;
     }
+
+    // Calculate total number of comments across all selected posts
+    let totalComments = 0;
+    const selectedPostObjects = filteredPosts.filter(post => selectedPosts.has(post.id));
+
+    selectedPostObjects.forEach(post => {
+      // Add the number of comments for this post (default to 0 if null)
+      totalComments += post.total_nested_replies || 0;
+    });
+
+    setMaxSampleSize(totalComments);
     setShowSampleModal(true);
   };
 
@@ -215,8 +228,8 @@ function SampleSelectorPageContent() {
       return;
     }
 
-    if (sampleSizeNum > selectedPosts.size) {
-      alert(`Sample size cannot be larger than the number of selected posts (${selectedPosts.size})`);
+    if (sampleSizeNum > maxSampleSize) {
+      alert(`Sample size cannot be larger than the total number of comments (${maxSampleSize})`);
       return;
     }
 
@@ -574,34 +587,34 @@ function SampleSelectorPageContent() {
       )}
 
       {/* Sample Size Modal */}
-      {showSampleModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+      {/* Cluster Preparation Modal */}
+      <Modal isOpen={showSampleModal} showCloseButton={false} blurBackground={true}>
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
               Configure Sample Size
             </h2>
             <p className="text-gray-600 mb-6">
-              You have selected <span className="font-semibold text-gray-900">{selectedPosts.size}</span> posts.
+              You have selected <span className="font-semibold text-gray-900">{selectedPosts.size}</span> {selectedPosts.size === 1 ? 'post' : 'posts'} with a total of <span className="font-semibold text-gray-900">{maxSampleSize}</span> {maxSampleSize === 1 ? 'comment' : 'comments'}.
               Enter the sample size for your experiment.
             </p>
 
             <div className="mb-6">
               <label htmlFor="sampleSize" className="block text-sm font-medium text-gray-700 mb-2">
-                Sample Size
+                Sample Size (Number of Comments)
               </label>
               <input
                 id="sampleSize"
                 type="number"
                 min="1"
-                max={selectedPosts.size}
+                max={maxSampleSize}
                 value={sampleSize}
                 onChange={(e) => setSampleSize(e.target.value)}
-                placeholder={`Enter a number (max: ${selectedPosts.size})`}
+                placeholder={`Enter a number (max: ${maxSampleSize})`}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 disabled={isSubmitting}
               />
               <p className="mt-2 text-sm text-gray-500">
-                The sample will be randomly selected from your chosen posts.
+                The sample will be randomly selected from comments in your chosen posts.
               </p>
             </div>
 
@@ -626,9 +639,9 @@ function SampleSelectorPageContent() {
                 {isSubmitting ? 'Creating Sample...' : 'Create Sample'}
               </Button>
             </div>
-          </div>
         </div>
-      )}
+      </Modal>
+      
     </div>
   );
 }

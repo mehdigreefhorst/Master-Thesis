@@ -83,8 +83,10 @@ class ExperimentService:
     def create_prediction_counter_from_cluster_unit(cluster_unit_entity: ClusterUnitEntity, experiment_entity: ExperimentEntity) -> Dict[str, int]:
         """counts how often each of the classes in the prediction category are true accross the runs of the prediction. 
         Works in a way that allows for changing of the prediction category variables or naming"""
+        tokens_used = 0
         prediction_counter = defaultdict(int)
         for prediction_category in cluster_unit_entity.predicted_category[experiment_entity.id].predicted_categories:
+            prediction_category
             for variable_name in prediction_category.category_field_names(): 
                 print("variable_name = ", variable_name)
                 value = getattr(prediction_category, variable_name)
