@@ -130,7 +130,7 @@ class ExperimentService:
         """user threshold, is the minimum number of occurences out of the runs to be correct in order for the prediction to be accepted
         for example 2/3 runs need to be correct or 3/3 runs need to be correct. Or 3/5 depending on the runs taken. """
         returnable_experiments = []
-        sorted_experiment_entities = sorted(experiment_entities, key=lambda x: x.created_at, reverse=True)
+        sorted_experiment_entities = sorted(experiment_entities, key=lambda x: x.created_at, reverse=False)
 
         for index, experiment in enumerate(sorted_experiment_entities):
             prediction_metrics = ExperimentService.calculate_prediction_metrics(experiment, sample_entity, user_threshold)
@@ -147,6 +147,8 @@ class ExperimentService:
                                                          prediction_metrics=prediction_metrics)
             
             returnable_experiments.append(experiment_response)
+        
+        returnable_experiments = sorted(returnable_experiments, key=lambda x: x.created, reverse=True)
 
         return [experiment.model_dump() for experiment in returnable_experiments]
     

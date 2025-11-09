@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { ExperimentCard, ExperimentData } from '@/components/experiments/ExperimentCard';
 import { experimentApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
+import { HeaderStep } from '@/components/layout/HeaderStep';
 
 // Helper function to transform prevalence distribution to certainty distribution
 function transformCertaintyDistribution(
@@ -364,9 +365,10 @@ function ExperimentsPageContent() {
     <div className="p-8 animate-[pageLoad_400ms_ease-out]">
       <div className="max-w-[95vw] mx-auto">
         {/* Page Header */}
-        <PageHeader
-          title={`Experiments Dashboard ${scraperClusterId ? `(${scraperClusterId.substring(0, 8)}...)` : ''}`}
-          className="mb-6"
+
+        <HeaderStep 
+          title='Experiments Dashboard'
+          subtitle=''
         />
 
         {/* Error banner (if any, but still showing data) */}
@@ -460,6 +462,7 @@ export default function ExperimentsPage() {
         </div>
       </div>
     }>
+      
       <ExperimentsPageContent />
     </Suspense>
   );

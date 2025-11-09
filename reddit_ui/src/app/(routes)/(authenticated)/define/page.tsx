@@ -6,6 +6,7 @@ import { Button, Card, Input, Textarea, KeywordTag } from '@/components/ui';
 import { scraperClusterApi, scraperApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
 import type { ScraperClusterEntity, ScraperEntity, StatusType } from '@/types/scraper-cluster';
+import { HeaderStep } from '@/components/layout/HeaderStep';
 
 type Step = 'problem-definition' | 'keyword-generation';
 
@@ -181,15 +182,9 @@ export default function DefinePage() {
       <div className="min-h-screen p-8 bg-background animate-[pageLoad_400ms_ease-out]">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
+          <HeaderStep title='Research Definition' subtitle='View your research configuration'/>
           <div className="mb-8">
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-foreground mb-2">
-                Research Definition
-              </h1>
-              <p className="text-muted-foreground">
-                View your research configuration
-              </p>
-            </div>
+            
 
             {/* Status Badge and Back Button */}
             <div className="flex items-center justify-between">
@@ -205,9 +200,7 @@ export default function DefinePage() {
                   {scrapingStatus.charAt(0).toUpperCase() + scrapingStatus.slice(1)}
                 </span>
               </div>
-              <Button onClick={() => router.back()} variant="secondary" size="lg">
-                ← Go Back
-              </Button>
+              
             </div>
           </div>
 

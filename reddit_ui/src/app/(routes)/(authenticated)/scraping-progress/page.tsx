@@ -9,6 +9,7 @@ import { KeywordMatrix } from '@/components/progress/KeywordMatrix';
 import { ActivityLog, LogEntry } from '@/components/progress/ActivityLog';
 import { Button } from '@/components/ui/Button';
 import type { ScraperEntity, ScrapingProgressStats } from '@/types/scraper-cluster';
+import { HeaderStep } from '@/components/layout/HeaderStep';
 
 // Mock data for static demo
 const mockScraperData: ScraperEntity = {
@@ -140,24 +141,16 @@ export default function ScrapingProgressPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <Link
-              href="/overview"
-              className="text-sm text-gray-600 hover:text-gray-900 mb-2 inline-flex items-center gap-1"
-            >
-              ← Back to Overview
-            </Link>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <span className="animate-pulse">🔄</span>
-              Scraping in Progress
-            </h1>
-          </div>
-          <Button variant="secondary" disabled>
-            ⏸ Pause
-          </Button>
-        </div>
+        <HeaderStep 
+          title='Scraping in Progress' 
+          subtitle='View, monitor, pause the scraper' 
+          children={
+            <Button variant="secondary" px='px-40' disabled>
+              ⏸ Pause
+            </Button>}
+          />
+        
+
 
         {/* Overall Progress Card */}
         <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-8 border-2 border-blue-200 shadow-lg animate-[slideInDown_500ms_ease-out]">

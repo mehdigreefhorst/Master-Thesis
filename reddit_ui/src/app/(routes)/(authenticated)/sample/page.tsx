@@ -9,6 +9,7 @@ import { SelectionCounter } from '@/components/sample/SelectionCounter';
 import { SubredditFilter } from '@/components/sample/SubredditFilter';
 import { Button } from '@/components/ui/Button';
 import { clusterApi, experimentApi } from '@/lib/api';
+import { HeaderStep } from '@/components/layout/HeaderStep';
 
 interface GetClusterUnitsResponse {
   cluster_unit_entities: ClusterUnitEntity[];
@@ -493,6 +494,7 @@ export default function SampleSelectorPage() {
         </div>
       </div>
     }>
+
       <SampleSelectorPageContent />
     </Suspense>
   );

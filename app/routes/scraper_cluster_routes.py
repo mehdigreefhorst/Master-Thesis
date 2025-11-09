@@ -25,6 +25,7 @@ def get_scraper_cluster_instances():
     scraper_instances = get_scraper_cluster_repository().find_by_user_id(user_id)
 
     returnable_instances = [instance.model_dump() for instance in scraper_instances]
+    print("len(returnable_instances) = ", len(returnable_instances))
     return jsonify(returnable_instances), 200
 
 @scraper_cluster_bp.route("/<scraper_cluster_id>", methods=["GET"])
