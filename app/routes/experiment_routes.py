@@ -109,7 +109,8 @@ def create_experiment(body: CreateExperiment):
                                          runs_per_unit=body.runs_per_unit,
                                          reasoning_effort=body.reasoning_effort)
     if scraper_cluster_entity.stages.experiment == StatusType.Initialized:
-        scraper_cluster_entity.stages.experiment == StatusType.Ongoing
+        print("I am setting the status type to ongoing!")
+        scraper_cluster_entity.stages.experiment = StatusType.Ongoing
         get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
     get_experiment_repository().insert(experiment_entity)
 
