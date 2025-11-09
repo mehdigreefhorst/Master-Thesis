@@ -238,6 +238,23 @@ export const scraperApi = {
       }
     });
     return await data.json()
+  },
+
+  /**
+   * Pause scraping
+   * @returns Success message
+   */
+  async pauseScraper(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    scraperClusterId: string
+  ): Promise<{ message: string }> {
+    const data = await authFetch('/scraper/pause', {
+      method: 'PUT',
+      body: {
+        scraper_cluster_id: scraperClusterId
+      }
+    });
+    return await data.json()
   }
 };
 

@@ -1,97 +1,173 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ProgressBar } from '@/components/progress/ProgressBar';
 import { StatCard } from '@/components/progress/StatCard';
 import { SubredditProgressCard } from '@/components/progress/SubredditProgressCard';
 import { KeywordMatrix } from '@/components/progress/KeywordMatrix';
-import { ActivityLog, LogEntry } from '@/components/progress/ActivityLog';
 import { Button } from '@/components/ui/Button';
 import type { ScraperEntity, ScrapingProgressStats } from '@/types/scraper-cluster';
 import { HeaderStep } from '@/components/layout/HeaderStep';
-
-// Mock data for static demo
-const mockScraperData: ScraperEntity = {
-  id: '1',
-  user_id: 'user1',
-  keywords: ['pain points', 'frustration', 'struggling', 'need help', 'alternatives'],
-  subreddits: ['productivity', 'SaaS', 'Entrepreneur', 'startups'],
-  keyword_search_objective: {
-    keyword_subreddit_searches: {
-      productivity: {
-        subreddit: 'productivity',
-        keyword_searches: {
-          'pain points': { keyword: 'pain points', found_post_ids: ['1', '2', '3', '4', '5', '6', '7', '8'], status: 'done' },
-          'frustration': { keyword: 'frustration', found_post_ids: ['9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20'], status: 'done' },
-          'struggling': { keyword: 'struggling', found_post_ids: ['21', '22', '23', '24', '25', '26', '27'], status: 'done' },
-          'need help': { keyword: 'need help', found_post_ids: ['28', '29', '30', '31', '32'], status: 'done' },
-          'alternatives': { keyword: 'alternatives', found_post_ids: ['33', '34', '35'], status: 'done' },
-        },
-        status: 'done',
-      },
-      SaaS: {
-        subreddit: 'SaaS',
-        keyword_searches: {
-          'pain points': { keyword: 'pain points', found_post_ids: [], status: 'ongoing' },
-          'frustration': { keyword: 'frustration', found_post_ids: Array(15).fill('').map((_, i) => `saas-${i}`), status: 'done' },
-          'struggling': { keyword: 'struggling', found_post_ids: Array(13).fill('').map((_, i) => `saas-strug-${i}`), status: 'done' },
-          'need help': { keyword: 'need help', found_post_ids: Array(14).fill('').map((_, i) => `saas-help-${i}`), status: 'done' },
-          'alternatives': { keyword: 'alternatives', found_post_ids: [], status: 'pending' },
-        },
-        status: 'ongoing',
-      },
-      Entrepreneur: {
-        subreddit: 'Entrepreneur',
-        keyword_searches: {
-          'pain points': { keyword: 'pain points', found_post_ids: [], status: 'pending' },
-          'frustration': { keyword: 'frustration', found_post_ids: [], status: 'pending' },
-          'struggling': { keyword: 'struggling', found_post_ids: [], status: 'pending' },
-          'need help': { keyword: 'need help', found_post_ids: [], status: 'pending' },
-          'alternatives': { keyword: 'alternatives', found_post_ids: [], status: 'pending' },
-        },
-        status: 'pending',
-      },
-      startups: {
-        subreddit: 'startups',
-        keyword_searches: {
-          'pain points': { keyword: 'pain points', found_post_ids: [], status: 'pending' },
-          'frustration': { keyword: 'frustration', found_post_ids: [], status: 'pending' },
-          'struggling': { keyword: 'struggling', found_post_ids: [], status: 'pending' },
-          'need help': { keyword: 'need help', found_post_ids: [], status: 'pending' },
-          'alternatives': { keyword: 'alternatives', found_post_ids: [], status: 'pending' },
-        },
-        status: 'pending',
-      },
-    },
-  },
-  status: 'ongoing',
-  age: 'month',
-  filter: 'top',
-  posts_per_keyword: 30,
-};
-
-const mockLogs: LogEntry[] = [
-  { id: '1', timestamp: new Date(Date.now() - 600000), type: 'info', message: 'Started scraping process for 4 subreddits and 5 keywords' },
-  { id: '2', timestamp: new Date(Date.now() - 540000), type: 'info', message: 'Searching "pain points" in r/productivity...' },
-  { id: '3', timestamp: new Date(Date.now() - 480000), type: 'success', message: 'Completed keyword "pain points" in r/productivity (8 posts)' },
-  { id: '4', timestamp: new Date(Date.now() - 420000), type: 'info', message: 'Searching "frustration" in r/productivity...' },
-  { id: '5', timestamp: new Date(Date.now() - 360000), type: 'success', message: 'Completed keyword "frustration" in r/productivity (12 posts)' },
-  { id: '6', timestamp: new Date(Date.now() - 300000), type: 'success', message: 'Completed keyword "struggling" in r/productivity (7 posts)' },
-  { id: '7', timestamp: new Date(Date.now() - 240000), type: 'success', message: 'Completed keyword "need help" in r/productivity (5 posts)' },
-  { id: '8', timestamp: new Date(Date.now() - 180000), type: 'success', message: 'Completed keyword "alternatives" in r/productivity (3 posts)' },
-  { id: '9', timestamp: new Date(Date.now() - 120000), type: 'success', message: 'Completed r/productivity (35 total posts)' },
-  { id: '10', timestamp: new Date(Date.now() - 60000), type: 'info', message: 'Searching "frustration" in r/SaaS...' },
-  { id: '11', timestamp: new Date(Date.now() - 30000), type: 'success', message: 'Completed keyword "frustration" in r/SaaS (15 posts)' },
-  { id: '12', timestamp: new Date(Date.now() - 15000), type: 'success', message: 'Completed keyword "struggling" in r/SaaS (13 posts)' },
-  { id: '13', timestamp: new Date(Date.now() - 5000), type: 'success', message: 'Completed keyword "need help" in r/SaaS (14 posts)' },
-  { id: '14', timestamp: new Date(), type: 'info', message: 'Searching "pain points" in r/SaaS...' },
-];
+import { scraperApi } from '@/lib/api';
+import { useAuthFetch } from '@/utils/fetch';
 
 export default function ScrapingProgressPage() {
-  const [scraperData] = useState<ScraperEntity>(mockScraperData);
-  const [logs] = useState<LogEntry[]>(mockLogs);
+  const searchParams = useSearchParams();
+  const scraperClusterId = searchParams.get('scraper_cluster_id');
+  const authFetch = useAuthFetch();
+
+  const [scraperData, setScraperData] = useState<ScraperEntity | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [startTime] = useState(new Date(Date.now() - 600000)); // Started 10 min ago
+  const [isActionLoading, setIsActionLoading] = useState(false);
+
+  // Fetch scraper data
+  const fetchScraperData = async () => {
+    if (!scraperClusterId) {
+      setError('No scraper cluster ID provided');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const data = await scraperApi.getScraperByScraperClusterId(authFetch, scraperClusterId);
+      setScraperData(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch scraper data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial fetch on mount
+  useEffect(() => {
+    fetchScraperData();
+  }, [scraperClusterId]);
+
+  // Polling for real-time updates when status is ongoing
+  useEffect(() => {
+    if (scraperData?.status === 'ongoing') {
+      const interval = setInterval(fetchScraperData, 5000); // Poll every 5 seconds
+      return () => clearInterval(interval);
+    }
+  }, [scraperData?.status, scraperClusterId]);
+
+  // Handle button actions
+  const handleStartOrContinue = async () => {
+    if (!scraperClusterId) return;
+
+    try {
+      setIsActionLoading(true);
+      await scraperApi.startScraper(authFetch, scraperClusterId);
+      await fetchScraperData(); // Refresh data
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start scraper');
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handlePause = async () => {
+    if (!scraperClusterId) return;
+
+    try {
+      setIsActionLoading(true);
+      await scraperApi.pauseScraper(authFetch, scraperClusterId);
+      await fetchScraperData(); // Refresh data
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to pause scraper');
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  // Loading state
+  if (loading && !scraperData) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-xl font-semibold">Loading scraper data...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && !scraperData) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-xl font-semibold text-red-600">Error: {error}</div>
+        </div>
+      </div>
+    );
+  }
+
+  // No data state
+  if (!scraperData) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-xl font-semibold">No scraper data found</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Button configuration based on status
+  const getButtonConfig = () => {
+    switch (scraperData.status) {
+      case 'initialized':
+        return {
+          text: '▶ Start Scraper',
+          disabled: isActionLoading,
+          variant: 'primary' as const,
+          onClick: handleStartOrContinue
+        };
+      case 'ongoing':
+        return {
+          text: '⏸ Pause',
+          disabled: isActionLoading,
+          variant: 'secondary' as const,
+          onClick: handlePause
+        };
+      case 'paused':
+        return {
+          text: '▶ Continue',
+          disabled: isActionLoading,
+          variant: 'primary' as const,
+          onClick: handleStartOrContinue
+        };
+      case 'error':
+        return {
+          text: '❌ Error',
+          disabled: true,
+          variant: 'secondary' as const,
+          onClick: () => {}
+        };
+      case 'completed':
+        return {
+          text: '✓ Completed',
+          disabled: true,
+          variant: 'secondary' as const,
+          onClick: () => {}
+        };
+      default:
+        return {
+          text: 'Unknown',
+          disabled: true,
+          variant: 'secondary' as const,
+          onClick: () => {}
+        };
+    }
+  };
+
+  const buttonConfig = getButtonConfig();
 
   // Calculate progress stats
   const stats: ScrapingProgressStats = (() => {
@@ -141,12 +217,17 @@ export default function ScrapingProgressPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto space-y-6">
-        <HeaderStep 
-          title='Scraping in Progress' 
-          subtitle='View, monitor, pause the scraper' 
+        <HeaderStep
+          title='Scraping Progress'
+          subtitle='View, monitor, and control the scraper'
           children={
-            <Button variant="secondary" px='px-40' disabled>
-              ⏸ Pause
+            <Button
+              variant={buttonConfig.variant}
+              px='px-40'
+              disabled={buttonConfig.disabled}
+              onClick={buttonConfig.onClick}
+            >
+              {buttonConfig.text}
             </Button>}
           />
         
@@ -255,9 +336,6 @@ export default function ScrapingProgressPage() {
           subreddits={scraperData.subreddits}
           keywordSearchObjective={scraperData.keyword_search_objective}
         />
-
-        {/* Activity Log */}
-        <ActivityLog entries={logs} height="400px" />
 
         {/* Action Button */}
         <div className="flex justify-end">
