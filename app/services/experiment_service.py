@@ -25,6 +25,9 @@ class ExperimentService:
             raise Exception("The prompt is of the wrong type!!!")
         
         for cluster_unit_entity in cluster_unit_entities:
+            # if the experiment_id is already assinged to the cluster uits. (in case the experiment is partly completed because of bug)
+            if cluster_unit_entity.predicted_category.get(experiment_entity.id):
+                continue
             predicted_categories = ExperimentService.predict_single_cluster_unit(experiment_entity,
                                                           cluster_unit_entity,
                                                           prompt_entity)
@@ -97,6 +100,7 @@ class ExperimentService:
         category_predictions: List[PredictionCategoryTokens] = []
         for run in range(experiment_entity.runs_per_unit):
             if "gpt" in experiment_entity.model:
+                
                 response = LlmHelper.send_to_openai(prompt_entity.system_prompt, parsed_prompt, experiment_entity.model)
                 response_dict = json.loads(response.choices[0].message.content)
                 labels = {category: True for category in response_dict.pop("labels")}
@@ -147,7 +151,7 @@ class ExperimentService:
                                                          prediction_metrics=prediction_metrics,
                                                          runs_per_unit=experiment.runs_per_unit)
             
-            returnable_experiments.append(experiment_response)
+            returnable_experiments.append(experiment_response)  
         
         returnable_experiments = sorted(returnable_experiments, key=lambda x: x.created, reverse=True)
 

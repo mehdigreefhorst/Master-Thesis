@@ -112,16 +112,23 @@ def create_experiment(body: CreateExperiment):
         print("I am setting the status type to ongoing!")
         scraper_cluster_entity.stages.experiment = StatusType.Ongoing
         get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
+    experiment_entity.status = StatusType.Ongoing
     get_experiment_repository().insert(experiment_entity)
+    try:
+        cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_entity.sample_cluster_unit_ids)
 
-    cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_entity.sample_cluster_unit_ids)
-
-    if not cluster_unit_entities or not len(cluster_unit_entities) == len(sample_entity.sample_cluster_unit_ids):
-        return jsonify(message=f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id}")
-    
-    total_cluster_unit_predicted_categories = ExperimentService.predict_categories_cluster_units(experiment_entity=experiment_entity,
-                                                       cluster_unit_entities=cluster_unit_entities,
-                                                       prompt_entity=prompt_entity)
+        if not cluster_unit_entities or not len(cluster_unit_entities) == len(sample_entity.sample_cluster_unit_ids):
+            return jsonify(message=f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id}")
+        
+        total_cluster_unit_predicted_categories = ExperimentService.predict_categories_cluster_units(
+            experiment_entity=experiment_entity,
+            cluster_unit_entities=cluster_unit_entities,
+            prompt_entity=prompt_entity)
+        
+    except Exception as e:
+        experiment_entity.status = StatusType.Error
+        get_experiment_repository().update(experiment_entity.id, experiment_entity)
+        return jsonify(error=f"Error = {e}")
     return jsonify(f"succesfully predicted a total of {total_cluster_unit_predicted_categories} categories for units")
 
 

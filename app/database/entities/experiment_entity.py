@@ -6,6 +6,7 @@ import re
 
 from pydantic import BaseModel, Field, field_validator
 from app.database.entities.base_entity import BaseEntity, PyObjectId
+from app.utils.types import StatusType
 
 
 PrevalenceDistribution = Dict[str, int]  # Keys must be strings for MongoDB compatibility
@@ -52,3 +53,5 @@ class ExperimentEntity(BaseEntity):
     reasoning_effort: Optional[str] = None
     aggregate_result: AggregateResult = Field(default_factory=AggregateResult)
     runs_per_unit: int = 3
+    status: StatusType = StatusType.Initialized
+    
