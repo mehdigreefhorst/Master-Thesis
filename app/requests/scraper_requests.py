@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from app.database.entities.base_entity import PyObjectId
 
 
-class GetScrapers(BaseModel):
+class GetScraper(BaseModel):
     scraper_cluster_id: Optional[PyObjectId] = None
 
 
