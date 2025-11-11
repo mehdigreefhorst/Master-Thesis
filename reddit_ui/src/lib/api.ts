@@ -6,6 +6,7 @@ import { useAuthFetch } from "@/utils/fetch";
 import type { KeywordSearches, ScraperClusterEntity, ScraperEntity } from "@/types/scraper-cluster";
 import { ScraperClusterTable } from "@/components/scraper";
 import { ClusterUnitEntity } from "@/types/cluster-unit";
+import { SampleEntity } from "@/types/sample";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || 'http://localhost:5001';
 
@@ -394,9 +395,9 @@ export const experimentApi = {
    */
   async getSample(
     authFetch: ReturnType<typeof useAuthFetch>,
-    sampleId: string
-  ) {
-    const data = await authFetch(`/experiment/sample/${sampleId}`);
+    scraperClusterId: string
+  ): Promise<SampleEntity> {
+    const data = await authFetch(`/experiment/sample?scraper_cluster_id=${scraperClusterId}`);
     return await data.json();
   }
 };

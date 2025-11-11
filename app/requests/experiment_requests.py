@@ -44,3 +44,7 @@ class CreateSample(BaseModel):
 
 class GetSampleUnits(BaseModel):
     scraper_cluster_id: PyObjectId
+
+
+class GetSample(BaseModel):
+    scraper_cluster_id: PyObjectId

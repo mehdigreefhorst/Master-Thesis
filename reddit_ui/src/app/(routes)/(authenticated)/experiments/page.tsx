@@ -8,6 +8,7 @@ import { ExperimentCard, ExperimentData } from '@/components/experiments/Experim
 import { experimentApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
 import { HeaderStep } from '@/components/layout/HeaderStep';
+import { SampleView } from '@/components/sample/SampleView';
 
 function ExperimentsPageContent() {
   const router = useRouter();
@@ -34,7 +35,7 @@ function ExperimentsPageContent() {
         setIsLoading(true);
         setError(null);
         const data = await experimentApi.getExperiments(authFetch, scraperClusterId);
-
+        
         // Transform backend data to ExperimentData format
         const transformedData: ExperimentData[] = (data.experiments || data || []).map((exp: any) => {
           // Transform prediction_metrics to match frontend PredictionMetric interface
@@ -153,6 +154,7 @@ function ExperimentsPageContent() {
           title='Experiments Dashboard'
           subtitle=''
         />
+        <SampleView scraperClusterId={scraperClusterId ?? ""}/>
 
         {/* Error banner (if any, but still showing data) */}
         {error && experiments.length > 0 && (
