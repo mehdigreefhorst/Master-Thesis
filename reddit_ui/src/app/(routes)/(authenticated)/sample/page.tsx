@@ -371,6 +371,7 @@ function SampleSelectorPageContent() {
                 <SelectionCounter
                   selectedCount={sample.length}
                   totalCount={sample.length}
+                  nameTextSelected='cluster unit entities selected'
                 />
               </div>
 

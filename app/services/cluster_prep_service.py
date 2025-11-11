@@ -53,7 +53,7 @@ class ClusterPrepService:
         all_previously_added_cluster_units = get_cluster_unit_repository().find({"cluster_entity_id": cluster_entity.id})
         previous_found_post_ids_set = set([cluster_unit.post_id for cluster_unit in all_previously_added_cluster_units])
 
-        all_inserted_cluster_unit_entities = []
+        all_inserted_cluster_unit_entities = [] # contains only a list of the inserted ids
         for post_id, post_prep_status  in cluster_entity.post_entity_ids_prep_status.items():
             print("processing post_id = ", post_id)
             if post_prep_status == StatusType.Initialized:

@@ -128,6 +128,7 @@ def create_experiment(body: CreateExperiment):
     except Exception as e:
         experiment_entity.status = StatusType.Error
         get_experiment_repository().update(experiment_entity.id, experiment_entity)
+        raise Exception("The fuck!")
         return jsonify(error=f"Error = {e}")
     return jsonify(f"succesfully predicted a total of {total_cluster_unit_predicted_categories} categories for units")
 

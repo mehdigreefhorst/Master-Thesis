@@ -5,11 +5,13 @@ import React from 'react';
 interface SelectionCounterProps {
   selectedCount: number;
   totalCount: number;
+  nameTextSelected?: string
 }
 
 export const SelectionCounter: React.FC<SelectionCounterProps> = ({
   selectedCount,
   totalCount,
+  nameTextSelected = "posts selected",
 }) => {
   return (
     <div className="flex items-center gap-4">
@@ -69,7 +71,7 @@ export const SelectionCounter: React.FC<SelectionCounterProps> = ({
               </span>
             </div>
             <span className="text-sm text-gray-500 font-medium">
-              posts selected
+              {nameTextSelected}
             </span>
           </div>
         </div>

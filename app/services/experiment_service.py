@@ -26,7 +26,7 @@ class ExperimentService:
         
         for cluster_unit_entity in cluster_unit_entities:
             # if the experiment_id is already assinged to the cluster uits. (in case the experiment is partly completed because of bug)
-            if cluster_unit_entity.predicted_category.get(experiment_entity.id):
+            if cluster_unit_entity.predicted_category and cluster_unit_entity.predicted_category.get(experiment_entity.id):
                 continue
             predicted_categories = ExperimentService.predict_single_cluster_unit(experiment_entity,
                                                           cluster_unit_entity,

@@ -402,7 +402,7 @@ function ViewerPageContent() {
 
         {/* Action Buttons */}
         <div className="flex gap-3 flex-wrap">
-          <Link href={`/experiments?${scraperClusterId}`}>
+          <Link href={`/experiments?scraper_cluster_id=${scraperClusterId}`}>
             <Button variant="primary">View Experiments</Button>
           </Link>
 
