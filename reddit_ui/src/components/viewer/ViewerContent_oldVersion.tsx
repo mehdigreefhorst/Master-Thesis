@@ -1,0 +1,405 @@
+'use client';
+
+import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { ThreadBox } from '@/components/thread/ThreadBox';
+import { ThreadPost } from '@/components/thread/ThreadPost';
+import { ThreadComment } from '@/components/thread/ThreadComment';
+import { ThreadTarget } from '@/components/thread/ThreadTarget';
+import { LabelTable } from '@/components/label/LabelTable';
+import { InsightBox } from '@/components/ui/InsightBox';
+import { Button } from '@/components/ui/Button';
+import { ViewerSkeleton } from '@/components/ui/Skeleton';
+import type { ClusterUnitEntity, ClusterUnitEntityCategory } from '@/types/cluster-unit';
+import Link from 'next/link';
+
+interface CachedData {
+  clusterUnits: ClusterUnitEntity[];
+  scraperClusterId: string;
+}
+
+export interface ViewerContentProps {
+  scraperClusterId: string | null;
+  clusterUnitEntityId: string | null;
+  experimentId?: string | null;
+  /**
+   * Function to fetch cluster units. Should return an array of ClusterUnitEntity.
+   * Receives scraperClusterId and optionally experimentId.
+   */
+  //fetchClusterUnits: (scraperClusterId: string, experimentId?: string) => Promise<ClusterUnitEntity[]>;
+  clusterUnits: ClusterUnitEntity[]
+  /**
+   * Base path for navigation (e.g., '/viewer' or '/viewer/sample')
+   */
+  basePath: string;
+  isLoading: boolean;
+}
+
+/**
+ * Shared viewer component that displays cluster units with label comparison.
+ * Can be configured with different data fetching strategies.
+ */
+export function ViewerContent({
+  scraperClusterId,
+  clusterUnitEntityId,
+  experimentId,
+  clusterUnits,
+  basePath,
+  isLoading
+}: ViewerContentProps) {
+  const router = useRouter();
+  const [cachedData, setCachedData] = useState<CachedData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // // Fetch data on mount or when scraper_cluster_id or experiment_id changes
+  // useEffect(() => {
+  //   async function fetchData() {
+  //     console.log('Fetching data for viewer');
+
+  //     // Check if we already have data for this scraper cluster
+  //     if (cachedData?.scraperClusterId === scraperClusterId) {
+  //       setIsLoading(false);
+  //       return;
+  //     }
+
+  //     try {
+  //       setIsLoading(true);
+  //       setError(null);
+
+  //       if (!scraperClusterId) {
+  //         setError('Missing scraper_cluster_id parameter');
+  //         setIsLoading(false);
+  //         return;
+  //       }
+
+  //       // Use the provided fetch function
+  //       // const clusterUnits = await fetchClusterUnits(scraperClusterId, experimentId || undefined);
+
+  //       setCachedData({
+  //         clusterUnits,
+  //         scraperClusterId,
+  //       });
+  //     } catch (err) {
+  //       setError(err instanceof Error ? err.message : 'Failed to fetch data');
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   }
+
+  //   fetchData();
+  // }, [scraperClusterId, experimentId, clusterUnits, cachedData?.scraperClusterId]);
+
+  // Auto-redirect to first cluster unit if none is specified
+  useEffect(() => {
+    if (cachedData && !clusterUnitEntityId && cachedData.clusterUnits.length > 0) {
+      const firstUnit = cachedData.clusterUnits[0];
+      const params = new URLSearchParams();
+      params.set('scraper_cluster_id', scraperClusterId!);
+      params.set('cluster_unit_entity_id', firstUnit.id);
+      if (experimentId) params.set('experiment_id', experimentId);
+
+      router.replace(`${basePath}?${params.toString()}`);
+    }
+  }, [cachedData, clusterUnitEntityId, scraperClusterId, experimentId, basePath, router]);
+
+  // Find current cluster unit and index
+  const { currentUnit, currentIndex, totalUnits } = useMemo(() => {
+    if (!cachedData) {
+      return { currentUnit: null, currentIndex: -1, totalUnits: 0 };
+    }
+
+    // If no clusterUnitEntityId, we're probably about to redirect
+    if (!clusterUnitEntityId) {
+      return {
+        currentUnit: null,
+        currentIndex: -1,
+        totalUnits: cachedData.clusterUnits.length,
+      };
+    }
+
+    const index = cachedData.clusterUnits.findIndex((unit) => unit.id === clusterUnitEntityId);
+
+    return {
+      currentUnit: index >= 0 ? cachedData.clusterUnits[index] : null,
+      currentIndex: index,
+      totalUnits: cachedData.clusterUnits.length,
+    };
+  }, [cachedData, clusterUnitEntityId]);
+
+  // Navigation handlers
+  const handlePrevious = () => {
+    if (!cachedData || currentIndex <= 0) return;
+
+    const prevUnit = cachedData.clusterUnits[currentIndex - 1];
+    const params = new URLSearchParams();
+    params.set('scraper_cluster_id', scraperClusterId!);
+    params.set('cluster_unit_entity_id', prevUnit.id);
+    if (experimentId) params.set('experiment_id', experimentId);
+
+    router.push(`${basePath}?${params.toString()}`);
+  };
+
+  const handleNext = () => {
+    if (!cachedData || currentIndex >= cachedData.clusterUnits.length - 1) return;
+
+    const nextUnit = cachedData.clusterUnits[currentIndex + 1];
+    const params = new URLSearchParams();
+    params.set('scraper_cluster_id', scraperClusterId!);
+    params.set('cluster_unit_entity_id', nextUnit.id);
+    if (experimentId) params.set('experiment_id', experimentId);
+
+    router.push(`${basePath}?${params.toString()}`);
+  };
+
+  // Group predictions by prompt_id
+  const groupedPredictions = useMemo(() => {
+    if (!currentUnit || !currentUnit.predicted_category) return {};
+
+    const groups: Record<string, typeof currentUnit.predicted_category> = {};
+
+    currentUnit.predicted_category.forEach((prediction) => {
+      if (!groups[prediction.prompt_id]) {
+        groups[prediction.prompt_id] = [];
+      }
+      groups[prediction.prompt_id].push(prediction);
+    });
+
+    return groups;
+  }, [currentUnit]);
+
+  // Get unique prompt IDs (models)
+  const promptIds = Object.keys(groupedPredictions);
+
+  // Callback to update ground truth in cached data
+  const handleGroundTruthUpdate = (labelKey: string, newValue: boolean) => {
+    if (!cachedData || !clusterUnitEntityId) return;
+
+    setCachedData((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        clusterUnits: prev.clusterUnits.map((unit) => {
+          if (unit.id === clusterUnitEntityId && unit.ground_truth) {
+            return {
+              ...unit,
+              ground_truth: {
+                ...unit.ground_truth,
+                [labelKey]: newValue,
+              },
+            };
+          }
+          return unit;
+        }),
+      };
+    });
+  };
+
+  // Transform data for LabelTable component
+  const { models, labels, stats } = useMemo(() => {
+    if (!currentUnit || !currentUnit.ground_truth) {
+      return { models: [], labels: [], stats: [] };
+    }
+
+    const labelKeys: (keyof ClusterUnitEntityCategory)[] = [
+      'problem_description',
+      'frustration_expression',
+      'solution_seeking',
+      'solution_attempted',
+      'solution_proposing',
+      'agreement_empathy',
+      'none_of_the_above',
+    ];
+
+    // Build models array
+    const modelsData = promptIds.map((promptId) => ({
+      name: `Prompt`, // TODO: Get actual prompt name from backend
+      version: promptId.substring(0, 8), // Show short UUID
+    }));
+
+    // Build labels array
+    const labelsData = labelKeys.map((labelKey) => {
+      const groundTruth = currentUnit.ground_truth?.[labelKey] ?? null;
+
+      // For each prompt, calculate how many predictions matched ground truth
+      const results = promptIds.map((promptId) => {
+        const predictions = groupedPredictions[promptId];
+        if (!predictions || predictions.length === 0) return null;
+
+        const matchingCount = predictions.filter((pred) => pred[labelKey] === groundTruth).length;
+
+        return {
+          count: matchingCount,
+          total: predictions.length,
+        };
+      });
+
+      return {
+        labelName: labelKey,
+        groundTruth,
+        results,
+      };
+    });
+
+    // Calculate stats (accuracy & consistency) for each prompt
+    const statsData = promptIds.map((promptId) => {
+      const predictions = groupedPredictions[promptId];
+      let correctPredictions = 0;
+      let totalPredictions = 0;
+
+      labelKeys.forEach((labelKey) => {
+        const groundTruth = currentUnit.ground_truth?.[labelKey] ?? false;
+        predictions.forEach((pred) => {
+          if (pred[labelKey] === groundTruth) correctPredictions++;
+          totalPredictions++;
+        });
+      });
+
+      const accuracy = totalPredictions > 0 ? Math.round((correctPredictions / totalPredictions) * 100) : 0;
+
+      // Determine consistency
+      let consistency = 'Perfect';
+      if (predictions.length > 1) {
+        // Check if all predictions are identical
+        const firstPred = predictions[0];
+        const allSame = predictions.every((pred) => labelKeys.every((key) => pred[key] === firstPred[key]));
+        consistency = allSame ? 'Perfect' : 'Medium';
+      }
+
+      return {
+        accuracy,
+        consistency,
+        isHighlighted: accuracy === 100,
+      };
+    });
+
+    return { models: modelsData, labels: labelsData, stats: statsData };
+  }, [currentUnit, promptIds, groupedPredictions]);
+
+  // Render thread from thread_path_text
+  const renderThread = () => {
+    if (!currentUnit) return null;
+
+    const threadPath = currentUnit.thread_path_text || [];
+    const currentText = currentUnit.text;
+
+    return (
+      <ThreadBox>
+        {threadPath.map((text, index) => {
+          if (index === 0) {
+            return <ThreadPost key={index} username={`u/author${index}`} content={text} />;
+          }
+          return <ThreadComment key={index} username={`u/author${index}`} content={text} />;
+        })}
+        <ThreadTarget username={currentUnit.author} content={currentText} />
+      </ThreadBox>
+    );
+  };
+
+  // Loading state
+  if (isLoading) {
+    return <ViewerSkeleton />;
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-red-800 mb-2">Error Loading Data</h2>
+            <p className="text-red-600">{error}</p>
+            <Button variant="primary" className="mt-4" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No data state
+  if (!currentUnit) {
+    return (
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-yellow-800 mb-2">No Data Found</h2>
+            <p className="text-yellow-600">Could not find cluster unit with ID: {clusterUnitEntityId}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-8 animate-[pageLoad_400ms_ease-out]">
+      <div className="max-w-7xl mx-auto">
+        {/* Page Header */}
+        <PageHeader
+          title="Label Accuracy Viewer"
+          currentSample={currentIndex + 1}
+          totalSamples={totalUnits}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+          disablePrevious={currentIndex <= 0}
+          disableNext={currentIndex >= totalUnits - 1}
+          className="mb-6"
+        />
+
+        {/* Thread Context */}
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-lg font-semibold">
+              r/{currentUnit.type === 'post' ? 'post' : 'comment'} Thread:
+            </h2>
+            <Button className="text-sm text-blue-600" variant="invisible">
+              View Full ▼
+            </Button>
+          </div>
+
+          {renderThread()}
+        </div>
+
+        {/* Label Comparison Table */}
+        <div className="mb-6">
+          <LabelTable
+            models={models}
+            labels={labels}
+            stats={stats}
+            cluster_unit_id={currentUnit.id}
+            onGroundTruthUpdate={handleGroundTruthUpdate}
+          />
+          <div className="mt-3 text-sm text-gray-600">
+            💬 = Click to view reasoning | ⚠️ = Inconsistent across runs | ✓ = All runs match
+          </div>
+        </div>
+
+        {/* AI Insight Box */}
+        <InsightBox className="mb-6">
+          Analyzing {models.length} prompt{models.length !== 1 ? 's' : ''} with{' '}
+          {Object.values(groupedPredictions)[0]?.length || 0} run
+          {Object.values(groupedPredictions)[0]?.length !== 1 ? 's' : ''} each.
+          {stats.some((s) => s.accuracy === 100) && (
+            <>
+              {' '}
+              <strong>{stats.filter((s) => s.accuracy === 100).length}</strong> prompt(s) achieved 100% accuracy.
+            </>
+          )}
+        </InsightBox>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3 flex-wrap">
+          <Link href={`/experiments?scraper_cluster_id=${scraperClusterId}`}>
+            <Button variant="primary">View Experiments</Button>
+          </Link>
+
+          <Button variant="primary" onClick={handleNext} disabled={currentIndex >= totalUnits - 1}>
+            Next Sample →
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}

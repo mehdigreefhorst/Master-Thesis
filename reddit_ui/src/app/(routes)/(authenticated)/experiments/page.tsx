@@ -82,7 +82,7 @@ function ExperimentsPageContent() {
 
   const handleView = (id: string) => {
     if (scraperClusterId) {
-      router.push(`/viewer?scraper_cluster_id=${scraperClusterId}&experiment_id=${id}`);
+      router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&experiment_id=${id}`);
     }
   };
 

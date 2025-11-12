@@ -3,14 +3,14 @@
 import React, { useState } from 'react';
 
 interface ReasoningIconProps {
-  reasoning: string | React.ReactNode;
+  reasons?: string[]
   className?: string;
   isOpen?: boolean;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const ReasoningIcon: React.FC<ReasoningIconProps> = ({
-  reasoning,
+  reasons,
   className = '',
   isOpen = false,
   setIsOpen
@@ -29,7 +29,11 @@ export const ReasoningIcon: React.FC<ReasoningIconProps> = ({
           className="w-full bg-(--muted) border border-(--border) rounded-(--radius) p-4 animate-[panelExpand_300ms_ease-out] cursor-pointer hover:bg-[oklch(0.94_0_0)] transition-colors wrap-break-word whitespace-normal"
           onClick={() => setIsOpen(!isOpen)}
         >
-          {reasoning}
+          {reasons && reasons.map((reason, index) => (
+            <div key={index} className="mb-2 last:mb-0">
+              <p className='font-bold'>{reason.substring(0,6)}</p><p className="text-sm text-gray-700">{reason.substring(6)}</p>
+            </div>
+          ))}
         </div>
       )}
     </>

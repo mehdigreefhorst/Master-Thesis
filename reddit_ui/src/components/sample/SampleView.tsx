@@ -41,7 +41,7 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
        
 
         // Fetch the sample data
-        const sample = await experimentApi.getSample(authFetch, scraperClusterId);
+        const sample = await experimentApi.getSampleEntity(authFetch, scraperClusterId);
         
         if (!sample) {
           throw Error("no sample found!")

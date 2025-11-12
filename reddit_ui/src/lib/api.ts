@@ -5,7 +5,7 @@
 import { useAuthFetch } from "@/utils/fetch";
 import type { KeywordSearches, ScraperClusterEntity, ScraperEntity } from "@/types/scraper-cluster";
 import { ScraperClusterTable } from "@/components/scraper";
-import { ClusterUnitEntity } from "@/types/cluster-unit";
+import { ClusterUnitEntity, ClusterUnitEntityCategory } from "@/types/cluster-unit";
 import { SampleEntity } from "@/types/sample";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || 'http://localhost:5001';
@@ -85,17 +85,15 @@ export const clusterApi = {
   /**
    * Get all cluster units for a scraper cluster
    */
-  async getClusterUnits(authFetch: ReturnType<typeof useAuthFetch>, scraperClusterId: string, reddit_message_type: "post" | "comment" | "all" = "all") {
-    return await authFetch(`/clustering/get_cluster_units?scraper_cluster_id=${scraperClusterId}&reddit_message_type=${reddit_message_type}`)
+  async getClusterUnits(authFetch: ReturnType<typeof useAuthFetch>, scraperClusterId: string, reddit_message_type: "post" | "comment" | "all" = "all"): Promise<ClusterUnitEntity[]> {
+    const data =  await authFetch(`/clustering/get_cluster_units?scraper_cluster_id=${scraperClusterId}&reddit_message_type=${reddit_message_type}`)
+    return await data.json()
 
-    // return apiRequest<{ cluster_unit_entities: any[] }>(
-    //   `/clustering/get_cluster_units?scraper_cluster_id=${scraperClusterId}`
-    // );
   },
   async updateClusterUnitGroundTruth(
     authFetch: ReturnType<typeof useAuthFetch>,
     cluster_entity_id: string,
-    groundTruthCategory: string,
+    groundTruthCategory: keyof ClusterUnitEntityCategory,
     groundTruth: boolean
   ){
     return authFetch(`/clustering/update_ground_truth`,
@@ -327,7 +325,7 @@ export const experimentApi = {
     return await authFetch('/experiment/get_prompts');
   },
   async getSampleUnits(authFetch: ReturnType<typeof useAuthFetch>, scraperClusterId: string): Promise<ClusterUnitEntity[]> {
-    const data = await authFetch(`/experiment/get_cluster_units?scraper_cluster_id=${scraperClusterId}`);
+    const data = await authFetch(`/experiment/get_sample_units?scraper_cluster_id=${scraperClusterId}`);
     return await data.json()
   },
   async createPrompt(
@@ -393,7 +391,7 @@ export const experimentApi = {
   /**
    * Get a sample by ID
    */
-  async getSample(
+  async getSampleEntity(
     authFetch: ReturnType<typeof useAuthFetch>,
     scraperClusterId: string
   ): Promise<SampleEntity> {

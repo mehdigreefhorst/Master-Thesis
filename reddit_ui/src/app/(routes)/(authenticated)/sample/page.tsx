@@ -137,10 +137,8 @@ function SampleSelectorPageContent() {
         setIsLoading(true);
         setError(null);
 
-        const response = await clusterApi.getClusterUnits(authFetch, scraperClusterId, "post")
-
-        const data: GetClusterUnitsResponse = await response.json();
-        setPosts(data.cluster_unit_entities);
+        const cluster_unit_entities: ClusterUnitEntity[] = await clusterApi.getClusterUnits(authFetch, scraperClusterId, "post")
+        setPosts(cluster_unit_entities);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch posts');
       } finally {

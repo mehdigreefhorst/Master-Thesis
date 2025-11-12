@@ -12,8 +12,17 @@ export interface ClusterUnitEntityCategory {
   none_of_the_above: boolean;
 }
 
-export interface ClusterUnitEntityPredictedCategory extends ClusterUnitEntityCategory {
-  prompt_id: string;
+export interface PredictionCategory extends ClusterUnitEntityCategory {
+  reason: string
+  sentiment: "negative" | "neutral" | "positive"
+}
+export interface PredictionCategoryTokens extends PredictionCategory {
+  tokens_used: Record<string, string>
+}
+
+export interface ClusterUnitEntityPredictedCategory {
+  experiment_id: string;
+  predicted_categories: PredictionCategoryTokens[]
 }
 
 export interface ClusterUnitEntity {
@@ -30,7 +39,7 @@ export interface ClusterUnitEntity {
   created_utc: number;
   thread_path_text: string[] | null;
   enriched_comment_thread_text: string | null;
-  predicted_category: ClusterUnitEntityPredictedCategory[]; // List of predictions from different prompts
+  predicted_category: Record<string, ClusterUnitEntityPredictedCategory> // List of predictions from different prompts
   ground_truth: ClusterUnitEntityCategory | null;
   text: string;
   total_nested_replies: number | null;

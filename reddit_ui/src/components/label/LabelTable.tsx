@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { LabelRow, LabelResult } from './LabelRow';
+import { ClusterUnitEntityCategory } from '@/types/cluster-unit';
 
 export interface ModelColumn {
   name: string;
@@ -9,7 +10,7 @@ export interface ModelColumn {
 }
 
 export interface LabelData {
-  labelName: string;
+  labelName: keyof ClusterUnitEntityCategory;
   groundTruth: boolean | null;
   results: (LabelResult | null)[];
 }
@@ -25,7 +26,8 @@ interface LabelTableProps {
   labels: LabelData[];
   stats?: PerformanceStats[];
   cluster_unit_id: string;
-  onGroundTruthUpdate?: (labelKey: string, newValue: boolean) => void;
+  handleClusterUnitGroundTruthUpdate?: (clusterUnitEntityId: string, category: keyof ClusterUnitEntityCategory, newValue: boolean) => void;
+  
   className?: string;
 }
 
@@ -34,7 +36,7 @@ export const LabelTable: React.FC<LabelTableProps> = ({
   labels,
   stats,
   cluster_unit_id,
-  onGroundTruthUpdate,
+  handleClusterUnitGroundTruthUpdate,
   className = ''
 }) => {
   // console.log("models = ")
@@ -77,7 +79,7 @@ export const LabelTable: React.FC<LabelTableProps> = ({
               groundTruth={label.groundTruth}
               results={label.results}
               cluster_unit_id={cluster_unit_id}
-              onGroundTruthUpdate={onGroundTruthUpdate}
+              handleClusterUnitGroundTruthUpdate={handleClusterUnitGroundTruthUpdate}
             />
           ))}
           {stats && (

@@ -6,19 +6,20 @@ import { ReasoningIcon } from '../ui/ReasoningIcon';
 import { Button } from '../ui';
 import { clusterApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
+import { ClusterUnitEntityCategory } from '@/types/cluster-unit';
 
 export interface LabelResult {
   count: number; // How many runs matched (0-3)
   total?: number; // Total runs (default 3)
-  reasoning?: string | React.ReactNode;
+  reasons?: string[]
 }
 
 interface LabelRowProps {
-  labelName: string;
+  labelName: keyof ClusterUnitEntityCategory;
   groundTruth: boolean | null; // true = ✓, false = ✗, null = -
   results: (LabelResult | null)[]; // null means no data (—)
   cluster_unit_id: string;
-  onGroundTruthUpdate?: (labelKey: string, newValue: boolean) => void;
+  handleClusterUnitGroundTruthUpdate?: (clusterUnitEntityId: string, category: keyof ClusterUnitEntityCategory, newValue: boolean) => void;
   className?: string;
 }
 
@@ -27,7 +28,7 @@ export const LabelRow: React.FC<LabelRowProps> = ({
   groundTruth,
   results,
   cluster_unit_id,
-  onGroundTruthUpdate,
+  handleClusterUnitGroundTruthUpdate,
   className = ''
 }) => {
   const authFetch = useAuthFetch();
@@ -52,8 +53,8 @@ export const LabelRow: React.FC<LabelRowProps> = ({
     clusterApi.updateClusterUnitGroundTruth(authFetch, cluster_unit_id, labelName, newBool);
 
     // Update the cached data in the parent component
-    if (onGroundTruthUpdate) {
-      onGroundTruthUpdate(labelName, newBool);
+    if (handleClusterUnitGroundTruthUpdate) {
+      handleClusterUnitGroundTruthUpdate(cluster_unit_id, labelName, newBool);
     }
   }
 
@@ -85,7 +86,7 @@ export const LabelRow: React.FC<LabelRowProps> = ({
                 <span className="text-sm font-semibold">
                   {result.count}/{result.total || 3}
                 </span>
-                {result.reasoning && (
+                {result.reasons && (
                   <span
                     className="inline-block cursor-pointer text-xl transition-transform duration-200 hover:scale-110 hover:rotate-6"
                     onClick={() => toggleOpen(index)}
@@ -94,7 +95,7 @@ export const LabelRow: React.FC<LabelRowProps> = ({
                   </span>
                 )}
               </div>
-              <ReasoningIcon reasoning={result.reasoning} setIsOpen={() => toggleOpen(index)} isOpen={openStates[index]}/>
+              <ReasoningIcon reasons={result.reasons} setIsOpen={() => toggleOpen(index)} isOpen={openStates[index]}/>
 
             </div>
           )}

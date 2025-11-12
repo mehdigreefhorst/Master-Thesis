@@ -119,7 +119,7 @@ def get_cluster_units(query: GetClusterUnitsRequest):
     returnable_cluster_units = ClusterPrepService.convert_cluster_units_to_bertopic_ready_documents(scraper_cluster_entity, query.reddit_message_type)
     print("a total of units = ", len(returnable_cluster_units))
     if returnable_cluster_units:
-        return jsonify(cluster_unit_entities=returnable_cluster_units), 200
+        return jsonify(returnable_cluster_units), 200
     else:
         return jsonify(error="There are no cluster unit entities for the scraper cluster instance"), 400
     
