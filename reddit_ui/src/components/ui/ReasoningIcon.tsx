@@ -31,7 +31,8 @@ export const ReasoningIcon: React.FC<ReasoningIconProps> = ({
         >
           {reasons && reasons.map((reason, index) => (
             <div key={index} className="mb-2 last:mb-0">
-              <p className='font-bold'>{reason.substring(0,6)}</p><p className="text-sm text-gray-700">{reason.substring(6)}</p>
+              <span className='font-bold'>{reason.substring(0,6)}</span>
+              <span className="text-sm text-gray-700">{reason.substring(6)}</span>
             </div>
           ))}
         </div>

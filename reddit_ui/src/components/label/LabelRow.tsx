@@ -10,7 +10,7 @@ import { ClusterUnitEntityCategory } from '@/types/cluster-unit';
 
 export interface LabelResult {
   count: number; // How many runs matched (0-3)
-  total?: number; // Total runs (default 3)
+  total: number; // Total runs (default 3)
   reasons?: string[]
 }
 
@@ -71,7 +71,7 @@ export const LabelRow: React.FC<LabelRowProps> = ({
         </Button>
       </td>
       {results.map((result, index) => (
-        <td key={index} className="p-4 border-b border-(--border)">
+        <td key={index} className={`p-4 border-b border-(--border) ${newGroundTruth && result && result.count !== result.total ? "bg-amber-200": ""} `}>
           {result === null ? (
             <div className="text-center text-gray-400">—</div>
           ) : (
@@ -80,6 +80,7 @@ export const LabelRow: React.FC<LabelRowProps> = ({
                 <div className="flex-1">
                   <ConsensusBar
                     value={result.count}
+                    groundTruth={newGroundTruth}
                     total={result.total}
                   />
                 </div>
