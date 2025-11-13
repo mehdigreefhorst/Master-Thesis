@@ -69,13 +69,13 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
 
   const handleViewSample = () => {
     if (sample && scraperClusterId) {
-      router.push(`/sample/view?scraper_cluster_id=${scraperClusterId}&sample_id=${sample.id}`);
+      router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&sample_id=${sample.id}`);
     }
   };
 
   const handleLabelSample = () => {
     if (sample && scraperClusterId) {
-      router.push(`/sample/label?scraper_cluster_id=${scraperClusterId}&sample_id=${sample.id}`);
+      router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&sample_id=${sample.id}`);
     }
   };
 

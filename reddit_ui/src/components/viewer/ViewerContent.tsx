@@ -49,7 +49,7 @@ export function ViewerContent({
   const [error, setError] = useState<string | null>(null);  
 
   // Get unique prompt IDs (models)
-  const ExperimentIds = Object.keys(currentClusterUnit ? currentClusterUnit.predicted_category : "");
+  const ExperimentIds = Object.keys(currentClusterUnit && currentClusterUnit.predicted_category ? currentClusterUnit.predicted_category : []);
 
   // Transform data for LabelTable component
   const { models, labels, stats } = useMemo(() => {
