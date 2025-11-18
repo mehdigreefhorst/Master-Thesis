@@ -31,3 +31,18 @@ class LlmHelper:
                     model=model_name,
                     messages=messages)
         return response
+    
+
+    @staticmethod
+    def send_to_openrouter(system_prompt: str, prompt:str, model: str, open_router_api_key: str):
+        llm = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=open_router_api_key)
+        model_name =model
+        messages = [
+          {'role': 'system', 'content': system_prompt},
+          {'role': 'user', 'content': prompt} ]
+        response = llm.chat.completions.create(
+                    model=model_name,
+                    messages=messages)
+        return response

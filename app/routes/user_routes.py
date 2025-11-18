@@ -4,6 +4,7 @@ from app.requests.profile_requests import UpdateProfile
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.database import get_user_repository
+from app.responses.profile_response import ProfileResponse
 from app.utils.api_validation import validate_request_body
 
 user_bp = Blueprint("user", __name__, url_prefix="/user")
@@ -28,3 +29,4 @@ def update_user_profile(body: UpdateProfile):
     user_id = get_jwt_identity()
     get_user_repository().update(id=user_id, to_update=body.model_dump())
     return jsonify(), 200
+    

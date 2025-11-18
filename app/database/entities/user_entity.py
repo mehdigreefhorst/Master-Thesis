@@ -15,5 +15,6 @@ class UserEntity(BaseEntity):
     reddit_api_key: Optional[str] = None
     reddit_password: Optional[str] = None
     reddit_client_id: Optional[str] = None
+    open_router_api_key: Optional[str] = None
     role: UserRole = UserRole.Default
     

@@ -7,6 +7,7 @@ import type { KeywordSearches, ScraperClusterEntity, ScraperEntity } from "@/typ
 import { ScraperClusterTable } from "@/components/scraper";
 import { ClusterUnitEntity, ClusterUnitEntityCategory } from "@/types/cluster-unit";
 import { SampleEntity } from "@/types/sample";
+import { UserProfile } from "@/types/user";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || 'http://localhost:5001';
 
@@ -115,6 +116,93 @@ export const clusterApi = {
       }
     );
     return await data.json()
+  },
+
+  /**
+   * Filter cluster units based on various criteria
+   */
+  async filterClusterUnits(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    scraperClusterId: string,
+    filters: {
+      reddit_message_type?: "post" | "comment" | "all";
+      subreddits?: string[];
+      authors?: string[];
+      upvotes_min?: number;
+      upvotes_max?: number;
+      downvotes_min?: number;
+      downvotes_max?: number;
+      has_ground_truth?: boolean;
+      has_predictions?: boolean;
+      ground_truth_labels?: string[];
+      predicted_labels?: string[];
+      experiment_id?: string;
+      sort_by?: string;
+      sort_order?: "asc" | "desc";
+      limit?: number;
+      skip?: number;
+    }
+  ): Promise<{
+    cluster_units: ClusterUnitEntity[];
+    total_count: number;
+    returned_count: number;
+    skip: number;
+    limit: number;
+  }> {
+    const params = new URLSearchParams();
+    params.append('scraper_cluster_id', scraperClusterId);
+
+    if (filters.reddit_message_type) {
+      params.append('reddit_message_type', filters.reddit_message_type);
+    }
+    if (filters.subreddits?.length) {
+      filters.subreddits.forEach(s => params.append('subreddits', s));
+    }
+    if (filters.authors?.length) {
+      filters.authors.forEach(a => params.append('authors', a));
+    }
+    if (filters.upvotes_min !== undefined) {
+      params.append('upvotes_min', filters.upvotes_min.toString());
+    }
+    if (filters.upvotes_max !== undefined) {
+      params.append('upvotes_max', filters.upvotes_max.toString());
+    }
+    if (filters.downvotes_min !== undefined) {
+      params.append('downvotes_min', filters.downvotes_min.toString());
+    }
+    if (filters.downvotes_max !== undefined) {
+      params.append('downvotes_max', filters.downvotes_max.toString());
+    }
+    if (filters.has_ground_truth !== undefined) {
+      params.append('has_ground_truth', filters.has_ground_truth.toString());
+    }
+    if (filters.has_predictions !== undefined) {
+      params.append('has_predictions', filters.has_predictions.toString());
+    }
+    if (filters.ground_truth_labels?.length) {
+      filters.ground_truth_labels.forEach(l => params.append('ground_truth_labels', l));
+    }
+    if (filters.predicted_labels?.length) {
+      filters.predicted_labels.forEach(l => params.append('predicted_labels', l));
+    }
+    if (filters.experiment_id) {
+      params.append('experiment_id', filters.experiment_id);
+    }
+    if (filters.sort_by) {
+      params.append('sort_by', filters.sort_by);
+    }
+    if (filters.sort_order) {
+      params.append('sort_order', filters.sort_order);
+    }
+    if (filters.limit !== undefined) {
+      params.append('limit', filters.limit.toString());
+    }
+    if (filters.skip !== undefined) {
+      params.append('skip', filters.skip.toString());
+    }
+
+    const data = await authFetch(`/clustering/filter_cluster_units?${params.toString()}`);
+    return await data.json();
   }
 };
 
@@ -400,3 +488,20 @@ export const experimentApi = {
   }
 };
 
+
+export const userApi = {
+  async getUserProfile(authFetch: ReturnType<typeof useAuthFetch>): Promise<UserProfile> {
+    const data = await authFetch("/user")
+    return await data.json()
+  },
+  async updateUserProfile(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    userProfile: UserProfile
+  ): Promise<Response>{
+    const data = await authFetch('/user', {
+      method: 'PUT',
+      body: userProfile
+    })
+    return await data.json()
+  }
+}
