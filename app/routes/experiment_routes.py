@@ -169,6 +169,7 @@ def continue_experiment(query: ExperimentId):
     if not prompt_entity.category == PromptCategory.Classify_cluster_units:
         return jsonify(message=f"Selected prompt {prompt_entity.id} is not of category 'Classify_cluster_units', it is {prompt_entity.category}")
     get_experiment_repository().update(experiment_entity.id, {"status": StatusType.Ongoing})
+    experiment_entity.status = StatusType.Ongoing
     cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_entity.sample_cluster_unit_ids)
 
     if not cluster_unit_entities or not len(cluster_unit_entities) == len(sample_entity.sample_cluster_unit_ids):
