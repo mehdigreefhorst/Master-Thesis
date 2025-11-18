@@ -23,6 +23,7 @@ export interface ViewerContentProps {
   handleClusterUnitGroundTruthUpdate: (clusterUnitEntityId: string, category: keyof ClusterUnitEntityCategory, newValue: boolean) => void;
   handlePrevious: () => void;
   handleNext: () => void;
+  handleCompleteSampleLabeling: ()=> void;
   /**
    * Base path for navigation (e.g., '/viewer' or '/viewer/sample')
    */
@@ -42,6 +43,7 @@ export function ViewerContent({
   handleClusterUnitGroundTruthUpdate,
   handlePrevious,
   handleNext,
+  handleCompleteSampleLabeling,
   basePath,
   isLoading
 }: ViewerContentProps) {
@@ -268,10 +270,16 @@ export function ViewerContent({
           <Link href={`/experiments?scraper_cluster_id=${scraperClusterId}`}>
             <Button variant="primary">View Experiments</Button>
           </Link>
-
+          
           <Button variant="primary" onClick={handleNext} disabled={clusterUnitIndex >= totalClusterUnits - 1}>
             Next Sample →
           </Button>
+          {clusterUnitIndex >= totalClusterUnits - 1 &&
+            <Button variant="primary" onClick={handleCompleteSampleLabeling} >
+              Complete Labeling
+            </Button>
+          }
+          
         </div>
       </div>
     </div>

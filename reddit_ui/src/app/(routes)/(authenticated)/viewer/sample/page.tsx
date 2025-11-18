@@ -112,6 +112,15 @@ export default function SampleViewerPage() {
       // router.push(`${basePath}?${params.toString()}`);
     };
 
+    const handleCompleteSampleLabeling = async () => {
+      if (!scraperClusterId) return;
+      await experimentApi.completeSampleLabeledStatus(
+        authFetch,
+        scraperClusterId,
+      )
+      router.push(`/experiments?scraper_cluster_id=${scraperClusterId}`)
+    }
+
 
   
 
@@ -124,6 +133,7 @@ export default function SampleViewerPage() {
       clusterUnitIndex={currentUnitIndex}
       totalClusterUnits={totalClusterUnits}
       handleClusterUnitGroundTruthUpdate={handleClusterUnitGroundTruthUpdate}
+      handleCompleteSampleLabeling={handleCompleteSampleLabeling}
       handleNext={handleNext}
       handlePrevious={handlePrevious}
       basePath="/viewer/sample"

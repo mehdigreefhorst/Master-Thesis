@@ -485,6 +485,15 @@ export const experimentApi = {
   ): Promise<SampleEntity> {
     const data = await authFetch(`/experiment/sample?scraper_cluster_id=${scraperClusterId}`);
     return await data.json();
+  },
+  async completeSampleLabeledStatus(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    scraperClusterId: string
+  ): Promise<Response> {
+    const data = await authFetch(`/experiment/complete_sample_labeled_status?scraper_cluster_id=${scraperClusterId}`, {
+      method: 'PUT'
+    })
+    return await data.json()
   }
 };
 

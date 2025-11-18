@@ -64,7 +64,7 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
 
   // Determine if sample can be labeled
   const canLabel = useMemo(() => {
-    return sample && (sample.sample_labeled === 'initialized' || sample.sample_labeled === 'ongoing');
+    return sample && (sample.sample_labeled_status === 'initialized' || sample.sample_labeled_status === 'ongoing');
   }, [sample]);
 
   const handleViewSample = () => {
@@ -136,7 +136,7 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
         <div className="flex-1">
           <div className="flex items-center gap-4 mb-4">
             <h3 className="text-xl font-bold text-gray-800">Sample Information</h3>
-            <StatusBadge status={sample.sample_labeled as StatusType} />
+            <StatusBadge status={sample.sample_labeled_status as StatusType} />
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -176,7 +176,7 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
             <div>
               <p className="text-sm text-gray-500 mb-1">Labeling Status</p>
               <p className="font-semibold text-gray-800 capitalize">
-                {sample.sample_labeled}
+                {sample.sample_labeled_status}
               </p>
             </div>
           </div>
