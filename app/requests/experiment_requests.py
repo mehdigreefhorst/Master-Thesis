@@ -19,6 +19,9 @@ class CreateExperiment(BaseModel):
     reasoning_effort: Optional[str]
 
 
+class ExperimentId(BaseModel):
+    experiment_id: PyObjectId
+
 
 class ParsePrompt(BaseModel):
     prompt_id: PyObjectId

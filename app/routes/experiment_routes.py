@@ -11,7 +11,7 @@ from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.database.entities.scraper_cluster_entity import StageStatus
 from app.requests.cluster_prep_requests import ScraperClusterId
-from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, GetExperiments, GetSample, GetSampleUnits, ParsePrompt, ParseRawPrompt, UpdateSample
+from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, ExperimentId, GetExperiments, GetSample, GetSampleUnits, ParsePrompt, ParseRawPrompt, UpdateSample
 from app.responses.get_experiments_response import GetExperimentsResponse
 from app.services.experiment_service import ExperimentService
 from app.utils.api_validation import validate_request_body, validate_query_params
@@ -131,6 +131,43 @@ def create_experiment(body: CreateExperiment):
         raise Exception("The fuck!")
         return jsonify(error=f"Error = {e}")
     return jsonify(f"succesfully predicted a total of {total_cluster_unit_predicted_categories} categories for units")
+
+
+@experiment_bp.route("/continue_experiment", methods=["POST"])
+@validate_query_params(ExperimentId)
+def continue_experiment(query: ExperimentId):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    
+    experiment_entity = get_experiment_repository().find_by_id(query.experiment_id)
+
+    if not experiment_entity:
+        return jsonify(message=f"No experiment entity found for experiment id : {query.experiment_id}"), 404
+    
+    if experiment_entity.status == StatusType.Ongoing or experiment_entity.status == StatusType.Completed:
+        return jsonify(message=f"The experiment is already {experiment_entity.status}, no ability to continue")
+    
+    sample_entity = get_sample_repository().find_by_id(experiment_entity.sample_entity_id)
+
+    if not sample_entity:
+        return jsonify(message=f"the provided sample of the scraper cluster instance does not exist| sample_id: {scraper_cluster_entity.sample_entity_id}"), 400
+    
+    if not sample_entity.sample_cluster_unit_ids:
+        return jsonify(message=f"No cluster units have been assigned in the sample for us to do an experiment with | sample_id: {scraper_cluster_entity.sample_entity_id}"), 400
+
+
+    get_experiment_repository().update(experiment_entity.id, {"status": StatusType.Ongoing})
+    cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_entity.sample_cluster_unit_ids)
+
+    if not cluster_unit_entities or not len(cluster_unit_entities) == len(sample_entity.sample_cluster_unit_ids):
+        return jsonify(message=f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id}")
+    
+    total_cluster_unit_predicted_categories = ExperimentService.predict_categories_cluster_units(
+            experiment_entity=experiment_entity,
+            cluster_unit_entities=cluster_unit_entities,
+            prompt_entity=prompt_entity)
 
 
 @experiment_bp.route("/parse_prompt", methods=["POST"])

@@ -15,6 +15,8 @@ from app.utils.llm_helper import LlmHelper
 from collections import defaultdict
 import math
 
+from app.utils.types import StatusType
+
 
 class ExperimentService:
     """This class is all about creating experiments with a limited amount of cluster units. sending them to an LLM with the respective prompt"""
@@ -45,14 +47,11 @@ class ExperimentService:
             
             get_cluster_unit_repository().insert_predicted_category(cluster_unit_entity.id, experiment_entity.id, cluster_unit_predicted_categories)
 
-        return ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities, experiment_entity)
-    
+        predicted_count = ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities, experiment_entity)
+        get_experiment_repository().update(experiment_entity.id, {"status": StatusType.Completed})
+        return predicted_count  
 
 
-
-
-
-        
     @staticmethod
     def convert_total_predicted_into_aggregate_results(cluster_unit_entities: List[ClusterUnitEntity], 
                                                        experiment_entity: ExperimentEntity) -> int:
