@@ -203,7 +203,7 @@ if not scraper_cluster_entity.stages.scraping == StatusType.Completed:
     return jsonify(message="scraper is not completed yet"), 409
 
 # DIFFERENT CHECK HERE
-if not scraper_cluster_entity.sample_entity_id:
+if not scraper_cluster_entity.sample_id:
     return jsonify(message="You must create a sample entity first")
 
 # NOT checking cluster_prep completion
@@ -224,7 +224,7 @@ if not scraper_cluster_entity.stages.scraping == StatusType.Completed:
 if not scraper_cluster_entity.stages.cluster_prep == StatusType.Completed:
     return jsonify(message="Cluster preparation is no completed"), 409
 
-if not scraper_cluster_entity.sample_entity_id:
+if not scraper_cluster_entity.sample_id:
     return jsonify(message="you must first create a sample entity"), 400  # Different status!
 ```
 
@@ -274,7 +274,7 @@ class StateValidator:
         if entity.stages.scraping != StatusType.Completed:
             errors.append(("SCRAPING_NOT_COMPLETED", "Scraping must be completed"))
         
-        if not entity.sample_entity_id:
+        if not entity.sample_id:
             errors.append(("NO_SAMPLE", "Sample must be created"))
         
         return errors
@@ -326,7 +326,7 @@ cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_en
 
 
 # experiment_routes.py:96-99 - Sample access with NO ownership check
-sample_entity = get_sample_repository().find_by_id(scraper_cluster_entity.sample_entity_id)
+sample_entity = get_sample_repository().find_by_id(scraper_cluster_entity.sample_id)
 if not sample_entity:
     return jsonify(message=f"Sample {sample_id} not found"), 400
 
