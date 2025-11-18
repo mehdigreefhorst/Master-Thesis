@@ -7,6 +7,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.database import get_cluster_unit_repository, get_scraper_repository, get_user_repository, get_scraper_cluster_repository
 from app.requests.cluster_prep_requests import GetClusterUnitsRequest, ScraperClusterId, UpdateGroundTruthRequest
+from app.requests.filter_requests import FilterClusterUnitsRequest
 from app.requests.scraping_commands import ScrapingId
 from app.requests.scraper_requests import CreateScraperRequest
 from app.responses.reddit_post_comments_response import RedditResponse
@@ -141,4 +142,125 @@ def update_ground_truth(body: UpdateGroundTruthRequest):
     
     print("result of the update = ", result)
     return jsonify(result=result.modified_count)
-    
+
+
+@clustering_bp.route("/filter_cluster_units", methods=["GET"])
+@validate_query_params(FilterClusterUnitsRequest)
+@jwt_required()
+def filter_cluster_units(query: FilterClusterUnitsRequest):
+    """
+    Filter cluster units based on various criteria including:
+    - Subreddits, authors, upvotes/downvotes range
+    - Ground truth and predictions existence
+    - Specific ground truth labels
+    - Specific predicted labels from experiments
+    """
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+
+    # Verify user has access to this scraper cluster
+    scraper_cluster_entity = get_scraper_cluster_repository().find_by_id_and_user(
+        user_id, query.scraper_cluster_id
+    )
+    if not scraper_cluster_entity:
+        return jsonify(error=f"Could not find scraper_cluster_id={query.scraper_cluster_id}"), 400
+
+    # Build MongoDB filter dictionary
+    filter_dict = {}
+
+    # Filter by message type
+    if query.reddit_message_type != "all":
+        filter_dict["type"] = query.reddit_message_type
+
+    # Filter by subreddits
+    if query.subreddits:
+        filter_dict["subreddit"] = {"$in": query.subreddits}
+
+    # Filter by authors
+    if query.authors:
+        filter_dict["author"] = {"$in": query.authors}
+
+    # Filter by upvotes range
+    upvote_filter = {}
+    if query.upvotes_min is not None:
+        upvote_filter["$gte"] = query.upvotes_min
+    if query.upvotes_max is not None:
+        upvote_filter["$lte"] = query.upvotes_max
+    if upvote_filter:
+        filter_dict["upvotes"] = upvote_filter
+
+    # Filter by downvotes range
+    downvote_filter = {}
+    if query.downvotes_min is not None:
+        downvote_filter["$gte"] = query.downvotes_min
+    if query.downvotes_max is not None:
+        downvote_filter["$lte"] = query.downvotes_max
+    if downvote_filter:
+        filter_dict["downvotes"] = downvote_filter
+
+    # Filter by ground truth existence
+    if query.has_ground_truth is not None:
+        if query.has_ground_truth:
+            filter_dict["ground_truth"] = {"$ne": None}
+        else:
+            filter_dict["ground_truth"] = None
+
+    # Filter by specific ground truth labels
+    if query.ground_truth_labels:
+        # Units must have ALL specified labels set to true
+        for label in query.ground_truth_labels:
+            filter_dict[f"ground_truth.{label}"] = True
+
+    # Filter by predictions existence
+    if query.has_predictions is not None:
+        if query.has_predictions:
+            filter_dict["predicted_category"] = {"$ne": None, "$ne": {}}
+        else:
+            # Either null or empty dict
+            filter_dict["$or"] = [
+                {"predicted_category": None},
+                {"predicted_category": {}}
+            ]
+
+    # Filter by specific predicted labels for a given experiment
+    if query.predicted_labels and query.experiment_id:
+        # Units must have ALL specified labels predicted as true for this experiment
+        for label in query.predicted_labels:
+            filter_dict[f"predicted_category.{str(query.experiment_id)}.{label}"] = True
+
+    # Determine sort parameters
+    sort_field = query.sort_by or "created_utc"
+    sort_direction = -1 if (query.sort_order or "desc") == "desc" else 1
+
+    # Apply pagination
+    skip = query.skip or 0
+    limit = query.limit or 1000
+
+    # Execute filtered query
+    filtered_units = get_cluster_unit_repository().find_filtered(
+        scraper_cluster_entity.id,
+        filter_dict,
+        sort_field,
+        sort_direction,
+        skip,
+        limit
+    )
+
+    # Get total count for pagination info
+    total_count = get_cluster_unit_repository().count_filtered(
+        scraper_cluster_entity.id,
+        filter_dict
+    )
+
+    # Convert to JSON-serializable format
+    returnable_units = [unit.model_dump() for unit in filtered_units]
+
+    return jsonify({
+        "cluster_units": returnable_units,
+        "total_count": total_count,
+        "returned_count": len(returnable_units),
+        "skip": skip,
+        "limit": limit
+    }), 200

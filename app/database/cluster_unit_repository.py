@@ -39,3 +39,39 @@ class ClusterUnitRepository(BaseRepository[ClusterUnitEntity]):
 
         return self.collection.update_one(filter, update)
 
+    def find_filtered(self, cluster_entity_id: PyObjectId, filter_dict: dict, sort_field: str, sort_direction: int, skip: int, limit: int) -> List[ClusterUnitEntity]:
+        """
+        Find cluster units with custom filters, sorting, and pagination
+
+        Args:
+            cluster_entity_id: The cluster entity ID to filter by
+            filter_dict: MongoDB filter conditions (e.g., {"subreddit": {"$in": ["techsupport"]}})
+            sort_field: Field to sort by (e.g., "created_utc", "upvotes")
+            sort_direction: 1 for ascending, -1 for descending
+            skip: Number of documents to skip (for pagination)
+            limit: Maximum number of documents to return
+
+        Returns:
+            List of ClusterUnitEntity objects matching the filters
+        """
+        # Combine cluster_entity_id filter with custom filters
+        query = {"cluster_entity_id": cluster_entity_id, **filter_dict}
+        sort_order = [(sort_field, sort_direction)]
+
+        cursor = self.collection.find(query).sort(sort_order).skip(skip).limit(limit)
+        return [self.entity_class.model_validate(doc) for doc in cursor]
+
+    def count_filtered(self, cluster_entity_id: PyObjectId, filter_dict: dict) -> int:
+        """
+        Count cluster units matching the filters
+
+        Args:
+            cluster_entity_id: The cluster entity ID to filter by
+            filter_dict: MongoDB filter conditions
+
+        Returns:
+            Number of documents matching the filters
+        """
+        query = {"cluster_entity_id": cluster_entity_id, **filter_dict}
+        return self.collection.count_documents(query)
+
