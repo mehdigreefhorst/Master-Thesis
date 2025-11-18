@@ -2,7 +2,7 @@ import React from 'react';
 
 interface ConsensusBarProps {
   value: number; // 0-3 representing how many runs matched
-  groundTruth?: boolean; // The ground truth * total -> this is what we would like to see
+  groundTruth?: boolean | null; // The ground truth * total -> this is what we would like to see
   total?: number; // Total runs (default 3)
   isPartial?: boolean; // Whether this is a partial match (warning state)
 }
