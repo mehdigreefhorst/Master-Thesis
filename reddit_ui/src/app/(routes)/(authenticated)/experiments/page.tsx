@@ -63,7 +63,8 @@ function ExperimentsPageContent() {
             overallAccuracy: exp.overall_accuracy * 100, // Convert to percentage
             overallKappa: exp.overall_kappa * 100, // Convert to percentage
             predictionMetrics: predictionMetrics,
-            runsPerUnit: exp.runs_per_unit
+            runsPerUnit: exp.runs_per_unit,
+            status: exp.status
           };
         });
 

@@ -10,6 +10,7 @@ from app.database.entities.experiment_entity import AggregateResult, ExperimentE
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.responses.get_experiments_response import ConfusionMatrix, GetExperimentsResponse, PredictionMetric
+from app.services.llm_service import LLMService
 from app.utils.llm_helper import LlmHelper
 from collections import defaultdict
 import math
@@ -101,17 +102,20 @@ class ExperimentService:
         parsed_prompt = ExperimentService.parse_classification_prompt(cluster_unit_entity, prompt_entity)
         category_predictions: List[PredictionCategoryTokens] = []
         for run in range(experiment_entity.runs_per_unit):
-            if "gpt" in experiment_entity.model:
-                
-                response = LlmHelper.send_to_openai(prompt_entity.system_prompt, parsed_prompt, experiment_entity.model)
-                response_dict = json.loads(response.choices[0].message.content)
-                labels = {category: True for category in response_dict.pop("labels")}
-                labels.update(response_dict)
-                token_usage = response.usage.to_dict()
-                category_prediction_tokens = PredictionCategoryTokens(**labels, tokens_used=token_usage)
-                category_predictions.append(category_prediction_tokens)
-            else:
-                raise Exception("Wrong model is given, no implementation yet made for any other than openAI")
+            # if "gpt" in experiment_entity.model:
+            response = LLMService.send_to_model(user_id=experiment_entity.user_id,
+                                                system_prompt=prompt_entity.system_prompt,
+                                                prompt=parsed_prompt,
+                                                model=experiment_entity.model)
+            #response = LlmHelper.send_to_openai(prompt_entity.system_prompt, parsed_prompt, experiment_entity.model)
+            response_dict = json.loads(response.choices[0].message.content)
+            labels = {category: True for category in response_dict.pop("labels")}
+            labels.update(response_dict)
+            token_usage = response.usage.to_dict()
+            category_prediction_tokens = PredictionCategoryTokens(**labels, tokens_used=token_usage)
+            category_predictions.append(category_prediction_tokens)
+            # else:
+            #     raise Exception("Wrong model is given, no implementation yet made for any other than openAI")
         print(category_predictions)
         return category_predictions
     
@@ -139,6 +143,7 @@ class ExperimentService:
         sorted_experiment_entities = sorted(experiment_entities, key=lambda x: x.created_at, reverse=False)
 
         for index, experiment in enumerate(sorted_experiment_entities):
+            print("experiment status = ", experiment.status)
             prediction_metrics = ExperimentService.calculate_prediction_metrics(experiment, sample_entity, user_threshold)
             overall_accuracy = ExperimentService.calculate_overal_accuracy(prediction_metrics)
             overall_kappa = ExperimentService.calculate_overall_consistency(prediction_metrics)
@@ -151,7 +156,8 @@ class ExperimentService:
                                                          overall_accuracy=overall_accuracy,
                                                          overall_kappa=overall_kappa,
                                                          prediction_metrics=prediction_metrics,
-                                                         runs_per_unit=experiment.runs_per_unit)
+                                                         runs_per_unit=experiment.runs_per_unit,
+                                                         status=experiment.status)
             
             returnable_experiments.append(experiment_response)  
         

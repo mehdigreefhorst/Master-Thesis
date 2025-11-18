@@ -7,6 +7,7 @@ import math
 
 
 from app.database.entities.experiment_entity import PrevalenceDistribution
+from app.utils.types import StatusType
 
 
 
@@ -671,3 +672,4 @@ class GetExperimentsResponse(BaseModel):
     overall_accuracy: float
     overall_kappa: float
     prediction_metrics: List[PredictionMetric]
+    status: StatusType
