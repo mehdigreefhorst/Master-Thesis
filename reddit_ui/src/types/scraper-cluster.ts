@@ -19,7 +19,7 @@ export interface ScraperClusterEntity {
   user_id: string;
   cluster_entity_id: string | null;
   scraper_entity_id: string | null;
-  sample_entity_id: string | null;
+  sample_id: string | null;
   problem_exporation_description: string | null;
   target_audience: string | null;
   stages: StageStatus;

@@ -157,14 +157,14 @@ export default function DashboardPage() {
 
       case 'cluster_prep':
         return [
-          { label: 'Sample Entity', value: clusterData.sample_entity_id || 'Not created' },
+          { label: 'Sample Entity', value: clusterData.sample_id || 'Not created' },
           { label: 'Status', value: status === 'completed' ? '✓ Complete' : 'Pending' },
           { label: 'Dependencies', value: clusterData.stages.scraping === 'completed' ? '✓ Scraping done' : '✗ Scraping pending' },
         ];
 
       case 'experiment':
         return [
-          { label: 'Sample ID', value: clusterData.sample_entity_id || 'Waiting...' },
+          { label: 'Sample ID', value: clusterData.sample_id || 'Waiting...' },
           { label: 'Status', value: status === 'completed' ? '✓ Complete' : 'Not started' },
           { label: 'Dependencies', value: clusterData.stages.cluster_prep === 'completed' ? '✓ Prep done' : '✗ Prep pending' },
         ];
@@ -172,7 +172,7 @@ export default function DashboardPage() {
       case 'cluster_filter':
         return [
           { label: 'Status', value: status === 'ongoing' ? 'In progress...' : status === 'completed' ? '✓ Complete' : 'Not started' },
-          { label: 'Sample', value: clusterData.sample_entity_id || 'N/A' },
+          { label: 'Sample', value: clusterData.sample_id || 'N/A' },
           { label: 'Dependencies', value: clusterData.stages.experiment === 'completed' ? '✓ Experiment done' : '✗ Experiment pending' },
         ];
 
@@ -301,7 +301,7 @@ export default function DashboardPage() {
       name: config.name,
       key: stageKey,
       status: clusterData.stages[stageKey],
-      route: `${config.route}?scraper_cluster_id=${scraperClusterId}${stageKey === "cluster_prep" && clusterData.stages[stageKey] === "completed" ? `&sample_id=${clusterData.sample_entity_id}`: ""}`,
+      route: `${config.route}?scraper_cluster_id=${scraperClusterId}${stageKey === "cluster_prep" && clusterData.stages[stageKey] === "completed" ? `&sample_id=${clusterData.sample_id}`: ""}`,
       description: config.description,
       metrics: getStageMetrics(stageKey),
     };

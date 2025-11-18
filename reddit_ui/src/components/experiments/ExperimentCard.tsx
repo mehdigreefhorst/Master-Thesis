@@ -21,8 +21,9 @@ export interface ExperimentData {
 
 interface ExperimentCardProps {
   experiment: ExperimentData;
-  onView?: (id: string) => void;
-  onClone?: (id: string) => void;
+  onView?: (experiment_id: string) => void;
+  onClone?: (experiment_id: string) => void;
+  onContinue?: (experiment_id: string) => void;
   className?: string;
 }
 
@@ -30,6 +31,7 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
   experiment,
   onView,
   onClone,
+  onContinue,
   className = ''
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -105,6 +107,13 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
           </div>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="invisible"
+            className="mt-0! py-1! px-2! text-xs"
+            onClick={() => onContinue?.(experiment.id)}
+          >
+            Continue
+          </Button>
           <Button
             variant="invisible"
             className="mt-0! py-1! px-2! text-xs"

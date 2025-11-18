@@ -453,6 +453,15 @@ export const experimentApi = {
     return await data.json()
 
   },
+  async continueExperiment(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    experiment_id: string
+  ): Promise<Response> {
+    const data = await authFetch(`/experiment/continue_experiment?experiment_id=${experiment_id}`, {
+      method: 'POST'
+    })
+    return await data.json()
+  },
 
   /**
    * Get all experiments for a scraper cluster

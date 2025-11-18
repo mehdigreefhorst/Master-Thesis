@@ -81,16 +81,20 @@ function ExperimentsPageContent() {
     fetchExperiments();
   }, [scraperClusterId, authFetch]);
 
-  const handleView = (id: string) => {
+  const handleView = (experiment_id: string) => {
     if (scraperClusterId) {
-      router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&experiment_id=${id}`);
+      router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&experiment_id=${experiment_id}`);
     }
   };
 
-  const handleClone = (id: string) => {
-    console.log('Clone experiment:', id);
+  const handleClone = (experiment_id: string) => {
+    console.log('Clone experiment:', experiment_id);
     // TODO: Open clone experiment dialog
   };
+
+  const handleExperimentContinue = (experiment_id: string) => {
+    experimentApi.continueExperiment(authFetch, experiment_id)
+  }
 
   const handleNewExperiment = () => {
     if (scraperClusterId) {
@@ -212,6 +216,7 @@ function ExperimentsPageContent() {
                   experiment={experiment}
                   onView={handleView}
                   onClone={handleClone}
+                  onContinue={handleExperimentContinue}
                 />
               </div>
             ))}

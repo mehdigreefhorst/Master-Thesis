@@ -49,7 +49,7 @@ class ExperimentService:
 
         predicted_count = ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities, experiment_entity)
         get_experiment_repository().update(experiment_entity.id, {"status": StatusType.Completed})
-        return predicted_count  
+        return predicted_count
 
 
     @staticmethod
@@ -106,6 +106,7 @@ class ExperimentService:
                                                 system_prompt=prompt_entity.system_prompt,
                                                 prompt=parsed_prompt,
                                                 model=experiment_entity.model)
+            print("response_dict = \n", response.choices[0].message.content)
             #response = LlmHelper.send_to_openai(prompt_entity.system_prompt, parsed_prompt, experiment_entity.model)
             response_dict = json.loads(response.choices[0].message.content)
             labels = {category: True for category in response_dict.pop("labels")}

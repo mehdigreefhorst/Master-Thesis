@@ -37,7 +37,7 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
       setError(null);
 
       try {
-        // First get the scraper cluster to find the sample_entity_id
+        // First get the scraper cluster to find the sample_id
        
 
         // Fetch the sample data
