@@ -1,5 +1,6 @@
 # Experiment_service
 
+import asyncio
 import json
 from typing import Dict, List, Optional
 
@@ -21,35 +22,77 @@ from app.utils.types import StatusType
 class ExperimentService:
     """This class is all about creating experiments with a limited amount of cluster units. sending them to an LLM with the respective prompt"""
 
+
     @staticmethod
-    def predict_categories_cluster_units(experiment_entity: ExperimentEntity, cluster_unit_entities: List[ClusterUnitEntity], prompt_entity: PromptEntity):
+    async def predict_categories_cluster_units(experiment_entity: ExperimentEntity, cluster_unit_entities: List[ClusterUnitEntity], prompt_entity: PromptEntity):
         """this function orchestrates the prediction of the cluster unit entity and propagates it into the experiement entity"""
         if not prompt_entity.category == PromptCategory.Classify_cluster_units:
             raise Exception("The prompt is of the wrong type!!!")
-        
-        for cluster_unit_entity in cluster_unit_entities:
-            # if the experiment_id is already assinged to the cluster uits. (in case the experiment is partly completed because of bug)
-            if cluster_unit_entity.predicted_category and cluster_unit_entity.predicted_category.get(experiment_entity.id):
-                continue
-            predicted_categories = ExperimentService.predict_single_cluster_unit(experiment_entity,
-                                                          cluster_unit_entity,
-                                                          prompt_entity)
-            
-            cluster_unit_predicted_categories = ClusterUnitEntityPredictedCategory(
-                experiment_id=experiment_entity.id,
-                predicted_categories=predicted_categories
-                )
-            
-            if cluster_unit_entity.predicted_category is None:
-                cluster_unit_entity.predicted_category = {experiment_entity.id: cluster_unit_predicted_categories}
-            else:
-                cluster_unit_entity.predicted_category[experiment_entity.id] = cluster_unit_predicted_categories
-            
-            get_cluster_unit_repository().insert_predicted_category(cluster_unit_entity.id, experiment_entity.id, cluster_unit_predicted_categories)
+        # First we filter the cluster units that we have not yet predicted the category for. Might happen if we have predicted a part of clusterunits
+        cluster_unit_entities_remain = [cluster_unit_entity for cluster_unit_entity in cluster_unit_entities if not (cluster_unit_entity.predicted_category and cluster_unit_entity.predicted_category.get(experiment_entity.id))]
+        cluster_unit_entities_done = [cluster_unit_entity for cluster_unit_entity in cluster_unit_entities if (cluster_unit_entity.predicted_category and cluster_unit_entity.predicted_category.get(experiment_entity.id))]
+        # If all cluster units are already predicted. We should stop the function early
+        if not cluster_unit_entities_remain:
+            return 0
+        # Run the async predictions -> Resultss in one dimensional list of predictions
+        predicted_categories: List[PredictionCategoryTokens] = await asyncio.gather(*(
+                                                                  ExperimentService.predict_single_run_cluster_unit(
+                                                                      experiment_entity=experiment_entity,
+                                                                      prompt_entity=prompt_entity,
+                                                                      cluster_unit_entity=cluster_unit_entity
+                                                                      ) 
+                                                                  for cluster_unit_entity 
+                                                                  in cluster_unit_entities_remain 
+                                                                    for run in 
+                                                                    range(experiment_entity.runs_per_unit)
+                                                                  ), return_exceptions=True
+                    )
+        # turn the 1D list of predictions in into a nested list, where each nest is a single cluster unit
+        grouped_predicted_categories = [predicted_categories[i:experiment_entity.runs_per_unit+i] for i in range(0, len(cluster_unit_entities_remain)* experiment_entity.runs_per_unit, experiment_entity.runs_per_unit)]
 
-        predicted_count = ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities, experiment_entity)
+        cluster_unit_map_predictions: Dict[PyObjectId, ClusterUnitEntityPredictedCategory] = dict() # {ClusterUnitEntity.id : List}
+        # Fill the cluster unit map predictions. Which is the cluster unit id as key with the predictions as value
+        for index, predictions_cluster_unit in enumerate(grouped_predicted_categories):
+            cluster_unit_entity = cluster_unit_entities_remain[index]
+            cluster_unit_predicted_category = ClusterUnitEntityPredictedCategory(
+            experiment_id=experiment_entity.id,
+            predicted_categories=predictions_cluster_unit
+            )
+            cluster_unit_map_predictions[cluster_unit_entity.id] = cluster_unit_predicted_category
+
+            if cluster_unit_entity.predicted_category is None:
+                cluster_unit_entity.predicted_category = {}
+            cluster_unit_entity.predicted_category[experiment_entity.id] = cluster_unit_predicted_category
+
+        get_cluster_unit_repository().insert_many_predicted_categories(experiment_id=experiment_entity.id,
+                                                                       predictions_map=cluster_unit_map_predictions)
+        cluster_unit_entities_done.extend(cluster_unit_entities_remain)
+        predicted_count = ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities_done, experiment_entity)
         get_experiment_repository().update(experiment_entity.id, {"status": StatusType.Completed})
         return predicted_count
+  
+
+    @staticmethod
+    async def predict_single_run_cluster_unit(experiment_entity: ExperimentEntity, cluster_unit_entity: ClusterUnitEntity, prompt_entity: PromptEntity) -> PredictionCategoryTokens:
+        if not prompt_entity.category == PromptCategory.Classify_cluster_units:
+            raise Exception("The prompt is of the wrong type!!!")
+
+        parsed_prompt = ExperimentService.parse_classification_prompt(cluster_unit_entity, prompt_entity)
+        response = await LLMService.send_to_model(user_id=experiment_entity.user_id,
+                                                system_prompt=prompt_entity.system_prompt,
+                                                prompt=parsed_prompt,
+                                                model=experiment_entity.model,
+                                                reasoning_effort=experiment_entity.reasoning_effort)
+        print("response_dict = \n", response.choices[0].message.content)
+        response_dict = json.loads(response.choices[0].message.content)
+        # First we create a labels response dict
+        labels = {category: True for category in response_dict.pop("labels")}
+        # Now we get the prediction_reason & sentiment & possibly other key value pairs that were in the prompt
+        labels.update(response_dict)
+        # Now get the token usage from the response 
+        token_usage = response.usage.to_dict()
+        category_prediction_tokens = PredictionCategoryTokens(**labels, tokens_used=token_usage)
+        return category_prediction_tokens
 
 
     @staticmethod
@@ -94,30 +137,7 @@ class ExperimentService:
         return prediction_counter
 
     
-    @staticmethod
-    def predict_single_cluster_unit(experiment_entity: ExperimentEntity, cluster_unit_entity: ClusterUnitEntity, prompt_entity: PromptEntity):
-        if not prompt_entity.category == PromptCategory.Classify_cluster_units:
-            raise Exception("The prompt is of the wrong type!!!")
-        parsed_prompt = ExperimentService.parse_classification_prompt(cluster_unit_entity, prompt_entity)
-        category_predictions: List[PredictionCategoryTokens] = []
-        for run in range(experiment_entity.runs_per_unit):
-            # if "gpt" in experiment_entity.model:
-            response = LLMService.send_to_model(user_id=experiment_entity.user_id,
-                                                system_prompt=prompt_entity.system_prompt,
-                                                prompt=parsed_prompt,
-                                                model=experiment_entity.model)
-            print("response_dict = \n", response.choices[0].message.content)
-            #response = LlmHelper.send_to_openai(prompt_entity.system_prompt, parsed_prompt, experiment_entity.model)
-            response_dict = json.loads(response.choices[0].message.content)
-            labels = {category: True for category in response_dict.pop("labels")}
-            labels.update(response_dict)
-            token_usage = response.usage.to_dict()
-            category_prediction_tokens = PredictionCategoryTokens(**labels, tokens_used=token_usage)
-            category_predictions.append(category_prediction_tokens)
-            # else:
-            #     raise Exception("Wrong model is given, no implementation yet made for any other than openAI")
-        print(category_predictions)
-        return category_predictions
+    
     
 
     @staticmethod

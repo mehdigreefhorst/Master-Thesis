@@ -2,8 +2,10 @@
 
 import json
 import os
+from typing import Optional
 
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
+
 
 
 class LlmHelper:
@@ -34,7 +36,7 @@ class LlmHelper:
     
 
     @staticmethod
-    def send_to_openrouter(system_prompt: str, prompt:str, model: str, open_router_api_key: str):
+    def send_to_openrouter(system_prompt: str, prompt:str, model: str, open_router_api_key: str, reasoning_effort: Optional[str]):
         llm = OpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=open_router_api_key)
@@ -42,7 +44,36 @@ class LlmHelper:
         messages = [
           {'role': 'system', 'content': system_prompt},
           {'role': 'user', 'content': prompt} ]
-        response = llm.chat.completions.create(
-                    model=model_name,
-                    messages=messages)
+        if reasoning_effort: 
+            response = llm.chat.completions.create(
+                        model=model_name,
+                        messages=messages,
+                        reasoning_effort=reasoning_effort)
+        else:
+            response = llm.chat.completions.create(
+                        model=model_name,
+                        messages=messages
+            )
+        return response
+    
+
+    @staticmethod
+    async def async_send_to_openrouter(system_prompt: str, prompt:str, model: str, open_router_api_key: str, reasoning_effort: Optional[str]):
+        llm = AsyncOpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=open_router_api_key)
+        model_name =model
+        messages = [
+          {'role': 'system', 'content': system_prompt},
+          {'role': 'user', 'content': prompt} ]
+        if reasoning_effort: 
+            response = await llm.chat.completions.create(
+                        model=model_name,
+                        messages=messages,
+                        reasoning_effort=reasoning_effort)
+        else:
+            response = await llm.chat.completions.create(
+                        model=model_name,
+                        messages=messages
+            )
         return response

@@ -1,5 +1,6 @@
 
 
+import asyncio
 from typing import List
 from flask import Blueprint, jsonify
 from flask_jwt_extended import get_jwt_identity, jwt_required
@@ -120,10 +121,10 @@ def create_experiment(body: CreateExperiment):
         if not cluster_unit_entities or not len(cluster_unit_entities) == len(sample_entity.sample_cluster_unit_ids):
             return jsonify(message=f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id}")
         
-        total_cluster_unit_predicted_categories = ExperimentService.predict_categories_cluster_units(
+        total_cluster_unit_predicted_categories = asyncio.run(ExperimentService.predict_categories_cluster_units(
             experiment_entity=experiment_entity,
             cluster_unit_entities=cluster_unit_entities,
-            prompt_entity=prompt_entity)
+            prompt_entity=prompt_entity))
         
     except Exception as e:
         experiment_entity.status = StatusType.Error
@@ -181,10 +182,10 @@ def continue_experiment(query: ExperimentId):
         if not cluster_unit_entities or not len(cluster_unit_entities) == len(sample_entity.sample_cluster_unit_ids):
             return jsonify(message=f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id}")
         
-        total_cluster_unit_predicted_categories = ExperimentService.predict_categories_cluster_units(
+        total_cluster_unit_predicted_categories = asyncio.run(ExperimentService.predict_categories_cluster_units(
             experiment_entity=experiment_entity,
             cluster_unit_entities=cluster_unit_entities,
-            prompt_entity=prompt_entity)
+            prompt_entity=prompt_entity))
         
     except Exception as e:
         experiment_entity.status = StatusType.Error

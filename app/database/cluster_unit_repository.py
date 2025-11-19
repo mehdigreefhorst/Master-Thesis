@@ -1,6 +1,7 @@
 
-from typing import List
+from typing import Dict, List
 from flask_pymongo.wrappers import Database
+from pymongo import UpdateOne
 
 from app.database.base_repository import BaseRepository
 from app.database.entities.base_entity import PyObjectId
@@ -38,4 +39,39 @@ class ClusterUnitRepository(BaseRepository[ClusterUnitEntity]):
         }
 
         return self.collection.update_one(filter, update)
+    
+
+    def insert_many_predicted_categories(
+        self,
+        experiment_id: PyObjectId,
+        predictions_map: Dict[PyObjectId, ClusterUnitEntityPredictedCategory]
+    ):
+        """
+        Insert many predicted categories
+        """
+      
+        
+        # Use a single bulk write with upsert to handle both init and update
+        bulk_ops = [
+            UpdateOne(
+                {"_id": cluster_unit_id},
+                [  # Using pipeline update for conditional logic
+                    {
+                        "$set": {
+                            "predicted_category": {
+                                "$mergeObjects": [
+                                    {"$ifNull": ["$predicted_category", {}]},
+                                    {str(experiment_id): predictions.model_dump(by_alias=True)}
+                                ]
+                            }
+                        }
+                    }
+                ],
+                upsert=False
+            )
+            for cluster_unit_id, predictions in predictions_map.items()
+        ]
+        
+        # Single database call for everything!
+        return self.collection.bulk_write(bulk_ops, ordered=False)
 
