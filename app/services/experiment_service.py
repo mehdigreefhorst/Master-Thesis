@@ -2,7 +2,10 @@
 
 import asyncio
 import json
+import logging
 from typing import Dict, List, Optional
+from collections import defaultdict
+import math
 
 from pydantic import BaseModel
 from app.database.entities.cluster_unit_entity import ClusterUnitEntityPredictedCategory, PredictionCategory, PredictionCategoryTokens, ClusterUnitEntity, ClusterUnitEntityCategory
@@ -13,10 +16,10 @@ from app.database.entities.sample_entity import SampleEntity
 from app.responses.get_experiments_response import ConfusionMatrix, GetExperimentsResponse, PredictionMetric
 from app.services.llm_service import LLMService
 from app.utils.llm_helper import LlmHelper
-from collections import defaultdict
-import math
-
 from app.utils.types import StatusType
+
+
+logger = logging.getLogger(__name__)
 
 
 class ExperimentService:
@@ -24,7 +27,11 @@ class ExperimentService:
 
 
     @staticmethod
-    async def predict_categories_cluster_units(experiment_entity: ExperimentEntity, cluster_unit_entities: List[ClusterUnitEntity], prompt_entity: PromptEntity):
+    async def predict_categories_cluster_units(
+        experiment_entity: ExperimentEntity, 
+        cluster_unit_entities: List[ClusterUnitEntity], 
+        prompt_entity: PromptEntity, 
+          max_concurrent: int=1000):
         """this function orchestrates the prediction of the cluster unit entity and propagates it into the experiement entity"""
         if not prompt_entity.category == PromptCategory.Classify_cluster_units:
             raise Exception("The prompt is of the wrong type!!!")
@@ -34,19 +41,50 @@ class ExperimentService:
         # If all cluster units are already predicted. We should stop the function early
         if not cluster_unit_entities_remain:
             return 0
-        # Run the async predictions -> Resultss in one dimensional list of predictions
-        predicted_categories: List[PredictionCategoryTokens] = await asyncio.gather(*(
-                                                                  ExperimentService.predict_single_run_cluster_unit(
-                                                                      experiment_entity=experiment_entity,
-                                                                      prompt_entity=prompt_entity,
-                                                                      cluster_unit_entity=cluster_unit_entity
-                                                                      ) 
-                                                                  for cluster_unit_entity 
-                                                                  in cluster_unit_entities_remain 
-                                                                    for run in 
-                                                                    range(experiment_entity.runs_per_unit)
-                                                                  ), return_exceptions=True
+        
+        logger.info(f"Starting prediction for {len(cluster_unit_entities_remain)} units, "
+                   f"{experiment_entity.runs_per_unit} runs each")
+        
+        # Create semaphore for concurrency control
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def predict_single_with_semaphore(cluster_unit_entity, run_index):
+            """
+            Wrapper that ensures we don't have too many concurrent connections.
+            The rate limiter (in LlmHelper) ensures we don't exceed API limits.
+            """
+            async with semaphore:  # Limit concurrent connections
+                try:
+                    # This will also apply rate limiting internally
+                    result = await ExperimentService.predict_single_run_cluster_unit(
+                        experiment_entity=experiment_entity,
+                        prompt_entity=prompt_entity,
+                        cluster_unit_entity=cluster_unit_entity
                     )
+                    logger.debug(f"Completed prediction for unit {cluster_unit_entity.id}, run {run_index}")
+                    return result
+                except Exception as e:
+                    logger.error(f"Failed prediction for unit {cluster_unit_entity.id}, run {run_index}: {e}")
+                    return None
+        
+        
+        # Create all tasks
+        tasks = []
+        for cluster_unit_entity in cluster_unit_entities_remain:
+            for run_index in range(experiment_entity.runs_per_unit):
+                tasks.append(predict_single_with_semaphore(cluster_unit_entity, run_index))
+
+        logger.info(f"Created {len(tasks)} prediction tasks")
+        
+        # Execute with gather # Run the async predictions -> Resultss in one dimensional list of predictions
+        predicted_categories: List[PredictionCategoryTokens] = await asyncio.gather(
+            *tasks, 
+            return_exceptions=True
+        )
+        
+        logger.info(f"Finished with {len(tasks)} prediction tasks")
+
+        
         # turn the 1D list of predictions in into a nested list, where each nest is a single cluster unit
         grouped_predicted_categories = [predicted_categories[i:experiment_entity.runs_per_unit+i] for i in range(0, len(cluster_unit_entities_remain)* experiment_entity.runs_per_unit, experiment_entity.runs_per_unit)]
 

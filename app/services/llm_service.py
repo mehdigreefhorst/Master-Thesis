@@ -5,6 +5,7 @@ from app.database import get_user_repository
 from app.database.entities.base_entity import PyObjectId
 from app.database.entities.user_entity import UserEntity
 from app.utils.llm_helper import LlmHelper
+from app.utils.rate_limiters import call_with_retry
 
 
 class LLMService:
@@ -13,13 +14,16 @@ class LLMService:
     @staticmethod
     async def send_to_model(user_id: PyObjectId, system_prompt: str, prompt: str, model: str, reasoning_effort: Optional[str]):
         user_entity: UserEntity =  get_user_repository().find_by_id(user_id)
-        if user_entity.open_router_api_key:
-            return await LlmHelper().async_send_to_openrouter(
-                system_prompt=system_prompt,
-                prompt=prompt,
-                model=model,
-                open_router_api_key=user_entity.open_router_api_key,
-                reasoning_effort=reasoning_effort)
-        else:
-            # :TODO add a elif for user wanting to pay for the usage, then we use our own API key
-            raise Exception("No api key has been set by the user")
+        if not user_entity.open_router_api_key:
+            raise Exception("No API key has been set by the user")
+         # :TODO add a elif for user wanting to pay for the usage, then we use our own API key
+        response = await call_with_retry(LlmHelper().async_send_to_openrouter,
+                                         system_prompt=system_prompt,
+            prompt=prompt,
+            model=model,
+            open_router_api_key=user_entity.open_router_api_key,
+            reasoning_effort=reasoning_effort)
+
+        
+        return response
+       

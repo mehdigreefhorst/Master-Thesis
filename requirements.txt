@@ -16,3 +16,4 @@ bertopic
 gensim
 kaleido
 openai
+backoff
