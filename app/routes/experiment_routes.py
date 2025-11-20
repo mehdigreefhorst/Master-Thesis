@@ -30,7 +30,7 @@ def get_experiment_instances(query: GetExperiments) -> List[GetExperimentsRespon
     current_user = get_user_repository().find_by_id(user_id)
     if not current_user:
         return jsonify(error="No such user"), 401
-    
+        
     scraper_cluster_entity = get_scraper_cluster_repository().find_by_id_and_user(user_id, query.scraper_cluster_id)
 
     if not scraper_cluster_entity:
@@ -43,8 +43,8 @@ def get_experiment_instances(query: GetExperiments) -> List[GetExperimentsRespon
         return jsonify(message="scraper is not completed yet"), 409
     
     filter = {"scraper_cluster_id": query.scraper_cluster_id}
-    if query.experiment_id:
-        filter.update({"_id": query.experiment_id})
+    if query.experiment_ids:
+        filter.update({"_id": {"$in": query.experiment_ids}})
         
     experiment_entities = get_experiment_repository().find(filter)
 

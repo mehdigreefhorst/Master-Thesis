@@ -31,7 +31,7 @@ class ExperimentService:
         experiment_entity: ExperimentEntity, 
         cluster_unit_entities: List[ClusterUnitEntity], 
         prompt_entity: PromptEntity, 
-          max_concurrent: int=1000):
+        max_concurrent: int=1000):
         """this function orchestrates the prediction of the cluster unit entity and propagates it into the experiement entity"""
         if not prompt_entity.category == PromptCategory.Classify_cluster_units:
             raise Exception("The prompt is of the wrong type!!!")
@@ -45,7 +45,30 @@ class ExperimentService:
         logger.info(f"Starting prediction for {len(cluster_unit_entities_remain)} units, "
                    f"{experiment_entity.runs_per_unit} runs each")
         
-        # Create semaphore for concurrency control
+        predicted_categories = await ExperimentService.create_predicted_categories(
+            experiment_entity=experiment_entity,
+            prompt_entity=prompt_entity,
+            cluster_unit_enities=cluster_unit_entities_remain, 
+            max_concurrent=max_concurrent)
+
+        
+        cluster_unit_entities_remain = ExperimentService.update_add_to_db_cluster_unit_predictions(predicted_categories=predicted_categories,
+                                                                    cluster_units_enitities_as_predicted=cluster_unit_entities_remain,
+                                                                    experiment_entity=experiment_entity)
+        
+        cluster_unit_entities_done.extend(cluster_unit_entities_remain)
+        predicted_count = ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities_done, experiment_entity)
+        get_experiment_repository().update(experiment_entity.id, {"status": StatusType.Completed})
+        return predicted_count
+    
+
+    @staticmethod
+    async def create_predicted_categories(
+        experiment_entity: ExperimentEntity,
+        prompt_entity: PromptEntity,
+        cluster_unit_enities: List[ClusterUnitEntity],
+        max_concurrent=1000) -> List[PredictionCategoryTokens]:
+         # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(max_concurrent)
 
         async def predict_single_with_semaphore(cluster_unit_entity, run_index):
@@ -67,10 +90,9 @@ class ExperimentService:
                     logger.error(f"Failed prediction for unit {cluster_unit_entity.id}, run {run_index}: {e}")
                     return None
         
-        
         # Create all tasks
         tasks = []
-        for cluster_unit_entity in cluster_unit_entities_remain:
+        for cluster_unit_entity in cluster_unit_enities:
             for run_index in range(experiment_entity.runs_per_unit):
                 tasks.append(predict_single_with_semaphore(cluster_unit_entity, run_index))
 
@@ -83,15 +105,25 @@ class ExperimentService:
         )
         
         logger.info(f"Finished with {len(tasks)} prediction tasks")
+        return predicted_categories
+    
 
-        
+    @staticmethod
+    def update_add_to_db_cluster_unit_predictions(
+        predicted_categories: List[PredictionCategoryTokens],
+        cluster_units_enitities_as_predicted: List[ClusterUnitEntity],
+        experiment_entity: ExperimentEntity) -> List[ClusterUnitEntity]:
+        """updates the predictions, by adding them to a cluster unit map which is a dictionary. Then it sends off 
+        the predictions to the mongo db database. Also it returns the updates cluster unit enitites """
         # turn the 1D list of predictions in into a nested list, where each nest is a single cluster unit
-        grouped_predicted_categories = [predicted_categories[i:experiment_entity.runs_per_unit+i] for i in range(0, len(cluster_unit_entities_remain)* experiment_entity.runs_per_unit, experiment_entity.runs_per_unit)]
-
+        predictions_per_unit = experiment_entity.runs_per_unit
+        grouped_predicted_categories = [predicted_categories[i:predictions_per_unit+i] 
+                                        for i in range(0, len(cluster_units_enitities_as_predicted)* predictions_per_unit, predictions_per_unit)]
         cluster_unit_map_predictions: Dict[PyObjectId, ClusterUnitEntityPredictedCategory] = dict() # {ClusterUnitEntity.id : List}
+
         # Fill the cluster unit map predictions. Which is the cluster unit id as key with the predictions as value
         for index, predictions_cluster_unit in enumerate(grouped_predicted_categories):
-            cluster_unit_entity = cluster_unit_entities_remain[index]
+            cluster_unit_entity = cluster_units_enitities_as_predicted[index]
             cluster_unit_predicted_category = ClusterUnitEntityPredictedCategory(
             experiment_id=experiment_entity.id,
             predicted_categories=predictions_cluster_unit
@@ -101,13 +133,11 @@ class ExperimentService:
             if cluster_unit_entity.predicted_category is None:
                 cluster_unit_entity.predicted_category = {}
             cluster_unit_entity.predicted_category[experiment_entity.id] = cluster_unit_predicted_category
-
+        
         get_cluster_unit_repository().insert_many_predicted_categories(experiment_id=experiment_entity.id,
                                                                        predictions_map=cluster_unit_map_predictions)
-        cluster_unit_entities_done.extend(cluster_unit_entities_remain)
-        predicted_count = ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities_done, experiment_entity)
-        get_experiment_repository().update(experiment_entity.id, {"status": StatusType.Completed})
-        return predicted_count
+        return cluster_units_enitities_as_predicted
+
   
 
     @staticmethod

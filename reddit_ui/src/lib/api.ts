@@ -468,9 +468,21 @@ export const experimentApi = {
    */
   async getExperiments(
     authFetch: ReturnType<typeof useAuthFetch>,
-    scraperClusterId: string
+    scraperClusterId: string,
+    experimentIds?: string[]
   ) {
-    const data = await authFetch(`/experiment?scraper_cluster_id=${scraperClusterId}`);
+    if (experimentIds) {
+      console.log("experimentIds = ", experimentIds.toString())
+    }
+    let experimentParamText = ""
+
+    if (experimentIds) {
+      experimentParamText = `&experiment_ids=${experimentIds.toString()}`
+    }
+    console.log("experimentParamText = ", experimentParamText)
+    
+    
+    const data = await authFetch(`/experiment?scraper_cluster_id=${scraperClusterId}${experimentParamText}`);
     return await data.json();
   },
 
