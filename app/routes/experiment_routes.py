@@ -120,7 +120,12 @@ def create_experiment(body: CreateExperiment):
 
         if not cluster_unit_entities or not len(cluster_unit_entities) == len(sample_entity.sample_cluster_unit_ids):
             return jsonify(message=f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id}")
-        
+
+        # Reset rate limiter locks before entering new event loop
+        from app.utils.rate_limiters import RateLimiterRegistry
+        for limiter in RateLimiterRegistry._rate_limiters.values():
+            limiter.reset_lock()
+
         total_cluster_unit_predicted_categories = asyncio.run(ExperimentService.predict_categories_cluster_units(
             experiment_entity=experiment_entity,
             cluster_unit_entities=cluster_unit_entities,
@@ -175,13 +180,18 @@ def continue_experiment(query: ExperimentId):
 
     if not cluster_unit_entities or not len(cluster_unit_entities) == len(sample_entity.sample_cluster_unit_ids):
         return jsonify(message=f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id}")
-    
+
     try:
         cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_entity.sample_cluster_unit_ids)
 
         if not cluster_unit_entities or not len(cluster_unit_entities) == len(sample_entity.sample_cluster_unit_ids):
             return jsonify(message=f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id}")
-        
+
+        # Reset rate limiter locks before entering new event loop
+        from app.utils.rate_limiters import RateLimiterRegistry
+        for limiter in RateLimiterRegistry._rate_limiters.values():
+            limiter.reset_lock()
+
         total_cluster_unit_predicted_categories = asyncio.run(ExperimentService.predict_categories_cluster_units(
             experiment_entity=experiment_entity,
             cluster_unit_entities=cluster_unit_entities,

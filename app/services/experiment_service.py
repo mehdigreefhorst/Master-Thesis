@@ -51,7 +51,6 @@ class ExperimentService:
             cluster_unit_enities=cluster_unit_entities_remain, 
             max_concurrent=max_concurrent)
 
-        
         cluster_unit_entities_remain = ExperimentService.update_add_to_db_cluster_unit_predictions(predicted_categories=predicted_categories,
                                                                     cluster_units_enitities_as_predicted=cluster_unit_entities_remain,
                                                                     experiment_entity=experiment_entity)
@@ -67,44 +66,72 @@ class ExperimentService:
         experiment_entity: ExperimentEntity,
         prompt_entity: PromptEntity,
         cluster_unit_enities: List[ClusterUnitEntity],
-        max_concurrent=1000) -> List[PredictionCategoryTokens]:
+        max_concurrent=1000,
+        max_retries=3) -> List[PredictionCategoryTokens]:
          # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(max_concurrent)
 
-        async def predict_single_with_semaphore(cluster_unit_entity, run_index):
+        async def predict_single_with_semaphore_and_retry(cluster_unit_entity, run_index):
             """
             Wrapper that ensures we don't have too many concurrent connections.
             The rate limiter (in LlmHelper) ensures we don't exceed API limits.
+            Includes retry logic with exponential backoff.
             """
             async with semaphore:  # Limit concurrent connections
-                try:
-                    # This will also apply rate limiting internally
-                    result = await ExperimentService.predict_single_run_cluster_unit(
-                        experiment_entity=experiment_entity,
-                        prompt_entity=prompt_entity,
-                        cluster_unit_entity=cluster_unit_entity
-                    )
-                    logger.debug(f"Completed prediction for unit {cluster_unit_entity.id}, run {run_index}")
-                    return result
-                except Exception as e:
-                    logger.error(f"Failed prediction for unit {cluster_unit_entity.id}, run {run_index}: {e}")
-                    return None
-        
+                for attempt in range(max_retries):
+                    try:
+                        # This will also apply rate limiting internally
+                        result = await ExperimentService.predict_single_run_cluster_unit(
+                            experiment_entity=experiment_entity,
+                            prompt_entity=prompt_entity,
+                            cluster_unit_entity=cluster_unit_entity
+                        )
+                        logger.debug(f"Completed prediction for unit {cluster_unit_entity.id}, run {run_index}")
+                        return result
+                    except Exception as e:
+                        is_last_attempt = attempt == max_retries - 1
+
+                        # Log the error
+                        if is_last_attempt:
+                            logger.error(f"Failed prediction for unit {cluster_unit_entity.id}, run {run_index} "
+                                       f"after {max_retries} attempts: {e}")
+                        else:
+                            logger.warning(f"Failed prediction for unit {cluster_unit_entity.id}, run {run_index} "
+                                         f"(attempt {attempt + 1}/{max_retries}): {e}")
+
+                        # If this is the last attempt, give up
+                        if is_last_attempt:
+                            return None
+
+                        # Exponential backoff: 1s, 2s, 4s, etc.
+                        wait_time = 2 ** attempt
+                        logger.info(f"Retrying in {wait_time}s...")
+                        await asyncio.sleep(wait_time)
+
         # Create all tasks
         tasks = []
         for cluster_unit_entity in cluster_unit_enities:
             for run_index in range(experiment_entity.runs_per_unit):
-                tasks.append(predict_single_with_semaphore(cluster_unit_entity, run_index))
+                tasks.append(predict_single_with_semaphore_and_retry(cluster_unit_entity, run_index))
 
         logger.info(f"Created {len(tasks)} prediction tasks")
-        
-        # Execute with gather # Run the async predictions -> Resultss in one dimensional list of predictions
+
+        # Execute with gather # Run the async predictions -> Results in one dimensional list of predictions
         predicted_categories: List[PredictionCategoryTokens] = await asyncio.gather(
-            *tasks, 
+            *tasks,
             return_exceptions=True
         )
-        
-        logger.info(f"Finished with {len(tasks)} prediction tasks")
+
+        # Filter out None results and count failures
+        successful_predictions = [p for p in predicted_categories if p is not None and not isinstance(p, Exception)]
+        failed_count = len(predicted_categories) - len(successful_predictions)
+
+        if failed_count > 0:
+            logger.warning(f"Completed with {len(successful_predictions)} successful predictions, "
+                         f"{failed_count} failed after retries")
+        else:
+            logger.info(f"Finished with {len(tasks)} prediction tasks, all successful")
+
         return predicted_categories
     
 
@@ -120,10 +147,11 @@ class ExperimentService:
         grouped_predicted_categories = [predicted_categories[i:predictions_per_unit+i] 
                                         for i in range(0, len(cluster_units_enitities_as_predicted)* predictions_per_unit, predictions_per_unit)]
         cluster_unit_map_predictions: Dict[PyObjectId, ClusterUnitEntityPredictedCategory] = dict() # {ClusterUnitEntity.id : List}
-
+        print("grouped_predicted_categories = ", grouped_predicted_categories)
         # Fill the cluster unit map predictions. Which is the cluster unit id as key with the predictions as value
         for index, predictions_cluster_unit in enumerate(grouped_predicted_categories):
             cluster_unit_entity = cluster_units_enitities_as_predicted[index]
+            print("predictions_cluster_unit = \n", predictions_cluster_unit)
             cluster_unit_predicted_category = ClusterUnitEntityPredictedCategory(
             experiment_id=experiment_entity.id,
             predicted_categories=predictions_cluster_unit
@@ -151,7 +179,6 @@ class ExperimentService:
                                                 prompt=parsed_prompt,
                                                 model=experiment_entity.model,
                                                 reasoning_effort=experiment_entity.reasoning_effort)
-        print("response_dict = \n", response.choices[0].message.content)
         response_dict = json.loads(response.choices[0].message.content)
         # First we create a labels response dict
         labels = {category: True for category in response_dict.pop("labels")}
@@ -186,7 +213,6 @@ class ExperimentService:
                                                                                                                                ground_truth=ground_truth_value))
                 if ground_truth_value:
                     prediction_category_prediction_result.sum_ground_truth += 1
-        print(f"the new experiment entity looks like : {experiment_entity.model_dump_json(indent=4)}")
         return get_experiment_repository().update(experiment_entity.id, experiment_entity).modified_count
 
 
@@ -199,7 +225,6 @@ class ExperimentService:
         for prediction_category in cluster_unit_entity.predicted_category[experiment_entity.id].predicted_categories:
             prediction_category
             for variable_name in prediction_category.category_field_names(): 
-                print("variable_name = ", variable_name)
                 value = getattr(prediction_category, variable_name)
                 prediction_counter[variable_name] += 1 if value else 0
         return prediction_counter

@@ -57,16 +57,33 @@ class RateLimiterRegistry:
 
 class OpenRouterRateLimiter:
     """Rate limiter that's shared across all coroutines"""
-    
+
     def __init__(self, config: RateLimitConfig):
         self.config = config
         self.request_times = deque()
-        self.lock = asyncio.Lock()  # This lock ensures thread-safe access
-        
+        self._lock = None  # Will be lazily initialized in the correct event loop
+
         # Metrics
         self.total_requests = 0
         self.throttled_count = 0
         self.total_wait_time = 0.0
+
+    @property
+    def lock(self):
+        """Lazy initialization of lock to ensure it's created in the correct event loop"""
+        if self._lock is None:
+            try:
+                # Get current event loop - if this succeeds, we're in a running loop
+                asyncio.get_running_loop()
+                self._lock = asyncio.Lock()
+            except RuntimeError:
+                # No running loop, create lock anyway (will be recreated when needed)
+                self._lock = asyncio.Lock()
+        return self._lock
+
+    def reset_lock(self):
+        """Reset the lock - useful when entering a new event loop"""
+        self._lock = None
     
     async def acquire(self) -> float:
         """
