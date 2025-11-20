@@ -22,6 +22,38 @@ function ExperimentsPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Transform backend experiment data to frontend format
+  const transformExperimentData = (exp: any): ExperimentData => {
+    // Transform prediction_metrics to match frontend PredictionMetric interface
+    const predictionMetrics = (exp.prediction_metrics || []).map((pm: any) => ({
+      labelName: pm.prediction_category_name,
+      prevalence: pm.prevalence * 100, // Convert to percentage
+      prevalenceCount: pm.prevalence_count,
+      totalSamples: pm.total_samples,
+      accuracy: pm.accuracy * 100, // Convert to percentage
+      certaintyDistribution:pm.prevelance_distribution,
+      confusionMatrix: {
+        tp: pm.confusion_matrix?.tp || 0,
+        fp: pm.confusion_matrix?.fp || 0,
+        fn: pm.confusion_matrix?.fn || 0,
+        tn: pm.confusion_matrix?.tn || 0
+      }
+    }));
+
+    return {
+      id: exp.id,
+      name: exp.name,
+      model: exp.model,
+      created: new Date(exp.created).toLocaleDateString(),
+      totalSamples: exp.total_samples,
+      overallAccuracy: exp.overall_accuracy * 100, // Convert to percentage
+      overallKappa: exp.overall_kappa * 100, // Convert to percentage
+      predictionMetrics: predictionMetrics,
+      runsPerUnit: exp.runs_per_unit,
+      status: exp.status
+    };
+  };
+
   // Fetch experiments on mount
   useEffect(() => {
     async function fetchExperiments() {
@@ -35,38 +67,9 @@ function ExperimentsPageContent() {
         setIsLoading(true);
         setError(null);
         const data = await experimentApi.getExperiments(authFetch, scraperClusterId);
-        
-        // Transform backend data to ExperimentData format
-        const transformedData: ExperimentData[] = (data.experiments || data || []).map((exp: any) => {
-          // Transform prediction_metrics to match frontend PredictionMetric interface
-          const predictionMetrics = (exp.prediction_metrics || []).map((pm: any) => ({
-            labelName: pm.prediction_category_name,
-            prevalence: pm.prevalence * 100, // Convert to percentage
-            prevalenceCount: pm.prevalence_count,
-            totalSamples: pm.total_samples,
-            accuracy: pm.accuracy * 100, // Convert to percentage
-            certaintyDistribution:pm.prevelance_distribution,
-            confusionMatrix: {
-              tp: pm.confusion_matrix?.tp || 0,
-              fp: pm.confusion_matrix?.fp || 0,
-              fn: pm.confusion_matrix?.fn || 0,
-              tn: pm.confusion_matrix?.tn || 0
-            }
-          }));
 
-          return {
-            id: exp.id,
-            name: exp.name,
-            model: exp.model,
-            created: new Date(exp.created).toLocaleDateString(),
-            totalSamples: exp.total_samples,
-            overallAccuracy: exp.overall_accuracy * 100, // Convert to percentage
-            overallKappa: exp.overall_kappa * 100, // Convert to percentage
-            predictionMetrics: predictionMetrics,
-            runsPerUnit: exp.runs_per_unit,
-            status: exp.status
-          };
-        });
+        // Transform backend data to ExperimentData format
+        const transformedData: ExperimentData[] = (data.experiments || data || []).map(transformExperimentData);
 
         setExperiments(transformedData);
       } catch (err) {
@@ -81,6 +84,44 @@ function ExperimentsPageContent() {
     fetchExperiments();
   }, [scraperClusterId, authFetch]);
 
+  // Poll running experiments every second
+  useEffect(() => {
+    if (!scraperClusterId) return;
+
+    const pollRunningExperiments = async () => {
+      // Find all experiments with "running" status
+      const runningExperimentIds = experiments
+        .filter(exp => exp.status === 'ongoing')
+        .map(exp => exp.id);
+
+      // If there are no running experiments, don't poll
+      if (runningExperimentIds.length === 0) return;
+
+      try {
+        // Fetch only the running experiments
+        const data = await experimentApi.getExperiments(authFetch, scraperClusterId, runningExperimentIds);
+        const updatedExperiments = (data.experiments || data || []).map(transformExperimentData);
+
+        // Update the experiments state by merging the new data
+        setExperiments(prevExperiments => {
+          return prevExperiments.map(exp => {
+            const updatedExp = updatedExperiments.find((updated: ExperimentData) => updated.id === exp.id);
+            return updatedExp || exp;
+          });
+        });
+      } catch (err) {
+        console.error('Failed to poll running experiments:', err);
+        // Don't set error state for polling failures to avoid disrupting UI
+      }
+    };
+
+    // Set up interval to poll every 1 second (1000ms)
+    const intervalId = setInterval(pollRunningExperiments, 2000);
+
+    // Cleanup interval on unmount or when dependencies change
+    return () => clearInterval(intervalId);
+  }, [experiments, scraperClusterId, authFetch]);
+
   const handleView = (experiment_id: string) => {
     if (scraperClusterId) {
       router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&experiment_id=${experiment_id}`);
@@ -92,8 +133,29 @@ function ExperimentsPageContent() {
     // TODO: Open clone experiment dialog
   };
 
-  const handleExperimentContinue = (experiment_id: string) => {
-    experimentApi.continueExperiment(authFetch, experiment_id)
+  const handleExperimentContinue = async (experiment_id: string) => {
+    // Optimistically update the experiment status to "ongoing"
+    setExperiments(prevExperiments =>
+      prevExperiments.map(exp =>
+        exp.id === experiment_id
+          ? { ...exp, status: 'ongoing' }
+          : exp
+      )
+    );
+
+    try {
+      await experimentApi.continueExperiment(authFetch, experiment_id);
+    } catch (err) {
+      console.error('Failed to continue experiment:', err);
+      // Revert the optimistic update on error
+      setExperiments(prevExperiments =>
+        prevExperiments.map(exp =>
+          exp.id === experiment_id
+            ? { ...exp, status: 'paused' }
+            : exp
+        )
+      );
+    }
   }
 
   const handleNewExperiment = () => {
