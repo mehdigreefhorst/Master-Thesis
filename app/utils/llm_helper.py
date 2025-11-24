@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import Optional
+from typing import Dict, Optional
 import logging
 from openai import OpenAI, AsyncOpenAI
 
@@ -104,5 +104,12 @@ class LlmHelper:
         except Exception as e:
             logger.error(f"Error calling OpenRouter: {e}")
             raise e
+    
+    @staticmethod
+    def get_llm_usage(response) -> Dict[str, str]:
+        
+        # Now get the token usage from the response 
+        token_usage = response.usage.to_dict()
+        return token_usage
        
          

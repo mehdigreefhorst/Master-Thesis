@@ -40,6 +40,28 @@ function ExperimentsPageContent() {
       }
     }));
 
+    // Transform token statistics if available
+    const tokenStatistics = exp.token_statistics ? {
+      total_successful_predictions: exp.token_statistics.total_successful_predictions || 0,
+      total_failed_attempts: exp.token_statistics.total_failed_attempts || 0,
+      total_tokens_used: {
+        prompt_tokens: exp.token_statistics.total_tokens_used?.prompt_tokens || 0,
+        completion_tokens: exp.token_statistics.total_tokens_used?.completion_tokens || 0,
+        total_tokens: exp.token_statistics.total_tokens_used?.total_tokens || 0,
+        reasoning_tokens: exp.token_statistics.total_tokens_used?.reasoning_tokens || 0,
+      },
+      tokens_wasted_on_failures: {
+        prompt_tokens: exp.token_statistics.tokens_wasted_on_failures?.prompt_tokens || 0,
+        completion_tokens: exp.token_statistics.tokens_wasted_on_failures?.completion_tokens || 0,
+        total_tokens: exp.token_statistics.tokens_wasted_on_failures?.total_tokens || 0,
+      },
+      tokens_from_retries: {
+        prompt_tokens: exp.token_statistics.tokens_from_retries?.prompt_tokens || 0,
+        completion_tokens: exp.token_statistics.tokens_from_retries?.completion_tokens || 0,
+        total_tokens: exp.token_statistics.tokens_from_retries?.total_tokens || 0,
+      },
+    } : undefined;
+
     return {
       id: exp.id,
       name: exp.name,
@@ -50,7 +72,8 @@ function ExperimentsPageContent() {
       overallKappa: exp.overall_kappa * 100, // Convert to percentage
       predictionMetrics: predictionMetrics,
       runsPerUnit: exp.runs_per_unit,
-      status: exp.status
+      status: exp.status,
+      tokenStatistics: tokenStatistics
     };
   };
 

@@ -1,4 +1,5 @@
 # Experiment_service
+import sys
 
 import asyncio
 import json
@@ -8,7 +9,7 @@ from collections import defaultdict
 import math
 
 from pydantic import BaseModel
-from app.database.entities.cluster_unit_entity import ClusterUnitEntityPredictedCategory, PredictionCategory, PredictionCategoryTokens, ClusterUnitEntity, ClusterUnitEntityCategory
+from app.database.entities.cluster_unit_entity import ClusterUnitEntityPredictedCategory, PredictionCategory, PredictionCategoryTokens, ClusterUnitEntity, ClusterUnitEntityCategory, TokenUsageAttempt
 from app.database import get_cluster_unit_repository, get_experiment_repository
 from app.database.entities.experiment_entity import AggregateResult, ExperimentEntity, PredictionResult, PrevelanceUnitDistribution
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
@@ -56,9 +57,13 @@ class ExperimentService:
                                                                     experiment_entity=experiment_entity)
         
         cluster_unit_entities_done.extend(cluster_unit_entities_remain)
-        predicted_count = ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities_done, experiment_entity)
-        get_experiment_repository().update(experiment_entity.id, {"status": StatusType.Completed})
-        return predicted_count
+        ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities_done, experiment_entity)
+
+        # Calculate and store aggregate token statistics
+        ExperimentService.calculate_and_store_token_statistics(cluster_unit_entities_done, experiment_entity)
+
+        experiment_entity.status = StatusType.Completed
+        get_experiment_repository().update(experiment_entity.id, experiment_entity)
     
 
     @staticmethod
@@ -75,16 +80,21 @@ class ExperimentService:
             """
             Wrapper that ensures we don't have too many concurrent connections.
             The rate limiter (in LlmHelper) ensures we don't exceed API limits.
-            Includes retry logic with exponential backoff.
+            Includes retry logic with exponential backoff and comprehensive token tracking.
             """
+            all_attempts = []  # Track all attempts for token accounting
+
             async with semaphore:  # Limit concurrent connections
                 for attempt in range(max_retries):
+                    attempt_number = attempt + 1
                     try:
                         # This will also apply rate limiting internally
                         result = await ExperimentService.predict_single_run_cluster_unit(
                             experiment_entity=experiment_entity,
                             prompt_entity=prompt_entity,
-                            cluster_unit_entity=cluster_unit_entity
+                            cluster_unit_entity=cluster_unit_entity,
+                            attempt_number=attempt_number,
+                            all_attempts=all_attempts  # Pass the list to accumulate attempts
                         )
                         logger.debug(f"Completed prediction for unit {cluster_unit_entity.id}, run {run_index}")
                         return result
@@ -97,7 +107,7 @@ class ExperimentService:
                                        f"after {max_retries} attempts: {e}")
                         else:
                             logger.warning(f"Failed prediction for unit {cluster_unit_entity.id}, run {run_index} "
-                                         f"(attempt {attempt + 1}/{max_retries}): {e}")
+                                         f"(attempt {attempt_number}/{max_retries}): {e}")
 
                         # If this is the last attempt, give up
                         if is_last_attempt:
@@ -169,25 +179,73 @@ class ExperimentService:
   
 
     @staticmethod
-    async def predict_single_run_cluster_unit(experiment_entity: ExperimentEntity, cluster_unit_entity: ClusterUnitEntity, prompt_entity: PromptEntity) -> PredictionCategoryTokens:
+    async def predict_single_run_cluster_unit(
+        experiment_entity: ExperimentEntity,
+        cluster_unit_entity: ClusterUnitEntity,
+        prompt_entity: PromptEntity,
+        attempt_number: int = 1,
+        all_attempts: list = None
+    ) -> PredictionCategoryTokens:
+        """
+        Make a single prediction run for a cluster unit.
+
+        CRITICAL: Token tracking happens at multiple stages:
+        1. Immediately after LLM response (before any parsing)
+        2. Accumulated in all_attempts list (survives retries)
+        3. Attached to final prediction result
+
+        This ensures tokens are NEVER lost, even if prediction parsing fails.
+        """
         if not prompt_entity.category == PromptCategory.Classify_cluster_units:
             raise Exception("The prompt is of the wrong type!!!")
 
+        if all_attempts is None:
+            all_attempts = []
+
         parsed_prompt = ExperimentService.parse_classification_prompt(cluster_unit_entity, prompt_entity)
-        response = await LLMService.send_to_model(user_id=experiment_entity.user_id,
-                                                system_prompt=prompt_entity.system_prompt,
-                                                prompt=parsed_prompt,
-                                                model=experiment_entity.model,
-                                                reasoning_effort=experiment_entity.reasoning_effort)
-        response_dict = json.loads(response.choices[0].message.content)
-        # First we create a labels response dict
-        labels = {category: True for category in response_dict.pop("labels")}
-        # Now we get the prediction_reason & sentiment & possibly other key value pairs that were in the prompt
-        labels.update(response_dict)
-        # Now get the token usage from the response 
-        token_usage = response.usage.to_dict()
-        category_prediction_tokens = PredictionCategoryTokens(**labels, tokens_used=token_usage)
-        return category_prediction_tokens
+
+        # Make the LLM call
+        response = await LLMService.send_to_model(
+            user_id=experiment_entity.user_id,
+            system_prompt=prompt_entity.system_prompt,
+            prompt=parsed_prompt,
+            model=experiment_entity.model,
+            reasoning_effort=experiment_entity.reasoning_effort
+        )
+
+        # CRITICAL: Extract tokens IMMEDIATELY, before any parsing that might fail
+        tokens_used = LLMService.extract_tokens_from_response(response)
+
+        # Try to parse the prediction (this is what might fail)
+        try:
+            prediction_category_tokens = LLMService.response_to_prediction_tokens(response, all_attempts)
+
+            # Record this successful attempt
+            all_attempts.append(TokenUsageAttempt(
+                tokens_used=tokens_used,
+                attempt_number=attempt_number,
+                success=True,
+                error_message=None
+            ))
+
+            # Update the prediction with all attempts
+            prediction_category_tokens.all_attempts = all_attempts.copy()
+            prediction_category_tokens.total_tokens_all_attempts = LLMService._aggregate_token_usage(all_attempts)
+
+            return prediction_category_tokens
+
+        except Exception as e:
+            # Parsing failed, but we STILL track the tokens
+            all_attempts.append(TokenUsageAttempt(
+                tokens_used=tokens_used,
+                attempt_number=attempt_number,
+                success=False,
+                error_message=str(e)
+            ))
+
+            # Re-raise the exception so retry logic kicks in
+            # But tokens are already saved in all_attempts list
+            raise
 
 
     @staticmethod
@@ -213,25 +271,110 @@ class ExperimentService:
                                                                                                                                ground_truth=ground_truth_value))
                 if ground_truth_value:
                     prediction_category_prediction_result.sum_ground_truth += 1
-        return get_experiment_repository().update(experiment_entity.id, experiment_entity).modified_count
+        return experiment_entity
 
 
     @staticmethod
     def create_prediction_counter_from_cluster_unit(cluster_unit_entity: ClusterUnitEntity, experiment_entity: ExperimentEntity) -> Dict[str, int]:
-        """counts how often each of the classes in the prediction category are true accross the runs of the prediction. 
+        """counts how often each of the classes in the prediction category are true accross the runs of the prediction.
         Works in a way that allows for changing of the prediction category variables or naming"""
         tokens_used = 0
         prediction_counter = defaultdict(int)
         for prediction_category in cluster_unit_entity.predicted_category[experiment_entity.id].predicted_categories:
             prediction_category
-            for variable_name in prediction_category.category_field_names(): 
+            for variable_name in prediction_category.category_field_names():
                 value = getattr(prediction_category, variable_name)
                 prediction_counter[variable_name] += 1 if value else 0
         return prediction_counter
 
-    
-    
-    
+    @staticmethod
+    def calculate_and_store_token_statistics(
+        cluster_unit_entities: List[ClusterUnitEntity],
+        experiment_entity: ExperimentEntity
+    ) -> None:
+        """
+        Calculate comprehensive token statistics across all predictions in the experiment.
+        This captures:
+        - Total tokens used (including all retries)
+        - Tokens wasted on failed attempts
+        - Tokens from retry attempts
+        - Success/failure counts
+        """
+        total_successful_predictions = 0
+        total_failed_attempts = 0
+
+        # Aggregated token counts
+        total_tokens = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        tokens_wasted = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        tokens_from_retries = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
+        for cluster_unit_entity in cluster_unit_entities:
+            if cluster_unit_entity.predicted_category is None:
+                continue
+
+            predicted_category_data = cluster_unit_entity.predicted_category.get(experiment_entity.id)
+            if not predicted_category_data:
+                continue
+
+            # Iterate through all prediction runs for this cluster unit
+            for prediction in predicted_category_data.predicted_categories:
+                if not isinstance(prediction, PredictionCategoryTokens):
+                    continue
+
+                # Count successful prediction
+                total_successful_predictions += 1
+
+                # Process all attempts for this prediction
+                for attempt in prediction.all_attempts:
+                    # Add to total tokens
+                    for key in ["prompt_tokens", "completion_tokens", "total_tokens"]:
+                        token_count = attempt.tokens_used.get(key, 0)
+                        total_tokens[key] += token_count
+                    
+                    reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
+                    if reasoning_tokens:
+                        if not total_tokens.get("reasoning_tokens"):
+                            total_tokens["reasoning_tokens"] = 0
+                        total_tokens["reasoning_tokens"] += reasoning_tokens
+                    # Track failed attempts
+                    if not attempt.success:
+                        total_failed_attempts += 1
+                        for key in ["prompt_tokens", "completion_tokens", "total_tokens"]:
+                            token_count = attempt.tokens_used.get(key, 0)
+                            tokens_wasted[key] += token_count
+                        
+                        reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
+                        if reasoning_tokens:
+                            if not total_tokens.get("reasoning_tokens"):
+                                tokens_wasted["reasoning_tokens"] = 0
+                            tokens_wasted["reasoning_tokens"] += reasoning_tokens
+
+                    # Track retry attempts (attempt_number > 1)
+                    if attempt.attempt_number > 1:
+                        for key in ["prompt_tokens", "completion_tokens", "total_tokens"]:
+                            token_count = attempt.tokens_used.get(key, 0)
+                            tokens_from_retries[key] += token_count
+                        
+                        reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
+                        if reasoning_tokens:
+                            if not total_tokens.get("reasoning_tokens"):
+                                tokens_from_retries["reasoning_tokens"] = 0
+                            tokens_from_retries["reasoning_tokens"] += reasoning_tokens
+
+        # Store in experiment entity
+        experiment_entity.token_statistics.total_successful_predictions = total_successful_predictions
+        experiment_entity.token_statistics.total_failed_attempts = total_failed_attempts
+        experiment_entity.token_statistics.total_tokens_used = total_tokens
+        experiment_entity.token_statistics.tokens_wasted_on_failures = tokens_wasted
+        experiment_entity.token_statistics.tokens_from_retries = tokens_from_retries
+
+        logger.info(f"Token Statistics for Experiment {experiment_entity.id}:")
+        logger.info(f"  Successful predictions: {total_successful_predictions}")
+        logger.info(f"  Failed attempts: {total_failed_attempts}")
+        logger.info(f"  Total tokens: {total_tokens}")
+        logger.info(f"  Tokens wasted: {tokens_wasted}")
+        logger.info(f"  Tokens from retries: {tokens_from_retries}")
+
 
     @staticmethod
     def parse_classification_prompt(cluster_unit_entity: ClusterUnitEntity, prompt_entity: PromptEntity):
@@ -270,6 +413,8 @@ class ExperimentService:
                                                          overall_kappa=overall_kappa,
                                                          prediction_metrics=prediction_metrics,
                                                          runs_per_unit=experiment.runs_per_unit,
+                                                         reasoning_effort=experiment.reasoning_effort,
+                                                         token_statistics=experiment.token_statistics,
                                                          status=experiment.status)
             
             returnable_experiments.append(experiment_response)  

@@ -41,9 +41,18 @@ class AggregateResult(BaseModel):
 
     @classmethod
     def field_names(cls) -> list[str]:
-        return list(cls.model_fields.keys()) 
+        return list(cls.model_fields.keys())
 
-    
+
+class ExperimentTokenStatistics(BaseModel):
+    """Aggregate token usage statistics for the entire experiment"""
+    total_successful_predictions: int = 0
+    total_failed_attempts: int = 0
+    total_tokens_used: Dict[str, int] = Field(default_factory=dict)  # e.g., {"prompt_tokens": 1000, "completion_tokens": 500, "total_tokens": 1500}
+    tokens_wasted_on_failures: Dict[str, int] = Field(default_factory=dict)  # Tokens from failed attempts
+    tokens_from_retries: Dict[str, int] = Field(default_factory=dict)  # Tokens from retry attempts (even if they succeeded)
+
+
 class ExperimentEntity(BaseEntity):
     user_id: PyObjectId
     scraper_cluster_id: PyObjectId
@@ -54,4 +63,5 @@ class ExperimentEntity(BaseEntity):
     aggregate_result: AggregateResult = Field(default_factory=AggregateResult)
     runs_per_unit: int = 3
     status: StatusType = StatusType.Initialized
+    token_statistics: ExperimentTokenStatistics = Field(default_factory=ExperimentTokenStatistics)
     

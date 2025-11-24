@@ -43,8 +43,20 @@ class PredictionCategory(ClusterUnitEntityCategory):
     reason: str
     sentiment: Literal["negative", "neutral", "positive"]
 
+
+class TokenUsageAttempt(BaseModel):
+    """Tracks a single API call attempt, whether successful or failed"""
+    tokens_used: Dict  # Model dump from the token usage object from the LLM provider
+    attempt_number: int  # Which retry attempt (1-indexed)
+    success: bool  # Whether this attempt resulted in a valid prediction
+    error_message: Optional[str] = None  # If failed, what was the error
+
+
 class PredictionCategoryTokens(PredictionCategory):
-    tokens_used: Dict # Model dump from the token usage object from the LLM provider
+    """A successful prediction with its token usage"""
+    tokens_used: Dict  # Tokens from the successful attempt
+    all_attempts: List[TokenUsageAttempt] = Field(default_factory=list)  # All attempts including failures
+    total_tokens_all_attempts: Dict = Field(default_factory=dict)  # Aggregate of all attempts
 
 
 class ClusterUnitEntityPredictedCategory(BaseModel):

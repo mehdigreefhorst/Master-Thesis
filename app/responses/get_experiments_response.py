@@ -1,12 +1,12 @@
 
 
-from typing import List, Dict, Optional
+from typing import List, Dict, Literal, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
 import math
 
 
-from app.database.entities.experiment_entity import PrevalenceDistribution
+from app.database.entities.experiment_entity import ExperimentTokenStatistics, PrevalenceDistribution
 from app.utils.types import StatusType
 
 
@@ -672,4 +672,6 @@ class GetExperimentsResponse(BaseModel):
     overall_accuracy: float
     overall_kappa: float
     prediction_metrics: List[PredictionMetric]
+    reasoning_effort: Literal[None, "low", "medium", "high", "auto"]
+    token_statistics: Optional[ExperimentTokenStatistics] = None
     status: StatusType

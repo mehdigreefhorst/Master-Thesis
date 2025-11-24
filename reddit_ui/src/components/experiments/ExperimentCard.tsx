@@ -5,6 +5,28 @@ import { Badge } from '../ui/Badge';
 import { MetricBar } from './MetricBar';
 import { PredictionMetricVisualization, PredictionMetric } from './PredictionMetrics';
 import { StatusType } from '@/types/scraper-cluster';
+import { TokenStatistics as TokenStatsDisplay } from './TokenStatistics';
+
+export interface TokenStatistics {
+  total_successful_predictions: number;
+  total_failed_attempts: number;
+  total_tokens_used: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    reasoning_tokens?: number;
+  };
+  tokens_wasted_on_failures: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+  tokens_from_retries: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
 
 export interface ExperimentData {
   id: string;
@@ -17,6 +39,7 @@ export interface ExperimentData {
   predictionMetrics: PredictionMetric[];
   runsPerUnit: 1 | 2 | 3 | 4 | 5
   status: StatusType
+  tokenStatistics?: TokenStatistics;
 }
 
 interface ExperimentCardProps {
@@ -143,13 +166,20 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
         />
       </div>
 
+      {/* Token Statistics - Always visible if available */}
+      {experiment.tokenStatistics && (
+        <div className="mt-3 pt-3 border-t border-(--border)">
+          <TokenStatsDisplay stats={experiment.tokenStatistics} />
+        </div>
+      )}
+
       {/* Expand/Collapse Toggle */}
       <Button
         variant="invisible"
         className="mt-0! w-full py-1! text-xs"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        {isExpanded ? '▲ Hide Details' : '▼ Show Label Details'}
+        {isExpanded ? '▲ Hide Label Details' : '▼ Show Label Details'}
       </Button>
 
       {/* Expandable Label Metrics */}
