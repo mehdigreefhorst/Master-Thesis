@@ -535,3 +535,13 @@ export const userApi = {
     return await data.json()
   }
 }
+
+
+
+export const visualizationApi = {
+    async getVisualization(authFetch: ReturnType<typeof useAuthFetch>): Promise<string> {
+    const data = await authFetch("/visualization")
+    const figure_json =  await data.json()
+    return await figure_json.figure_str
+  },
+}

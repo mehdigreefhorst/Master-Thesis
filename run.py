@@ -14,6 +14,7 @@ from app.routes.auth_routes import auth_bp
 from app.routes.scraper_cluster_routes import scraper_cluster_bp
 from app.routes.clustering_routes import clustering_bp
 from app.routes.experiment_routes import experiment_bp
+from app.routes.visualization_routes import visualization_bp
 
 from app.utils.configuration import get_env_variable, is_production_environment
 from app.utils.extensions import mongo
@@ -58,6 +59,7 @@ def start_app():
     app.register_blueprint(scraper_cluster_bp)
     app.register_blueprint(clustering_bp)
     app.register_blueprint(experiment_bp)
+    app.register_blueprint(visualization_bp)
 
     # Register custom JSON serializer
     app.json = CustomJSONEncoder(app)

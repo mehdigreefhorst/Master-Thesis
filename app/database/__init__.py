@@ -8,6 +8,7 @@ from flask_pymongo.wrappers import Database
 from app.database.cluster_repository import ClusterRepository
 from app.database.cluster_unit_repository import ClusterUnitRepository
 from app.database.experiment_repository import ExperimentRepository
+from app.database.openrouter_data_repository import OpenRouterDataRepository
 from app.database.post_repository import PostRepository
 from app.database.prompt_repository import PromptRepository
 from app.database.sample_repository import SampleRepository
@@ -81,3 +82,9 @@ def get_prompt_repository() -> PromptRepository:
         g.prompt_repository = PromptRepository(_get_db())
     
     return g.prompt_repository
+
+def get_openrouter_data_repository() -> OpenRouterDataRepository:
+    if not hasattr(g, "openrouter_data_repository"):
+        g.openrouter_data_repository = OpenRouterDataRepository(_get_db())
+
+    return g.openrouter_data_repository
