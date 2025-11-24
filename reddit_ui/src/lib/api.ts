@@ -533,15 +533,23 @@ export const userApi = {
       body: userProfile
     })
     return await data.json()
+  },
+  async addFavoriteModel(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    modelId: string
+  ): Promise<{"inserted": number}>{
+    const data = await authFetch(`/user/add_favorite_model?model_id=${modelId}`, {
+      method: 'POST',
+    })
+    return await data.json()
   }
 }
 
 
-
 export const visualizationApi = {
-    async getVisualization(authFetch: ReturnType<typeof useAuthFetch>): Promise<string> {
+    async getVisualization(authFetch: ReturnType<typeof useAuthFetch>): Promise<string[]> {
     const data = await authFetch("/visualization")
     const figure_json =  await data.json()
-    return await figure_json.figure_str
+    return await figure_json.figure_list
   },
 }

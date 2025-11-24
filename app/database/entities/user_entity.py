@@ -1,7 +1,7 @@
 
 
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 from app.database.entities.base_entity import BaseEntity
 
 class UserRole(str, Enum):
@@ -17,4 +17,5 @@ class UserEntity(BaseEntity):
     reddit_client_id: Optional[str] = None
     open_router_api_key: Optional[str] = None
     role: UserRole = UserRole.Default
+    favorite_models: List[str] = [] # List of models the user has made favorite (openrouter model ids)
     

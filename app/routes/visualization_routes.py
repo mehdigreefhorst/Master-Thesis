@@ -19,6 +19,14 @@ def get_visualization():
     
     #openrouter_entity = OpenRouterAnalyticsService().get_cached_or_todays()
     openrouter_model = OpenRouterModelData.from_api_data()
+    openrouter_model_free = OpenRouterModelData.from_api_data(only_free_models=True)
+    figure1 = OpenRouterAnalyticsService().create_figure_error_vs_price(openrouter_model)
+    figure2 = OpenRouterAnalyticsService().create_figure_enhanced_analysis(openrouter_model)
+    figure3 = OpenRouterAnalyticsService().create_figure_performance_matrix(openrouter_model)
+    figure4 = OpenRouterAnalyticsService().create_figure_spend_vs_count(openrouter_model)
+    figure5 = OpenRouterAnalyticsService().create_figure_spend_vs_price(openrouter_model)
+    figure6 = OpenRouterAnalyticsService().create_figure_error_rate_vs_usage(openrouter_model)
+    figure7 = OpenRouterAnalyticsService().create_figure_error_rate_vs_usage(openrouter_model_free, "Free Models")
     figure8 = OpenRouterAnalyticsService().create_figure_avg_tokens_vs_price(openrouter_model)
     
-    return jsonify(figure_str=figure8), 200
+    return jsonify(figure_list=[figure1, figure2, figure3, figure4, figure5, figure6, figure7, figure8]), 200

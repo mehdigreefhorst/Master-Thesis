@@ -10,9 +10,10 @@ interface ModelSelectData {
 }
 
 interface ModelVisualizationProps {
+  htmlContent?: string; // Optional: if provided, uses this instead of fetching
   onModelSelect?: (model: ModelSelectData) => void;
   onMultipleModelsSelect?: (models: ModelSelectData[]) => void;
-  height?: string;
+  heightPixels?: number;
   className?: string;
 }
 
@@ -20,30 +21,42 @@ interface ModelVisualizationProps {
 const IFRAME_BASE_WIDTH = 1450;
 
 const ModelVisualization: React.FC<ModelVisualizationProps> = ({
+  htmlContent: htmlContentProp,
   onModelSelect,
   onMultipleModelsSelect,
-  height = "900px",
+  heightPixels = 900,
   className = ""
 }) => {
   const authFetch = useAuthFetch();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [htmlContent, setHtmlContent] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(true);
+  const [htmlContent, setHtmlContent] = useState<string>(htmlContentProp || '');
+  const [loading, setLoading] = useState<boolean>(!htmlContentProp);
   const [error, setError] = useState<string | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const previousBlobUrlRef = useRef<string | null>(null);
-  const [scale, setScale] = useState<number>(.9);
+  const [scale, setScale] = useState<number>(heightPixels/IFRAME_BASE_WIDTH);
 
-  // Fetch the visualization HTML from Flask backend
+  // Update htmlContent when prop changes
   useEffect(() => {
+    if (htmlContentProp) {
+      setHtmlContent(htmlContentProp);
+      setLoading(false);
+    }
+  }, [htmlContentProp]);
+
+  // Fetch the visualization HTML from Flask backend (only if not provided as prop)
+  useEffect(() => {
+    if (htmlContentProp) return; // Skip fetching if content is provided
+
     const loadVisualization = async () => {
       try {
         setLoading(true);
         setError(null);
-        const html = await visualizationApi.getVisualization(authFetch);
-        setHtmlContent(html);
+        const htmlList = await visualizationApi.getVisualization(authFetch);
+        // Take the first one if fetching directly
+        setHtmlContent(htmlList[0] || '');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load visualization');
       } finally {
@@ -52,7 +65,7 @@ const ModelVisualization: React.FC<ModelVisualizationProps> = ({
     };
 
     loadVisualization();
-  }, []);
+  }, [htmlContentProp]);
 
   // Handle messages from iframe
   const handleMessage = useCallback((event: MessageEvent) => {
@@ -155,7 +168,7 @@ const ModelVisualization: React.FC<ModelVisualizationProps> = ({
   }
 
   // Calculate the scaled height to maintain aspect ratio
-  const baseHeight = parseInt(height, 10) || 900;
+  const baseHeight = heightPixels || 900;
   const scaledHeight = baseHeight * scale;
 
   return (
