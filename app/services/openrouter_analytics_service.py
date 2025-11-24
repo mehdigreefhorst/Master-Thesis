@@ -364,7 +364,7 @@ class OpenRouterAnalyticsService:
         html_str = fig8.to_html(
             include_plotlyjs='cdn',
             div_id="plotly-div",
-            config={'displayModeBar': True})
+            config={'displayModeBar': False})
         
         # Inject custom JavaScript for React communication
         custom_js = """
