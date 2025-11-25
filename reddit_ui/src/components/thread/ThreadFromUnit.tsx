@@ -20,9 +20,7 @@ export const ThreadFromUnit: React.FC<ThreadFromUnitProps> = ({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   // Reset to default state when currentUnit changes
-  useEffect(() => {
-    setIsExpanded(defaultExpanded);
-  }, [currentUnit?.id, defaultExpanded]);
+
   // Toggle between expanded and collapsed view
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);

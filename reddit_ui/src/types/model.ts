@@ -1,7 +1,7 @@
 export interface ModelPricing {
   prompt: number;        // Price per 1M tokens
   completion: number;    // Price per 1M tokens
-  reasoning?: number;    // Price per 1M tokens (optional, for reasoning models)
+  internal_reasoning?: number;    // Price per 1M tokens (optional, for reasoning models)
 }
 
 export interface ModelInfo {
@@ -23,7 +23,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     pricing: {
       prompt: 2.50,
       completion: 10.00,
-      reasoning: 80.00
+      internal_reasoning: 80.00
     },
     max_context: 128000,
     supports_reasoning: true,
@@ -36,7 +36,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     pricing: {
       prompt: 0.55,
       completion: 2.20,
-      reasoning: 22.00
+      internal_reasoning: 22.00
     },
     max_context: 128000,
     supports_reasoning: true,
@@ -49,7 +49,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     pricing: {
       prompt: 0.15,
       completion: 0.60,
-      reasoning: 6.00
+      internal_reasoning: 6.00
     },
     max_context: 128000,
     supports_reasoning: true,

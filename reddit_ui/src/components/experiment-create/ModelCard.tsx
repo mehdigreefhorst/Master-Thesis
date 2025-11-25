@@ -93,7 +93,7 @@ export const ModelCard: React.FC<ModelCardProps> = ({
         <div className="bg-gray-50 dark:bg-gray-700/50 rounded p-2">
           <div className="text-xs text-gray-500 dark:text-gray-400">Input</div>
           <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            {formatPrice(model.pricing.prompt)}
+            {formatPrice(model.pricing.prompt*1000000)}$
             <span className="text-xs font-normal text-gray-500 dark:text-gray-400">/1M</span>
           </div>
         </div>
@@ -101,16 +101,15 @@ export const ModelCard: React.FC<ModelCardProps> = ({
         <div className="bg-gray-50 dark:bg-gray-700/50 rounded p-2">
           <div className="text-xs text-gray-500 dark:text-gray-400">Output</div>
           <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            {formatPrice(model.pricing.completion)}
+            {formatPrice(model.pricing.completion*1000000)}$
             <span className="text-xs font-normal text-gray-500 dark:text-gray-400">/1M</span>
           </div>
         </div>
-
-        {model.pricing.reasoning && (
+        {model.pricing.internal_reasoning && (
           <div className="col-span-2 bg-purple-50 dark:bg-purple-900/20 rounded p-2">
             <div className="text-xs text-purple-600 dark:text-purple-400">Reasoning</div>
             <div className="text-sm font-semibold text-purple-900 dark:text-purple-100">
-              {formatPrice(model.pricing.reasoning)}
+              {formatPrice(model.pricing.internal_reasoning*1000000)}$
               <span className="text-xs font-normal text-purple-600 dark:text-purple-400">/1M</span>
             </div>
           </div>

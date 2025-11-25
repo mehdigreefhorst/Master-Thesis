@@ -16,6 +16,7 @@ import {
   StatusMessages,
 } from '@/components/experiment-create';
 import { ModelInfo } from '@/types/model';
+import { Button } from '@/components/ui';
 
 interface PromptEntity {
   id: string;
@@ -41,6 +42,7 @@ export default function CreateExperimentPage() {
 
   // Model and runs configuration
   const [selectedModel, setSelectedModel] = useState<string>('gpt-5-nano');
+  const [selectedModelInfo, setSelectedModelInfo] = useState<ModelInfo | undefined>();
   const [runsPerUnit, setRunsPerUnit] = useState<number>(3);
   const [reasoningEffort, setReasoningEffort] = useState<string>('medium');
 
@@ -249,6 +251,19 @@ export default function CreateExperimentPage() {
     router.push(`/experiments?scraper_cluster_id=${scraperClusterId}`);
   };
 
+  const handleModelChange = async(modelId: string, modelInfo: ModelInfo) => {
+
+    setSelectedModel(modelId);
+    setSelectedModelInfo(modelInfo);
+    if (!modelInfo.supports_reasoning) {
+      setReasoningEffort('unavailable')
+    } else if (modelInfo.supports_reasoning && reasoningEffort === 'unavailable') {
+        setReasoningEffort('medium')
+
+    }
+    
+  }
+
   const currentUnit = clusterUnits[currentUnitIndex];
 
   // Loading state while fetching cluster units
@@ -268,7 +283,11 @@ export default function CreateExperimentPage() {
       <div className="max-w-[95vw] mx-auto space-y-6">
         {/* Page Header */}
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold">Create Experiment</h1>
+          
+          <h1 className="text-xl w-80 font-semibold">Create Experiment</h1>
+          <Button onClick={() => router.push(`/dashboard?scraper_cluster_id=${scraperClusterId}`)} variant="secondary" size="lg">
+            ← Go Back
+          </Button>
 
           {/* Cluster Unit Navigation */}
           <ClusterUnitNavigator
@@ -283,40 +302,92 @@ export default function CreateExperimentPage() {
 
         {/* Configuration Panel */}
         <div className="bg-white rounded-lg p-6 shadow-sm space-y-6">
-          <h2 className="text-lg font-semibold text-gray-900">Experiment Configuration</h2>
+          <div className="grid grid-cols-3 gap-6">
+            {/* Left: Model Selector Only - 1/3 width */}
+            <div>
+              <ExperimentConfigPanel
+                availableModels={availableModels}
+                selectedModel={selectedModel}
+                onModelChange={handleModelChange}
+                runsPerUnit={runsPerUnit}
+                onRunsChange={setRunsPerUnit}
+                reasoningEffort={reasoningEffort}
+                onReasoningEffortChange={setReasoningEffort}
+              />
+            </div>
 
-          <div className="grid grid-cols-2 gap-6">
-            {/* Left: Model Config */}
-            <ExperimentConfigPanel
-              availableModels={availableModels}
-              selectedModel={selectedModel}
-              onModelChange={setSelectedModel}
-              runsPerUnit={runsPerUnit}
-              onRunsChange={setRunsPerUnit}
-              reasoningEffort={reasoningEffort}
-              onReasoningEffortChange={setReasoningEffort}
-            />
+            {/* Middle: Prompt Selector + Other Dropdowns - 1/3 width */}
+            <div className="flex gap-2">
+              {/* Prompt Selector */}
+              <div className="flex-1">
+                <PromptSelector
+                  prompts={prompts}
+                  selectedPromptId={selectedPromptId}
+                  onPromptSelect={handlePromptSelect}
+                  isLoading={isLoadingPrompts}
+                />
+              </div>
 
-            {/* Right: Prompt Selector */}
-            <PromptSelector
-              prompts={prompts}
-              selectedPromptId={selectedPromptId}
-              onPromptSelect={handlePromptSelect}
-              isLoading={isLoadingPrompts}
-            />
+              {/* Runs Per Unit Selector */}
+              <div className="flex-1">
+                <label htmlFor="runsSelector" className="block text-sm font-bold text-gray-900 mb-2">
+                  Runs per Unit
+                </label>
+                <select
+                  id="runsSelector"
+                  value={runsPerUnit}
+                  onChange={(e) => setRunsPerUnit(Number(e.target.value))}
+                  className="w-full h-12 px-4 py-2 border-2 border-gray-200 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:border-blue-500 cursor-pointer transition-all"
+                >
+                  {[1, 2, 3, 4, 5].map((runs) => (
+                    <option key={runs} value={runs}>
+                      {runs}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Reasoning Effort Selector */}
+              <div className="flex-1">
+                <label htmlFor="reasoningSelector" className="block text-sm font-bold text-gray-900 mb-2">
+                  Reasoning Effort
+                </label>
+                <select
+                  id="reasoningSelector"
+                  value={reasoningEffort}
+                  onChange={(e) => setReasoningEffort(e.target.value)}
+                  disabled={!selectedModelInfo?.supports_reasoning}
+                  className="w-full h-12 px-4 py-2 border-2 border-gray-200 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:border-blue-500 cursor-pointer transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {!selectedModelInfo?.supports_reasoning ? (
+                    <option value="unavailable">Unavailable</option>
+                  ) : (
+                    ['low', 'medium', 'high'].map((effort) => (
+                      <option key={effort} value={effort}>
+                        {effort.charAt(0).toUpperCase() + effort.slice(1)}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            </div>
+
+            {/* Right: Action Bar - 1/3 width */}
+            <div>
+              <ActionBar
+                onParse={handleParsePrompt}
+                onSave={handleSavePrompt}
+                onCreateExperiment={handleCreateExperiment}
+                isParsing={isLoading}
+                isSaving={isSaving}
+                canParse={!!rawPrompt.trim()}
+                canSave={!!rawPrompt.trim()}
+                canCreate={!!selectedPromptId && !!scraperClusterId}
+              />
+            </div>
           </div>
 
-          {/* Action Bar */}
-          <ActionBar
-            onParse={handleParsePrompt}
-            onSave={handleSavePrompt}
-            onCreateExperiment={handleCreateExperiment}
-            isParsing={isLoading}
-            isSaving={isSaving}
-            canParse={!!rawPrompt.trim()}
-            canSave={!!rawPrompt.trim()}
-            canCreate={!!selectedPromptId && !!scraperClusterId}
-          />
+          
         </div>
 
         {/* Status Messages */}
