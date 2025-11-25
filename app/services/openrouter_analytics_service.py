@@ -184,7 +184,8 @@ class OpenRouterModelData(BaseModel):
         models_analytics_improved = []
         slug_counter = defaultdict(int)
         for index, model in enumerate(standard_api_response):
-            slug = model["canonical_slug"]
+          
+            slug = model.canonical_slug
             
             
             # We try here to link the frontend api to the backend api data format of the models. 
@@ -207,11 +208,22 @@ class OpenRouterModelData(BaseModel):
                     continue
                 else:
                     slug += ":free"
+                
+                if slug in model_analytics:
                     
-                analytics = model_analytics[slug]
+                    analytics = model_analytics[slug]
+                else:
+                    analytics = {
+                        "total_tool_calls":0,
+                        "total_completion_tokens":0,
+                        "total_prompt_tokens":0,
+                        "total_native_tokens_reasoning":0,
+                        "count":0,
+                        "requests_with_tool_call_errors":0
+                    }
             
             finally:
-                updated_model = model.copy()
+                updated_model = model.model_dump()
                 updated_model["analytics"] = analytics
                 models_analytics_improved.append(updated_model)
                 slug_counter[slug] +=1
@@ -228,24 +240,24 @@ class OpenRouterModelData(BaseModel):
       print(len(models_analytics_improved))
       
       for model_data in models_analytics_improved:
-        model = model_data["analytics"]
+        model_analytics = model_data["analytics"]
         model_has_free =  "free" in model_data["id"]
         # When we want to skip certain models skip the ones that are not part of the subset of interest 
         if (only_free_models is not None and model_has_free != only_free_models):
             continue
             
 
-        if model.get("total_tool_calls") >= minimum_tool_calls:
+        if model_analytics.get("total_tool_calls") >= minimum_tool_calls:
 
             single_model_data = ModelData(
                 model_id=model_data["id"],
-                total_tool_calls=model["total_tool_calls"],  # total tool calls 
-                total_completion_tokens=model["total_completion_tokens"], # completion tokens
-                total_prompt_tokens=model["total_prompt_tokens"],  # prompt tokens
-                total_native_reasoning_tokens=model["total_native_tokens_reasoning"], # reason tokens
-                times_used=model["count"], # how often model been used
+                total_tool_calls=model_analytics["total_tool_calls"],  # total tool calls 
+                total_completion_tokens=model_analytics["total_completion_tokens"], # completion tokens
+                total_prompt_tokens=model_analytics["total_prompt_tokens"],  # prompt tokens
+                total_native_reasoning_tokens=model_analytics["total_native_tokens_reasoning"], # reason tokens
+                times_used=model_analytics["count"], # how often model been used
                 pricing=model_data["pricing"], # Completion token price
-                tool_call_errors=model["requests_with_tool_call_errors"],
+                tool_call_errors=model_analytics["requests_with_tool_call_errors"],
                 free_available= model_has_free
                 )
             model_data_error_rate.append(single_model_data)

@@ -12,6 +12,7 @@ export interface ModelInfo {
   max_context: number;    // Maximum context window in tokens
   supports_reasoning?: boolean;
   description?: string;
+  free_available?: boolean;
 }
 
 export const AVAILABLE_MODELS: ModelInfo[] = [

@@ -8,6 +8,7 @@ import { ScraperClusterTable } from "@/components/scraper";
 import { ClusterUnitEntity, ClusterUnitEntityCategory } from "@/types/cluster-unit";
 import { SampleEntity } from "@/types/sample";
 import { UserProfile } from "@/types/user";
+import { ModelInfo } from "@/types/model";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || 'http://localhost:5001';
 
@@ -538,6 +539,15 @@ export const userApi = {
 }
 
 export const modelsApi = {
+  async getAllModels(
+    authFetch: ReturnType<typeof useAuthFetch>,
+
+  ): Promise<ModelInfo[]>{
+    const response = await authFetch(`/models`)
+    const data = await response.json()
+    return data.models || []
+  },
+
   async addFavoriteModel(
     authFetch: ReturnType<typeof useAuthFetch>,
     modelId: string

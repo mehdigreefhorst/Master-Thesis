@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, ExternalLink, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { ModelCard } from './ModelCard';
-import { ModelInfo, AVAILABLE_MODELS } from '@/types/model';
+import { ModelInfo } from '@/types/model';
 import { useAuthFetch } from '@/utils/fetch';
 import { modelsApi } from '@/lib/api';
 import { Input } from '../ui/Input';
@@ -10,12 +10,14 @@ import { Badge } from '../ui/Badge';
 import { useToast } from '../ui/use-toast';
 
 interface ModelSelectorProps {
+  availableModels: ModelInfo[];
   selectedModelId: string;
-  onModelChange: (modelId: string) => void;
+  onModelChange: (model: ModelInfo) => void;
   className?: string;
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
+  availableModels,
   selectedModelId,
   onModelChange,
   className = '',
@@ -30,13 +32,14 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const selectedModel = AVAILABLE_MODELS.find(m => m.id === selectedModelId);
+  const selectedModel = availableModels.find(m => m.id === selectedModelId);
 
   // Fetch favorite models on mount
   useEffect(() => {
     async function fetchFavorites() {
       try {
         setIsLoadingFavorites(true);
+        
         const data = await modelsApi.getFavoriteModels(authFetch);
         setFavoriteModelIds(data.favorite_models || []);
       } catch (err) {
@@ -110,13 +113,14 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     }
   };
 
-  const handleSelectModel = (modelId: string) => {
-    onModelChange(modelId);
+  const handleSelectModel = (model: ModelInfo) => {
+    console.log("modelId = ", model)
+    onModelChange(model);
     setIsOpen(false);
   };
 
   // Filter models based on search and tab
-  const filteredModels = AVAILABLE_MODELS.filter(model => {
+  const filteredModels = availableModels.filter(model => {
     const matchesSearch =
       searchQuery === '' ||
       model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -201,7 +205,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
               }`}
             >
-              All Models ({AVAILABLE_MODELS.length})
+              All Models ({availableModels.length})
             </button>
             <button
               onClick={() => setActiveTab('favorites')}
@@ -247,7 +251,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                           model={model}
                           isFavorite={favoriteModelIds.includes(model.id)}
                           isSelected={model.id === selectedModelId}
-                          onSelect={() => handleSelectModel(model.id)}
+                          onSelect={() => handleSelectModel(model)}
                           onToggleFavorite={() => handleToggleFavorite(model.id)}
                         />
                       ))}

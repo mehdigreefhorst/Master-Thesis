@@ -21,11 +21,11 @@ export const ModelCard: React.FC<ModelCardProps> = ({
   onToggleFavorite,
   className = '',
 }) => {
-  const formatPrice = (price: number) => `$${price.toFixed(2)}`;
+  const formatPrice = (price: number) => price;
   const formatContext = (tokens: number) => {
     if (tokens >= 1000000) return `${(tokens / 1000000).toFixed(1)}M`;
     if (tokens >= 1000) return `${(tokens / 1000).toFixed(0)}K`;
-    return tokens.toString();
+    return tokens ? tokens.toString() : undefined;
   };
 
   return (
@@ -51,7 +51,13 @@ export const ModelCard: React.FC<ModelCardProps> = ({
                 Reasoning
               </Badge>
             )}
+            
           </div>
+          {model.free_available && (
+              <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                Free available
+              </Badge>
+            )}
           <p className="text-xs text-(--muted-foreground) mt-0.5">
             {model.provider}
           </p>

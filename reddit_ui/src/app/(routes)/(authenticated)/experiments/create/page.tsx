@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuthFetch } from '@/utils/fetch';
-import { experimentApi } from '@/lib/api';
+import { experimentApi, modelsApi } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 import type { ClusterUnitEntity } from '@/types/cluster-unit';
 import { ThreadFromUnit } from '@/components/thread/ThreadFromUnit';
@@ -15,6 +15,7 @@ import {
   ActionBar,
   StatusMessages,
 } from '@/components/experiment-create';
+import { ModelInfo } from '@/types/model';
 
 interface PromptEntity {
   id: string;
@@ -54,6 +55,8 @@ export default function CreateExperimentPage() {
   const [isLoadingUnits, setIsLoadingUnits] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
+  
 
   // Fetch sample units on mount
   useEffect(() => {
@@ -62,6 +65,8 @@ export default function CreateExperimentPage() {
 
       try {
         setIsLoadingUnits(true);
+        const models = await modelsApi.getAllModels(authFetch);
+        setAvailableModels(models)
         const units = await experimentApi.getSampleUnits(authFetch, scraperClusterId);
         setClusterUnits(units);
       } catch (err) {
@@ -283,6 +288,7 @@ export default function CreateExperimentPage() {
           <div className="grid grid-cols-2 gap-6">
             {/* Left: Model Config */}
             <ExperimentConfigPanel
+              availableModels={availableModels}
               selectedModel={selectedModel}
               onModelChange={setSelectedModel}
               runsPerUnit={runsPerUnit}
@@ -320,6 +326,7 @@ export default function CreateExperimentPage() {
         <div className="bg-white rounded-lg p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Prompt Editor</h2>
           <PromptEditor
+            currentUnit={currentUnit}
             rawPrompt={rawPrompt}
             onRawPromptChange={setRawPrompt}
             parsedPrompt={parsedPrompt}
@@ -328,13 +335,7 @@ export default function CreateExperimentPage() {
           />
         </div>
 
-        {/* Thread Preview */}
-        {currentUnit && (
-          <div className="bg-white rounded-lg p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Preview: Current Cluster Unit</h2>
-            <ThreadFromUnit currentUnit={currentUnit} />
-          </div>
-        )}
+        
 
         {/* Help Text */}
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">

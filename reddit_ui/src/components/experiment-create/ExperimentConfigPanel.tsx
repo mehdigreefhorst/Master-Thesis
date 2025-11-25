@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ModelSelector } from './ModelSelector';
-import { AVAILABLE_MODELS } from '@/types/model';
+import { AVAILABLE_MODELS, ModelInfo } from '@/types/model';
 
 interface ExperimentConfigPanelProps {
+  availableModels: ModelInfo[];
   selectedModel: string;
   onModelChange: (model: string) => void;
   runsPerUnit: number;
@@ -16,6 +17,7 @@ const RUNS_OPTIONS = [1, 2, 3, 4, 5];
 const REASONING_EFFORTS = ['low', 'medium', 'high'];
 
 export const ExperimentConfigPanel: React.FC<ExperimentConfigPanelProps> = ({
+  availableModels,
   selectedModel,
   onModelChange,
   runsPerUnit,
@@ -24,8 +26,14 @@ export const ExperimentConfigPanel: React.FC<ExperimentConfigPanelProps> = ({
   onReasoningEffortChange,
   className = '',
 }) => {
-  const selectedModelInfo = AVAILABLE_MODELS.find(m => m.id === selectedModel);
-  const supportsReasoningEffort = selectedModelInfo?.supports_reasoning || false;
+  const [selectedModelInfo, setSelectedModelInfo] = useState<ModelInfo>()
+
+
+  const handleSelectModel = (model: ModelInfo) => {
+    setSelectedModelInfo(model)
+    onModelChange(model.id)
+
+  }
 
   const selectClassName = `w-full h-12 px-4 py-2 border-2 border-[var(--border)] rounded-lg
     bg-[var(--card)] text-[var(--foreground)] text-sm
@@ -38,7 +46,8 @@ export const ExperimentConfigPanel: React.FC<ExperimentConfigPanelProps> = ({
       <div className="flex-1">
         <ModelSelector
           selectedModelId={selectedModel}
-          onModelChange={onModelChange}
+          onModelChange={handleSelectModel}
+          availableModels={availableModels}
         />
       </div>
 
@@ -64,13 +73,13 @@ export const ExperimentConfigPanel: React.FC<ExperimentConfigPanelProps> = ({
       {/* Reasoning Effort Selector */}
       <div className="flex-1">
         <label htmlFor="reasoningSelector" className="block text-sm font-bold text-[var(--foreground)] mb-2">
-          Reasoning Effort
+          Reasoning Effort {selectedModelInfo?.id}
         </label>
         <select
           id="reasoningSelector"
           value={reasoningEffort}
           onChange={(e) => onReasoningEffortChange(e.target.value)}
-          disabled={!supportsReasoningEffort}
+          disabled={!selectedModelInfo?.supports_reasoning}
           className={`${selectClassName} disabled:cursor-not-allowed disabled:opacity-50`}
         >
           {REASONING_EFFORTS.map((effort) => (
@@ -79,7 +88,7 @@ export const ExperimentConfigPanel: React.FC<ExperimentConfigPanelProps> = ({
             </option>
           ))}
         </select>
-        {!supportsReasoningEffort && (
+        {!selectedModelInfo?.supports_reasoning && (
           <p className="mt-1 text-xs text-[var(--muted-foreground)]">
             Only available for GPT-5 models
           </p>

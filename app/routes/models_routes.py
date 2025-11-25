@@ -5,6 +5,7 @@ from app.requests.profile_requests import UpdateProfile
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.database import get_user_repository
+from app.responses.get_models_response import GetModelsResponse
 from app.responses.profile_response import ProfileResponse
 from app.services.openrouter_analytics_service import OpenRouterCaching
 from app.utils.api_validation import validate_query_params, validate_request_body
@@ -22,8 +23,8 @@ def get_models():
     openrouter_data_entity = OpenRouterCaching().get_cached_or_todays()
     standard_api_response = openrouter_data_entity.dev_api_data
     public_api_response = openrouter_data_entity.public_api_data
-    returnable_models = [model.model_dump() for model in standard_api_response]
-    return jsonify(models=returnable_models, public_api_response=public_api_response), 200
+    returnable_models = GetModelsResponse.from_model_entity(standard_api_response)#[GetModelsResponse.(model.model_dump()) for model in standard_api_response]
+    return jsonify(models=returnable_models), 200
 
 
 @models_bp.route("/favorite", methods=["POST"])
