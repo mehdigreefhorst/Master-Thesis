@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { userApi, visualizationApi } from '@/lib/api';
+import { modelsApi, userApi, visualizationApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
 import ModelVisualization from './ModelVisualization';
 import { X } from 'lucide-react';
@@ -60,7 +60,7 @@ const ModelVisualizationGrid: React.FC<ModelVisualizationGridProps> = ({ classNa
 
   const handleAddToFavorite = async () => {
     if (selectedModel){
-      const response = await userApi.addFavoriteModel(authFetch, selectedModel.modelId )
+      const response = await modelsApi.addFavoriteModel(authFetch, selectedModel.modelId )
       if (response.inserted === 0){
         toast({
           title: "Already added the model ID to favorites",

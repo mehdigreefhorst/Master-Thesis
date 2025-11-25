@@ -534,11 +534,15 @@ export const userApi = {
     })
     return await data.json()
   },
+  
+}
+
+export const modelsApi = {
   async addFavoriteModel(
     authFetch: ReturnType<typeof useAuthFetch>,
     modelId: string
   ): Promise<{"inserted": number}>{
-    const response = await authFetch(`/user/favorite_model?model_id=${modelId}`, {
+    const response = await authFetch(`/models/favorite?model_id=${modelId}`, {
       method: 'POST',
     })
 
@@ -554,7 +558,7 @@ export const userApi = {
     authFetch: ReturnType<typeof useAuthFetch>,
     modelId: string
   ): Promise<{"removed": number}>{
-    const response = await authFetch(`/user/favorite_model?model_id=${modelId}`, {
+    const response = await authFetch(`/models/favorite?model_id=${modelId}`, {
       method: 'DELETE',
     })
 
@@ -568,7 +572,7 @@ export const userApi = {
   },
   async getFavoriteModels(
     authFetch: ReturnType<typeof useAuthFetch>): Promise<{"favorite_models": string[]}>{
-    const response = await authFetch(`/user/favorite_model`)
+    const response = await authFetch(`/models/favorite`)
 
     // Check if response is actually JSON
     const contentType = response.headers.get('content-type');
@@ -581,6 +585,8 @@ export const userApi = {
     return await response.json()
   },
 }
+
+
 
 
 export const visualizationApi = {

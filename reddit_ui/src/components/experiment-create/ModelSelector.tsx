@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ModelCard } from './ModelCard';
 import { ModelInfo, AVAILABLE_MODELS } from '@/types/model';
 import { useAuthFetch } from '@/utils/fetch';
-import { userApi } from '@/lib/api';
+import { modelsApi } from '@/lib/api';
 import { Input } from '../ui/Input';
 import { Badge } from '../ui/Badge';
 import { useToast } from '../ui/use-toast';
@@ -37,7 +37,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     async function fetchFavorites() {
       try {
         setIsLoadingFavorites(true);
-        const data = await userApi.getFavoriteModels(authFetch);
+        const data = await modelsApi.getFavoriteModels(authFetch);
         setFavoriteModelIds(data.favorite_models || []);
       } catch (err) {
         console.error('Failed to fetch favorite models:', err);
@@ -78,14 +78,14 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
     try {
       if (isFavorite) {
-        await userApi.removeFavoriteModel(authFetch, modelId);
+        await modelsApi.removeFavoriteModel(authFetch, modelId);
         toast({
           title: `Removed model ${modelId}`,
           description: "Model succesfully removed!",
           variant: "info"
         });
       } else {
-        await userApi.addFavoriteModel(authFetch, modelId);
+        await modelsApi.addFavoriteModel(authFetch, modelId);
         toast({
           title: `Added model ${modelId}`,
           description: "Model succesfully added to favorites!",
