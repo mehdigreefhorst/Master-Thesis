@@ -21,8 +21,9 @@ def get_models():
 
     openrouter_data_entity = OpenRouterCaching().get_cached_or_todays()
     standard_api_response = openrouter_data_entity.dev_api_data
-
-    return jsonify(models=standard_api_response), 200
+    public_api_response = openrouter_data_entity.public_api_data
+    returnable_models = [model.model_dump() for model in standard_api_response]
+    return jsonify(models=returnable_models, public_api_response=public_api_response), 200
 
 
 @models_bp.route("/favorite", methods=["POST"])
