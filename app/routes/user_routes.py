@@ -32,7 +32,7 @@ def update_user_profile(body: UpdateProfile):
     return jsonify(), 200
     
 
-@user_bp.route("/add_favorite_model", methods=["POST"])
+@user_bp.route("/favorite_model", methods=["POST"])
 @validate_query_params(ModelId)
 @jwt_required()
 def add_favorite_model(query: ModelId):
@@ -42,4 +42,29 @@ def add_favorite_model(query: ModelId):
         return jsonify(inserted=0), 200
     get_user_repository().insert_list_element({"_id": user_id}, "favorite_models", query.model_id)
     return jsonify(inserted=1), 200
+
+
+@user_bp.route("/favorite_model", methods=["GET"])
+@jwt_required()
+def get_favorite_models():
+    user_id = get_jwt_identity()
+    user_entity = get_user_repository().find_by_id(user_id)
     
+    return jsonify(favorite_models=user_entity.favorite_models), 200
+
+
+@user_bp.route("/favorite_model", methods=["DELETE"])
+@validate_query_params(ModelId)
+@jwt_required()
+def remove_favorite_model(query: ModelId):
+    user_id = get_jwt_identity()
+    user_entity = get_user_repository().find_by_id(user_id)
+    if query.model_id not in user_entity.favorite_models:
+        print("model to delete is not in favorite models")
+        return jsonify(inserted=0), 200
+    
+    new_favorite_models = [model for model in user_entity.favorite_models if model != query.model_id]
+    if len(new_favorite_models) < len(user_entity.favorite_models):
+        print("We have removed a model!")
+        get_user_repository().update(user_id, {"favorite_models": new_favorite_models})
+        return jsonify(removed=1), 200

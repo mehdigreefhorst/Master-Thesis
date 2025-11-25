@@ -538,11 +538,48 @@ export const userApi = {
     authFetch: ReturnType<typeof useAuthFetch>,
     modelId: string
   ): Promise<{"inserted": number}>{
-    const data = await authFetch(`/user/add_favorite_model?model_id=${modelId}`, {
+    const response = await authFetch(`/user/favorite_model?model_id=${modelId}`, {
       method: 'POST',
     })
-    return await data.json()
-  }
+
+    // Check if response is actually JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('Backend endpoint not available or returned non-JSON response');
+    }
+
+    return await response.json()
+  },
+  async removeFavoriteModel(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    modelId: string
+  ): Promise<{"removed": number}>{
+    const response = await authFetch(`/user/favorite_model?model_id=${modelId}`, {
+      method: 'DELETE',
+    })
+
+    // Check if response is actually JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('Backend endpoint not available or returned non-JSON response');
+    }
+
+    return await response.json()
+  },
+  async getFavoriteModels(
+    authFetch: ReturnType<typeof useAuthFetch>): Promise<{"favorite_models": string[]}>{
+    const response = await authFetch(`/user/favorite_model`)
+
+    // Check if response is actually JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      // Return empty favorites instead of throwing - this is a non-critical feature
+      console.warn('Favorite models endpoint not available');
+      return { favorite_models: [] };
+    }
+
+    return await response.json()
+  },
 }
 
 
