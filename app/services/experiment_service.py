@@ -402,6 +402,7 @@ class ExperimentService:
             experiment_response = GetExperimentsResponse(id=experiment.id,
                                                          name=f"{experiment.model} V{index}",
                                                          model=experiment.model,
+                                                         prompt_id=experiment.prompt_id,
                                                          created=experiment.created_at,
                                                          total_samples=sample_entity.sample_size,
                                                          overall_accuracy=overall_accuracy,

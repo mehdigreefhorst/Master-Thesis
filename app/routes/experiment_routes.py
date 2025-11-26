@@ -266,7 +266,8 @@ def create_prompt(body: CreatePrompt) -> PromptEntity:
     if not current_user:
         return jsonify(error="No such user"), 401
     
-    prompt_entity = PromptEntity(created_by_user_id=user_id,
+    prompt_entity = PromptEntity(name=body.name,
+                                 created_by_user_id=user_id,
                                  public_policy=True,
                                  system_prompt=body.system_prompt,
                                  prompt=body.prompt,

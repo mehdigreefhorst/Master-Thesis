@@ -12,6 +12,7 @@ class PromptCategory(str, Enum):
 
 
 class PromptEntity(BaseEntity):
+    name: str = ""
     created_by_user_id: PyObjectId
     public_policy: bool = True
     system_prompt: str

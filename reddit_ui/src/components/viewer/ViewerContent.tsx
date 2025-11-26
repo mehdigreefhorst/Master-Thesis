@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { ViewerSkeleton } from '@/components/ui/Skeleton';
 import type { ClusterUnitEntity, ClusterUnitEntityCategory } from '@/types/cluster-unit';
 import Link from 'next/link';
+import { PromptEntity } from '@/types/prompt';
 
 export interface ViewerContentProps {
   scraperClusterId: string | null;
@@ -27,6 +28,7 @@ export interface ViewerContentProps {
   /**
    * Base path for navigation (e.g., '/viewer' or '/viewer/sample')
    */
+  promptsNameExperimentIdDict: Record<string, { promptId: string; promptName: string }>;
   basePath: string;
   isLoading: boolean;
 }
@@ -44,6 +46,7 @@ export function ViewerContent({
   handlePrevious,
   handleNext,
   handleCompleteSampleLabeling,
+  promptsNameExperimentIdDict,
   basePath,
   isLoading
 }: ViewerContentProps) {
@@ -52,6 +55,7 @@ export function ViewerContent({
 
   // Get unique prompt IDs (models)
   const ExperimentIds = Object.keys(currentClusterUnit && currentClusterUnit.predicted_category ? currentClusterUnit.predicted_category : []);
+
 
   // Transform data for LabelTable component
   const { models, labels, stats } = useMemo(() => {
@@ -68,10 +72,12 @@ export function ViewerContent({
       'agreement_empathy',
       'none_of_the_above',
     ];
-
+    //prompts.find((prompt: PromptEntity) => prompt.id === ExperimentId);
     // Build models array
+    console.log("promptsNameExperimentIdDict = ", promptsNameExperimentIdDict)
     const modelsData = ExperimentIds.map((ExperimentId) => ({
-      name: `Prompt`, // TODO: Get actual prompt name from backend
+      
+      name: promptsNameExperimentIdDict[ExperimentId]["promptName"], // TODO: Get actual prompt name from backend
       version: ExperimentId.substring(0, 8), // Show short UUID
     }));
 
@@ -151,7 +157,7 @@ export function ViewerContent({
     });
 
     return { models: modelsData, labels: labelsData, stats: statsData };
-  }, [currentClusterUnit, ExperimentIds]);
+  }, [currentClusterUnit, ExperimentIds, promptsNameExperimentIdDict]);
 
   // Render thread from thread_path_text
   const renderThread = () => {
@@ -213,8 +219,9 @@ export function ViewerContent({
     <div className="p-8 animate-[pageLoad_400ms_ease-out]">
       <div className="max-w-7xl mx-auto">
         {/* Page Header */}
+        
         <PageHeader
-          title="Label Accuracy Viewer"
+          title="Label Accuracy Viewer" 
           currentSample={clusterUnitIndex + 1}
           totalSamples={totalClusterUnits}
           onPrevious={handlePrevious}

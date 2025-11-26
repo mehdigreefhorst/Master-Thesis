@@ -34,6 +34,7 @@ class ParseRawPrompt(BaseModel):
 
 
 class CreatePrompt(BaseModel):
+    name: str
     system_prompt: str
     prompt: str
     category: PromptCategory

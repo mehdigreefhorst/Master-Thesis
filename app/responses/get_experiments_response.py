@@ -666,6 +666,7 @@ class GetExperimentsResponse(BaseModel):
     id: str
     name: str
     model: str
+    prompt_id: str
     created: datetime
     runs_per_unit: int
     total_samples: int

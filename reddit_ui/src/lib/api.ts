@@ -9,6 +9,8 @@ import { ClusterUnitEntity, ClusterUnitEntityCategory } from "@/types/cluster-un
 import { SampleEntity } from "@/types/sample";
 import { UserProfile } from "@/types/user";
 import { ModelInfo } from "@/types/model";
+import { PromptEntity } from "@/types/prompt";
+import { ExperimentData } from "@/components/experiments/ExperimentCard";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || 'http://localhost:5001';
 
@@ -410,8 +412,9 @@ export const experimentApi = {
   /**
    * Get all prompts
    */
-  async getPrompts(authFetch: ReturnType<typeof useAuthFetch>) {
-    return await authFetch('/experiment/get_prompts');
+  async getPrompts(authFetch: ReturnType<typeof useAuthFetch>): Promise<PromptEntity[]> {
+    const response =  await authFetch('/experiment/get_prompts');
+    return await response.json()
   },
   async getSampleUnits(authFetch: ReturnType<typeof useAuthFetch>, scraperClusterId: string): Promise<ClusterUnitEntity[]> {
     const data = await authFetch(`/experiment/get_sample_units?scraper_cluster_id=${scraperClusterId}`);
@@ -419,6 +422,7 @@ export const experimentApi = {
   },
   async createPrompt(
     authFetch: ReturnType<typeof useAuthFetch>,
+    name: string,
     system_prompt: string,
     prompt: string,
     category: "classify_cluster_units" | "rewrite_cluster_unit_standalone" | "summarize_prediction_notes"
@@ -426,6 +430,7 @@ export const experimentApi = {
     const data =  await authFetch('/experiment/create_prompt', {
       method: 'POST',
       body: {
+        name: name,
         system_prompt: system_prompt,
         prompt: prompt,
         category: category,

@@ -10,14 +10,7 @@ import type { ClusterUnitEntity } from '@/types/cluster-unit';
 import { ThreadFromUnit } from '@/components/thread/ThreadFromUnit';
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
-
-interface PromptEntity {
-  id: string;
-  name: string;
-  system_prompt: string;
-  prompt: string;
-  category?: string;
-}
+import { PromptEntity } from '@/types/prompt';
 
 export default function PromptTesterPage() {
   const authFetch = useAuthFetch();
@@ -92,9 +85,8 @@ export default function PromptTesterPage() {
     async function fetchPrompts() {
       try {
         setIsLoadingPrompts(true);
-        const response = await experimentApi.getPrompts(authFetch);
-        const data = await response.json();
-        setPrompts(data.prompts || data.prompt_entities || data);
+        const prompts = await experimentApi.getPrompts(authFetch);
+        setPrompts(prompts);
       } catch (err) {
         console.error('Failed to fetch prompts:', err);
       } finally {
@@ -257,9 +249,8 @@ export default function PromptTesterPage() {
       setSuccess('Prompt saved successfully!');
 
       // Refresh prompts list
-      const response = await experimentApi.getPrompts(authFetch);
-      const data = await response.json();
-      setPrompts(data.prompts || data.prompt_entities || data);
+      const prompts = await experimentApi.getPrompts(authFetch);
+      setPrompts(prompts);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save prompt');
     } finally {

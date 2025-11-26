@@ -7,18 +7,24 @@ import type { ClusterUnitEntity, ClusterUnitEntityCategory } from '@/types/clust
 import { useAuthFetch } from '@/utils/fetch';
 import { experimentApi } from '@/lib/api';
 import { SampleEntity } from '@/types/sample';
+import { PromptEntity } from '@/types/prompt';
+import { toast } from '@/components/ui/use-toast';
 
 export default function SampleViewerPage() {
   const searchParams = useSearchParams();
   const authFetch = useAuthFetch();
 
-  const [clusterUnits, setClusterUnits] = useState<ClusterUnitEntity[]>([])
-  const [totalClusterUnits, setTotalClusterUnits] = useState<number>(0)
-  const [currentUnitIndex, setCurrentUnitIndex] = useState<number>(0)
-  const [currentClusterUnit, setCurrentClusterUnit] = useState<ClusterUnitEntity>()
+  const [clusterUnits, setClusterUnits] = useState<ClusterUnitEntity[]>([]);
+  const [prompts, setPrompts] = useState<PromptEntity[]>([]);
+  const [promptsNameExperimentIdDict, setPromptsNameExperimentIdDict] = useState<Record<string, { promptId: string; promptName: string }>>({})
+  const [totalClusterUnits, setTotalClusterUnits] = useState<number>(0);
+  const [currentUnitIndex, setCurrentUnitIndex] = useState<number>(0);
+  const [currentClusterUnit, setCurrentClusterUnit] = useState<ClusterUnitEntity>();
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter()
-  const basePath = "/viewer/sample"
+  const [isLoadingPrompts, setIsLoadingPrompts] = useState(false);
+
+  const router = useRouter();
+  const basePath = "/viewer/sample";
 
   // Get URL parameters
   const scraperClusterId = searchParams.get('scraper_cluster_id');
@@ -59,6 +65,53 @@ export default function SampleViewerPage() {
 
     loadClusterUnits();
   }, [scraperClusterId, authFetch])
+
+  // Fetch prompts on mount
+  useEffect(() => {
+    async function fetchPrompts() {
+      if (!scraperClusterId) {
+        return toast({
+          "variant": "destructive",
+          "title": "Missing scraperClusterId",
+          "text": "too bad"
+        })
+      }
+      try {
+        setIsLoadingPrompts(true)
+        const prompts = await experimentApi.getPrompts(authFetch);
+        const experiments: any = await experimentApi.getExperiments(authFetch, scraperClusterId)
+        console.log("experiments = ", experiments)
+        // Step 1: Create quick lookup from promptId → promptName
+        const promptLookup: Record<string, string> = {};
+        prompts.forEach(p => {
+            promptLookup[p.id] = p.name;
+        });
+        console.log("promptLookup. - ", promptLookup)
+        // Step 2: Build your final record
+        const promptsNameExperimentIdDictTemp: Record<string, { promptId: string; promptName: string }> = {};
+        
+        experiments.forEach((exp: { prompt_id: any; id: string | number; }) => {
+            const promptId = exp.prompt_id; // adjust if field name differs
+            console.log("promptId = ", promptId)
+            promptsNameExperimentIdDictTemp[exp.id] = {
+                promptId,
+                promptName: promptLookup[promptId] ?? "Unknown"
+            };
+        });
+        console.log("promptsNameExperimentIdDict = ", promptsNameExperimentIdDictTemp)
+
+        setPromptsNameExperimentIdDict(promptsNameExperimentIdDictTemp)
+
+        setPrompts(prompts);
+      } catch (err) {
+        console.error('Failed to fetch prompts:', err);
+      } finally {
+        setIsLoadingPrompts(false);
+      }
+    }
+
+    fetchPrompts();
+  }, [authFetch]);
 
 
    const handleClusterUnitGroundTruthUpdate =(clusterUnitEntityId: string, category: keyof ClusterUnitEntityCategory, newValue: boolean) => {
@@ -134,6 +187,7 @@ export default function SampleViewerPage() {
       totalClusterUnits={totalClusterUnits}
       handleClusterUnitGroundTruthUpdate={handleClusterUnitGroundTruthUpdate}
       handleCompleteSampleLabeling={handleCompleteSampleLabeling}
+      promptsNameExperimentIdDict={promptsNameExperimentIdDict}
       handleNext={handleNext}
       handlePrevious={handlePrevious}
       basePath="/viewer/sample"
