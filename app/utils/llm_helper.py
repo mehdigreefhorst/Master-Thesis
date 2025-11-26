@@ -3,13 +3,15 @@
 import json
 import os
 from typing import Dict, Optional
-import logging
 from openai import OpenAI, AsyncOpenAI
 
 from app.utils.rate_limiters import RateLimitConfig, RateLimiterRegistry
 
-logger = logging.getLogger(__name__)
 
+from app.utils.logging_config import get_logger
+
+# Initialize logger for this module
+logger = get_logger(__name__)
 class LlmHelper:
 
     @staticmethod
@@ -78,11 +80,10 @@ class LlmHelper:
                 burst_capacity=burst_capacity
             )
             rate_limiter = RateLimiterRegistry.get_limiter(open_router_api_key, config)
-            
+
             # Wait for our turn (all coroutines coordinate here)
-            wait_time = await rate_limiter.acquire()
-            if wait_time > 0.1:  # Log significant waits
-                logger.info(f"Rate limited for {wait_time:.2f}s before making request")
+            # Note: Aggregate logging happens inside rate_limiter.acquire()
+            await rate_limiter.acquire()
         # Now make the actual API call
         try:
             # Now make the actual API call

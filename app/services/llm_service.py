@@ -1,7 +1,6 @@
 # LLMService
 
 import json
-import logging
 from typing import Dict, Optional
 from app.database import get_user_repository
 from app.database.entities.base_entity import PyObjectId
@@ -10,8 +9,11 @@ from app.database.entities.user_entity import UserEntity
 from app.utils.llm_helper import LlmHelper
 from app.utils.rate_limiters import call_with_retry
 
-logger = logging.getLogger(__name__)
 
+from app.utils.logging_config import get_logger
+
+# Initialize logger for this module
+logger = get_logger(__name__)
 
 class LLMService:
     """service that handles how the LLM is called. With focus towards payment and billing"""

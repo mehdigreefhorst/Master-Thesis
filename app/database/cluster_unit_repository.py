@@ -6,6 +6,11 @@ from pymongo import UpdateOne
 from app.database.base_repository import BaseRepository
 from app.database.entities.base_entity import PyObjectId
 from app.database.entities.cluster_unit_entity import PredictionCategoryTokens, ClusterUnitCategoryFieldNames, ClusterUnitEntity, ClusterUnitEntityCategory, ClusterUnitEntityPredictedCategory
+from app.utils.logging_config import get_logger
+
+
+logger = get_logger(__name__)
+
 
 class ClusterUnitRepository(BaseRepository[ClusterUnitEntity]):
     def __init__(self, database: Database):
@@ -73,5 +78,7 @@ class ClusterUnitRepository(BaseRepository[ClusterUnitEntity]):
         ]
         
         # Single database call for everything!
-        return self.collection.bulk_write(bulk_ops, ordered=False)
+        inserted_count = self.collection.bulk_write(bulk_ops, ordered=False).inserted_count
+        logger.info(f"inserted a total of {inserted_count} predictions. During {experiment_id} experiment")
+        return 
 

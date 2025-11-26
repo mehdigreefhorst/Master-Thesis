@@ -13,6 +13,10 @@ import numpy as np
 import requests
 from app.database import get_openrouter_data_repository
 from app.database.entities.openrouter_data_entity import OpenRouterDataEntity
+from app.utils.logging_config import get_logger
+
+# Initialize logger for this module
+logger = get_logger(__name__)
 
 def generate_random_color():
     """Generate a random RGB color as a string"""
@@ -37,25 +41,35 @@ class OpenRouterCaching:
                                                           "pricing-high-to-low",
                                                           "pricing-low-to-high",
                                                           "top-weekly",
-                                                          "newest"  
+                                                          "newest"
                                                             ]] = None) -> Dict:
         """ returns the frontend json of the usage statistics of the models on openrouter
-        
-        returns dict with values ['models', 'analytics', 'categories']
-        
-        the analytics dictionary is what is super useful data about usage
-        
-        categories returns the top 10 models for that usage category. Such as legal, classification, 
-        based on usage from other openrouter users
-        
-        models is similar to what you see from the get_all_models route from the official api"""
-        if order_param is not None:
-            response = requests.get(f"https://openrouter.ai/api/frontend/models/find?order={order_param}")
-        else:
-            response = requests.get(f"https://openrouter.ai/api/frontend/models/find")
 
-        openrouter_public_api_data = response.json()
-        return openrouter_public_api_data
+        returns dict with values ['models', 'analytics', 'categories']
+
+        the analytics dictionary is what is super useful data about usage
+
+        categories returns the top 10 models for that usage category. Such as legal, classification,
+        based on usage from other openrouter users
+
+        models is similar to what you see from the get_all_models route from the official api"""
+        try:
+            logger.debug(f"Fetching OpenRouter analytics (order: {order_param})")
+
+            if order_param is not None:
+                response = requests.get(f"https://openrouter.ai/api/frontend/models/find?order={order_param}")
+            else:
+                response = requests.get(f"https://openrouter.ai/api/frontend/models/find")
+
+            response.raise_for_status()
+            openrouter_public_api_data = response.json()
+
+            logger.debug(f"Fetched analytics data successfully")
+            return openrouter_public_api_data
+
+        except requests.RequestException as e:
+            logger.error(f"Failed to fetch OpenRouter analytics: {str(e)}", exc_info=True)
+            raise
 
     @staticmethod
     def get_cached_or_todays() -> OpenRouterDataEntity:
@@ -234,10 +248,12 @@ class OpenRouterModelData(BaseModel):
           
     @classmethod
     def from_api_data(cls, minimum_tool_calls: int = 1000, only_free_models: bool = None):
-      """Create OpenRouterModelData from API responses"""      
+      """Create OpenRouterModelData from API responses"""
+      logger.debug(f"Loading model data (min_tool_calls={minimum_tool_calls}, only_free={only_free_models})")
+
       models_analytics_improved = OpenRouterModelData.get_model_data_with_analytics()
       model_data_error_rate: List[ModelData] = []
-      print(len(models_analytics_improved))
+      logger.debug(f"Processing {len(models_analytics_improved)} models")
       
       for model_data in models_analytics_improved:
         model_analytics = model_data["analytics"]
@@ -261,11 +277,10 @@ class OpenRouterModelData(BaseModel):
                 free_available= model_has_free
                 )
             model_data_error_rate.append(single_model_data)
-        else:
-            print(model_data["id"])
 
-        
+
       sorted_data = sorted(model_data_error_rate, key=lambda x: x.model_provider())
+      logger.debug(f"Filtered to {len(sorted_data)} models meeting criteria")
       return cls(model_data=sorted_data)
       
     def model_error_rates(self):
@@ -309,6 +324,49 @@ class OpenRouterModelData(BaseModel):
 
 
 class OpenRouterAnalyticsService:
+
+    @staticmethod
+    def generate_all_figures() -> List[str]:
+        """
+        Generate all visualization figures for OpenRouter analytics.
+
+        Returns:
+            List of HTML strings for each figure
+        """
+        logger.info("Starting figure generation")
+
+        try:
+            # Fetch model data
+            logger.debug("Fetching OpenRouter model data")
+            openrouter_model = OpenRouterModelData.from_api_data()
+            openrouter_model_free = OpenRouterModelData.from_api_data(only_free_models=True)
+
+            logger.debug(
+                "Model data loaded",
+                extra={'extra_fields': {
+                    'total_models': len(openrouter_model.model_data),
+                    'free_models': len(openrouter_model_free.model_data)
+                }}
+            )
+
+            # Generate all figures
+            figures = [
+                OpenRouterAnalyticsService.create_figure_error_vs_price(openrouter_model),
+                OpenRouterAnalyticsService.create_figure_enhanced_analysis(openrouter_model),
+                OpenRouterAnalyticsService.create_figure_performance_matrix(openrouter_model),
+                OpenRouterAnalyticsService.create_figure_spend_vs_count(openrouter_model),
+                OpenRouterAnalyticsService.create_figure_spend_vs_price(openrouter_model),
+                OpenRouterAnalyticsService.create_figure_error_rate_vs_usage(openrouter_model),
+                OpenRouterAnalyticsService.create_figure_error_rate_vs_usage(openrouter_model_free, "Free Models"),
+                OpenRouterAnalyticsService.create_figure_avg_tokens_vs_price(openrouter_model)
+            ]
+
+            logger.info(f"Successfully generated {len(figures)} figures")
+            return figures
+
+        except Exception as e:
+            logger.error(f"Figure generation failed: {str(e)}", exc_info=True)
+            raise
 
     @staticmethod
     def _inject_react_communication_js(html_str: str) -> str:

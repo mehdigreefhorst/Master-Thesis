@@ -4,9 +4,11 @@ import time
 from collections import deque
 from typing import Dict, Optional
 from dataclasses import dataclass
-import logging
 
-logger = logging.getLogger(__name__)
+from app.utils.logging_config import get_logger
+
+# Initialize logger for this module
+logger = get_logger(__name__)
 
 @dataclass
 class RateLimitConfig:
@@ -68,6 +70,12 @@ class OpenRouterRateLimiter:
         self.throttled_count = 0
         self.total_wait_time = 0.0
 
+        # Aggregate logging
+        self.last_log_time = time.time()
+        self.requests_since_last_log = 0
+        self.throttled_since_last_log = 0
+        self.log_interval_seconds = 10  # Log summary every 10 seconds
+
     @property
     def lock(self):
         """Lazy initialization of lock to ensure it's created in the correct event loop"""
@@ -92,46 +100,66 @@ class OpenRouterRateLimiter:
         """
         start_time = time.time()
         wait_time = 0.0
-        
+        was_throttled = False
+
         # This lock ensures only one coroutine modifies the rate limiter at a time
         async with self.lock:
             now = time.time()
-            
+
             # Clean old requests (older than 60 seconds)
             cutoff = now - 60
             while self.request_times and self.request_times[0] < cutoff:
                 self.request_times.popleft()
-            
+
             # Check if we're at the per-minute limit
             if len(self.request_times) >= self.config.requests_per_minute:
                 # Calculate how long to wait for the oldest request to expire
                 wait_time = (self.request_times[0] + 60) - now
                 self.throttled_count += 1
-                logger.debug(f"Rate limit reached ({len(self.request_times)}/{self.config.requests_per_minute}), "
-                           f"waiting {wait_time:.2f}s")
-            
+                was_throttled = True
+                # Removed individual debug log
+
             # Check per-second limit
             elif self.config.requests_per_second:
                 recent_cutoff = now - 1
                 recent_requests = sum(1 for t in self.request_times if t > recent_cutoff)
-                
+
                 if recent_requests >= self.config.requests_per_second:
                     wait_time = 1.0 / self.config.requests_per_second
-                    logger.debug(f"Per-second limit reached, waiting {wait_time:.2f}s")
-            
+                    was_throttled = True
+                    # Removed individual debug log
+
             # If we need to wait, do it
             if wait_time > 0:
                 await asyncio.sleep(wait_time)
                 now = time.time()
-            
+
             # Record this request
             self.request_times.append(now)
             self.total_requests += 1
-            
+            self.requests_since_last_log += 1
+            if was_throttled:
+                self.throttled_since_last_log += 1
+
+            # Aggregate logging - log summary periodically
+            time_since_last_log = now - self.last_log_time
+            if time_since_last_log >= self.log_interval_seconds:
+                throttle_rate = (self.throttled_since_last_log / max(1, self.requests_since_last_log)) * 100
+                logger.info(
+                    f"Rate limiter summary (last {time_since_last_log:.1f}s): "
+                    f"{self.requests_since_last_log} requests, "
+                    f"{self.throttled_since_last_log} throttled ({throttle_rate:.1f}%), "
+                    f"queue size: {len(self.request_times)}/{self.config.requests_per_minute}"
+                )
+                # Reset counters
+                self.last_log_time = now
+                self.requests_since_last_log = 0
+                self.throttled_since_last_log = 0
+
         # Calculate total time spent in this method
         actual_wait = time.time() - start_time
         self.total_wait_time += actual_wait
-        
+
         return actual_wait
     
     def get_metrics(self) -> Dict:
@@ -168,7 +196,7 @@ async def call_with_retry(api_func, *args, **kwargs):
         if hasattr(e, 'response'):
             if e.response.status_code == 429:  # Too Many Requests
                 retry_after = e.response.headers.get('Retry-After', 10)
-                logging.warning(f"Hit rate limit, retry after {retry_after}s")
+                logger.warning(f"Hit rate limit, retry after {retry_after}s")
                 await asyncio.sleep(float(retry_after))
                 raise RateLimitError(retry_after)
         raise

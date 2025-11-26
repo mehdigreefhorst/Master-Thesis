@@ -182,7 +182,6 @@ def continue_experiment(query: ExperimentId):
         return jsonify(message=f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id}")
 
     try:
-        cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_entity.sample_cluster_unit_ids)
 
         if not cluster_unit_entities or not len(cluster_unit_entities) == len(sample_entity.sample_cluster_unit_ids):
             return jsonify(message=f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id}")
@@ -196,6 +195,8 @@ def continue_experiment(query: ExperimentId):
             experiment_entity=experiment_entity,
             cluster_unit_entities=cluster_unit_entities,
             prompt_entity=prompt_entity))
+        get_experiment_repository().update(experiment_entity.id, {"status": StatusType.Completed})
+
         
     except Exception as e:
         experiment_entity.status = StatusType.Error

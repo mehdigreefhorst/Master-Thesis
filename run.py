@@ -1,4 +1,3 @@
-import logging
 import os
 from datetime import timedelta, datetime
 
@@ -19,6 +18,7 @@ from app.routes.models_routes import models_bp
 
 from app.utils.configuration import get_env_variable, is_production_environment
 from app.utils.extensions import mongo
+from app.utils.logging_config import LoggingConfig
 
 
 class CustomJSONEncoder(DefaultJSONProvider):
@@ -30,7 +30,10 @@ class CustomJSONEncoder(DefaultJSONProvider):
 
 def start_app():
     app = Flask(__name__)
-    logging.basicConfig(level=logging.INFO)
+
+    # Initialize centralized logging system
+    # This MUST be done before any other configuration
+    LoggingConfig(app)
 
     # Configuration can be added here
     mongo_db_url = os.getenv("MONGODB_URL").replace("<db_password>", os.getenv("MONGODB_PASSWORD"))

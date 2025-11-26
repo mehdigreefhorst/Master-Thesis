@@ -3,7 +3,6 @@ import sys
 
 import asyncio
 import json
-import logging
 from typing import Dict, List, Optional
 from collections import defaultdict
 import math
@@ -20,9 +19,10 @@ from app.utils.llm_helper import LlmHelper
 from app.utils.types import StatusType
 
 
-logger = logging.getLogger(__name__)
+from app.utils.logging_config import get_logger
 
-
+# Initialize logger for this module
+logger = get_logger(__name__)
 class ExperimentService:
     """This class is all about creating experiments with a limited amount of cluster units. sending them to an LLM with the respective prompt"""
 
@@ -40,23 +40,24 @@ class ExperimentService:
         cluster_unit_entities_remain = [cluster_unit_entity for cluster_unit_entity in cluster_unit_entities if not (cluster_unit_entity.predicted_category and cluster_unit_entity.predicted_category.get(experiment_entity.id))]
         cluster_unit_entities_done = [cluster_unit_entity for cluster_unit_entity in cluster_unit_entities if (cluster_unit_entity.predicted_category and cluster_unit_entity.predicted_category.get(experiment_entity.id))]
         # If all cluster units are already predicted. We should stop the function early
-        if not cluster_unit_entities_remain:
-            return 0
         
         logger.info(f"Starting prediction for {len(cluster_unit_entities_remain)} units, "
                    f"{experiment_entity.runs_per_unit} runs each")
         
-        predicted_categories = await ExperimentService.create_predicted_categories(
-            experiment_entity=experiment_entity,
-            prompt_entity=prompt_entity,
-            cluster_unit_enities=cluster_unit_entities_remain, 
-            max_concurrent=max_concurrent)
+        # If there are cluster units left to be predicted, we do that here. And then we add updated cluster units to the cluster_unit_entities_done list
+        if cluster_unit_entities_remain:
+            predicted_categories = await ExperimentService.create_predicted_categories(
+                experiment_entity=experiment_entity,
+                prompt_entity=prompt_entity,
+                cluster_unit_enities=cluster_unit_entities_remain, 
+                max_concurrent=max_concurrent)
 
-        cluster_unit_entities_remain = ExperimentService.update_add_to_db_cluster_unit_predictions(predicted_categories=predicted_categories,
-                                                                    cluster_units_enitities_as_predicted=cluster_unit_entities_remain,
-                                                                    experiment_entity=experiment_entity)
+            cluster_unit_entities_remain = ExperimentService.update_add_to_db_cluster_unit_predictions(predicted_categories=predicted_categories,
+                                                                        cluster_units_enitities_as_predicted=cluster_unit_entities_remain,
+                                                                        experiment_entity=experiment_entity)
         
-        cluster_unit_entities_done.extend(cluster_unit_entities_remain)
+            cluster_unit_entities_done.extend(cluster_unit_entities_remain)
+        
         ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities_done, experiment_entity)
 
         # Calculate and store aggregate token statistics
@@ -114,7 +115,7 @@ class ExperimentService:
                             return None
 
                         # Exponential backoff: 1s, 2s, 4s, etc.
-                        wait_time = 2 ** attempt
+                        wait_time = 20 * attempt
                         logger.info(f"Retrying in {wait_time}s...")
                         await asyncio.sleep(wait_time)
 
@@ -157,7 +158,7 @@ class ExperimentService:
         grouped_predicted_categories = [predicted_categories[i:predictions_per_unit+i] 
                                         for i in range(0, len(cluster_units_enitities_as_predicted)* predictions_per_unit, predictions_per_unit)]
         cluster_unit_map_predictions: Dict[PyObjectId, ClusterUnitEntityPredictedCategory] = dict() # {ClusterUnitEntity.id : List}
-        print("grouped_predicted_categories = ", grouped_predicted_categories)
+        logger.info(f"Preparing {len(grouped_predicted_categories)} grouped prediction categories for database")
         # Fill the cluster unit map predictions. Which is the cluster unit id as key with the predictions as value
         for index, predictions_cluster_unit in enumerate(grouped_predicted_categories):
             cluster_unit_entity = cluster_units_enitities_as_predicted[index]
@@ -304,9 +305,9 @@ class ExperimentService:
         total_failed_attempts = 0
 
         # Aggregated token counts
-        total_tokens = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-        tokens_wasted = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-        tokens_from_retries = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        total_tokens = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "reasoning_tokens": 0}
+        tokens_wasted = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "reasoning_tokens": 0}
+        tokens_from_retries = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "reasoning_tokens": 0}
 
         for cluster_unit_entity in cluster_unit_entities:
             if cluster_unit_entity.predicted_category is None:
@@ -333,8 +334,6 @@ class ExperimentService:
                     
                     reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
                     if reasoning_tokens:
-                        if not total_tokens.get("reasoning_tokens"):
-                            total_tokens["reasoning_tokens"] = 0
                         total_tokens["reasoning_tokens"] += reasoning_tokens
                     # Track failed attempts
                     if not attempt.success:
@@ -345,20 +344,16 @@ class ExperimentService:
                         
                         reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
                         if reasoning_tokens:
-                            if not total_tokens.get("reasoning_tokens"):
-                                tokens_wasted["reasoning_tokens"] = 0
                             tokens_wasted["reasoning_tokens"] += reasoning_tokens
 
                     # Track retry attempts (attempt_number > 1)
-                    if attempt.attempt_number > 1:
+                    if attempt.attempt_number > 1: # len(prediction.all_attempts) > 1 # TODO needed because an attempt can also have a second number without there being a first one (retry because of our own rate limiter)
                         for key in ["prompt_tokens", "completion_tokens", "total_tokens"]:
                             token_count = attempt.tokens_used.get(key, 0)
                             tokens_from_retries[key] += token_count
                         
                         reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
                         if reasoning_tokens:
-                            if not total_tokens.get("reasoning_tokens"):
-                                tokens_from_retries["reasoning_tokens"] = 0
                             tokens_from_retries["reasoning_tokens"] += reasoning_tokens
 
         # Store in experiment entity
@@ -368,7 +363,7 @@ class ExperimentService:
         experiment_entity.token_statistics.tokens_wasted_on_failures = tokens_wasted
         experiment_entity.token_statistics.tokens_from_retries = tokens_from_retries
 
-        logger.info(f"Token Statistics for Experiment {experiment_entity.id}:")
+        logger.info(f"Token Statistics for Experiment ", extra={'extra_fields': {"experiment_entity": experiment_entity.id} })
         logger.info(f"  Successful predictions: {total_successful_predictions}")
         logger.info(f"  Failed attempts: {total_failed_attempts}")
         logger.info(f"  Total tokens: {total_tokens}")

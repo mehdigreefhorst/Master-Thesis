@@ -139,7 +139,7 @@ function ExperimentsPageContent() {
     };
 
     // Set up interval to poll every 1 second (1000ms)
-    const intervalId = setInterval(pollRunningExperiments, 2000);
+    const intervalId = setInterval(pollRunningExperiments, 10000);
 
     // Cleanup interval on unmount or when dependencies change
     return () => clearInterval(intervalId);

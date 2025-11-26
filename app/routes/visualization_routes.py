@@ -3,8 +3,11 @@ from flask import Blueprint, jsonify
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.database import get_user_repository
-from app.services.openrouter_analytics_service import OpenRouterAnalyticsService, OpenRouterCaching, OpenRouterModelData
-from app.utils.api_validation import validate_request_body, validate_query_params
+from app.services.openrouter_analytics_service import OpenRouterAnalyticsService
+from app.utils.logging_config import get_logger
+
+# Initialize logger for this module
+logger = get_logger(__name__)
 
 visualization_bp = Blueprint("visualization", __name__, url_prefix="/visualization")
 
@@ -12,21 +15,23 @@ visualization_bp = Blueprint("visualization", __name__, url_prefix="/visualizati
 @visualization_bp.route("/", methods=["GET"])
 @jwt_required()
 def get_visualization():
+    """Generate visualization figures for OpenRouter analytics."""
     user_id = get_jwt_identity()
-    current_user = get_user_repository().find_by_id(user_id)
-    if not current_user:
-        return jsonify(error="No such user"), 401
-    
-    #openrouter_entity = OpenRouterAnalyticsService().get_cached_or_todays()
-    openrouter_model = OpenRouterModelData.from_api_data()
-    openrouter_model_free = OpenRouterModelData.from_api_data(only_free_models=True)
-    figure1 = OpenRouterAnalyticsService().create_figure_error_vs_price(openrouter_model)
-    figure2 = OpenRouterAnalyticsService().create_figure_enhanced_analysis(openrouter_model)
-    figure3 = OpenRouterAnalyticsService().create_figure_performance_matrix(openrouter_model)
-    figure4 = OpenRouterAnalyticsService().create_figure_spend_vs_count(openrouter_model)
-    figure5 = OpenRouterAnalyticsService().create_figure_spend_vs_price(openrouter_model)
-    figure6 = OpenRouterAnalyticsService().create_figure_error_rate_vs_usage(openrouter_model)
-    figure7 = OpenRouterAnalyticsService().create_figure_error_rate_vs_usage(openrouter_model_free, "Free Models")
-    figure8 = OpenRouterAnalyticsService().create_figure_avg_tokens_vs_price(openrouter_model)
-    
-    return jsonify(figure_list=[figure1, figure2, figure3, figure4, figure5, figure6, figure7, figure8]), 200
+
+    logger.info("Visualization request", extra={'extra_fields': {'user_id': str(user_id)}})
+
+    try:
+        # Auth check
+        if not get_user_repository().find_by_id(user_id):
+            logger.warning("Unauthorized access", extra={'extra_fields': {'user_id': str(user_id)}})
+            return jsonify(error="No such user"), 401
+
+        # Delegate to service
+        figures = OpenRouterAnalyticsService().generate_all_figures()
+
+        logger.info("Visualizations generated", extra={'extra_fields': {'count': len(figures)}})
+        return jsonify(figure_list=figures), 200
+
+    except Exception as e:
+        logger.error(f"Visualization failed: {str(e)}", exc_info=True)
+        return jsonify(error="Failed to generate visualizations"), 500
