@@ -36,7 +36,7 @@ export default function CreateExperimentPage() {
   const [selectedPromptId, setSelectedPromptId] = useState<string>('');
 
   // Model and runs configuration
-  const [selectedModel, setSelectedModel] = useState<string>('gpt-5-nano');
+  const [selectedModel, setSelectedModel] = useState<string>('');
   const [selectedModelInfo, setSelectedModelInfo] = useState<ModelInfo | undefined>();
   const [runsPerUnit, setRunsPerUnit] = useState<number>(3);
   const [reasoningEffort, setReasoningEffort] = useState<string>('medium');
@@ -227,7 +227,8 @@ export default function CreateExperimentPage() {
       setError(null);
       setSuccess(null);
 
-      await experimentApi.createPrompt(
+      // Create the prompt and get the returned prompt entity
+      const createdPrompt = await experimentApi.createPrompt(
         authFetch,
         promptName,
         modalSystemPrompt,
@@ -235,16 +236,30 @@ export default function CreateExperimentPage() {
         'classify_cluster_units',
       );
 
-      setSuccess('Prompt saved successfully!');
+      // Show success toast
+      toast({
+        title: "Success",
+        description: "Prompt saved successfully!",
+        variant: "success",
+      });
 
       // Refresh prompts list
-      const prompts = await experimentApi.getPrompts(authFetch);
-      setPrompts(prompts);
+      const updatedPrompts = await experimentApi.getPrompts(authFetch);
+      setPrompts(updatedPrompts);
+
+      // Select the newly created prompt
+      setSelectedPromptId(createdPrompt.id);
+      setSystemPrompt(createdPrompt.system_prompt || '');
+      setRawPrompt(createdPrompt.prompt || '');
 
       // Close modal
       setShowSaveModal(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save prompt');
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : 'Failed to save prompt',
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -277,10 +292,10 @@ export default function CreateExperimentPage() {
     router.push(`/experiments?scraper_cluster_id=${scraperClusterId}`);
   };
 
-  const handleModelChange = async(modelId: string, modelInfo: ModelInfo) => {
+  const handleModelChange = async(modelInfo: ModelInfo) => {
 
-    setSelectedModel(modelId);
     setSelectedModelInfo(modelInfo);
+    console.log("modelInfo.id = ", modelInfo.id)
     if (!modelInfo.supports_reasoning) {
       setReasoningEffort('unavailable')
     } else if (modelInfo.supports_reasoning && reasoningEffort === 'unavailable') {
@@ -333,12 +348,8 @@ export default function CreateExperimentPage() {
             <div>
               <ExperimentConfigPanel
                 availableModels={availableModels}
-                selectedModel={selectedModel}
+                selectedModel={selectedModelInfo}
                 onModelChange={handleModelChange}
-                runsPerUnit={runsPerUnit}
-                onRunsChange={setRunsPerUnit}
-                reasoningEffort={reasoningEffort}
-                onReasoningEffortChange={setReasoningEffort}
               />
             </div>
 

@@ -28,7 +28,7 @@ export interface ViewerContentProps {
   /**
    * Base path for navigation (e.g., '/viewer' or '/viewer/sample')
    */
-  promptsNameExperimentIdDict: Record<string, { promptId: string; promptName: string }>;
+  promptsNameExperimentIdDict: Record<string, { promptId: string; promptName: string; modelId: string }>;
   basePath: string;
   isLoading: boolean;
 }
@@ -78,6 +78,7 @@ export function ViewerContent({
     const modelsData = ExperimentIds.map((ExperimentId) => ({
       
       name: promptsNameExperimentIdDict[ExperimentId]["promptName"], // TODO: Get actual prompt name from backend
+      modelId: promptsNameExperimentIdDict[ExperimentId]["modelId"],
       version: ExperimentId.substring(0, 8), // Show short UUID
     }));
 

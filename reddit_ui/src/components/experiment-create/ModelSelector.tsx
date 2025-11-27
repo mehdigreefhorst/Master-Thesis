@@ -11,14 +11,14 @@ import { useToast } from '../ui/use-toast';
 
 interface ModelSelectorProps {
   availableModels: ModelInfo[];
-  selectedModelId: string;
+  selectedModel?: ModelInfo;
   onModelChange: (model: ModelInfo) => void;
   className?: string;
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
   availableModels,
-  selectedModelId,
+  selectedModel,
   onModelChange,
   className = '',
 }) => {
@@ -31,8 +31,6 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const [favoriteModelIds, setFavoriteModelIds] = useState<string[]>([]);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const selectedModel = availableModels.find(m => m.id === selectedModelId);
 
   // Fetch favorite models on mount
   useEffect(() => {
@@ -250,7 +248,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                           key={model.id}
                           model={model}
                           isFavorite={favoriteModelIds.includes(model.id)}
-                          isSelected={model.id === selectedModelId}
+                          isSelected={selectedModel && model.id === selectedModel.id ? true : false}
                           onSelect={() => handleSelectModel(model)}
                           onToggleFavorite={() => handleToggleFavorite(model.id)}
                         />

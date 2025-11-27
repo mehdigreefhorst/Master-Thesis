@@ -426,7 +426,7 @@ export const experimentApi = {
     system_prompt: string,
     prompt: string,
     category: "classify_cluster_units" | "rewrite_cluster_unit_standalone" | "summarize_prediction_notes"
-  ){
+  ): Promise<PromptEntity> {
     const data =  await authFetch('/experiment/create_prompt', {
       method: 'POST',
       body: {

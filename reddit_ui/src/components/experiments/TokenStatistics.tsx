@@ -53,7 +53,7 @@ export const TokenStatistics: React.FC<TokenStatisticsProps> = ({ stats, classNa
           <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
             {formatNumber(stats.total_tokens_used.prompt_tokens)} prompt + {formatNumber(stats.total_tokens_used.completion_tokens)} completion
             {stats.total_tokens_used.reasoning_tokens && stats.total_tokens_used.reasoning_tokens > 0 && (
-              <span> + {formatNumber(stats.total_tokens_used.reasoning_tokens)} reasoning</span>
+              <span> ({formatNumber(stats.total_tokens_used.reasoning_tokens)} reasoning & {formatNumber(stats.total_tokens_used.completion_tokens - stats.total_tokens_used.reasoning_tokens)} output completion) </span>
             )}
           </div>
         </div>

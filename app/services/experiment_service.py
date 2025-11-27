@@ -114,7 +114,7 @@ class ExperimentService:
                         if is_last_attempt:
                             return None
 
-                        # Exponential backoff: 1s, 2s, 4s, etc.
+                        # linear backoff: 20s, 40s, 60s, etc.
                         wait_time = 20 * attempt
                         logger.info(f"Retrying in {wait_time}s...")
                         await asyncio.sleep(wait_time)

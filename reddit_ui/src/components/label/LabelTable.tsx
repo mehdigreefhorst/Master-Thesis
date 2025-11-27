@@ -6,6 +6,7 @@ import { ClusterUnitEntityCategory } from '@/types/cluster-unit';
 
 export interface ModelColumn {
   name: string;
+  modelId: string;
   version: string;
 }
 
@@ -64,7 +65,7 @@ export const LabelTable: React.FC<LabelTableProps> = ({
                 className="bg-(--secondary) text-center font-semibold text-sm text-(--secondary-foreground) border-b-2 border-(--border)"
               >
                 <div className="font-bold">
-                  <span>{model.name}</span> <span className="text-xs font-normal text-gray-600">{model.version}</span>
+                  <span>{model.name}</span> <span className="text-xs font-normal text-gray-600">{model.modelId} {model.version}</span>
                 </div>
 
               </th>

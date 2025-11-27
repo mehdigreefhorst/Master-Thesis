@@ -16,7 +16,7 @@ export default function SampleViewerPage() {
 
   const [clusterUnits, setClusterUnits] = useState<ClusterUnitEntity[]>([]);
   const [prompts, setPrompts] = useState<PromptEntity[]>([]);
-  const [promptsNameExperimentIdDict, setPromptsNameExperimentIdDict] = useState<Record<string, { promptId: string; promptName: string }>>({})
+  const [promptsNameExperimentIdDict, setPromptsNameExperimentIdDict] = useState<Record<string, { promptId: string; promptName: string; modelId: string }>>({})
   const [totalClusterUnits, setTotalClusterUnits] = useState<number>(0);
   const [currentUnitIndex, setCurrentUnitIndex] = useState<number>(0);
   const [currentClusterUnit, setCurrentClusterUnit] = useState<ClusterUnitEntity>();
@@ -88,14 +88,15 @@ export default function SampleViewerPage() {
         });
         console.log("promptLookup. - ", promptLookup)
         // Step 2: Build your final record
-        const promptsNameExperimentIdDictTemp: Record<string, { promptId: string; promptName: string }> = {};
+        const promptsNameExperimentIdDictTemp: Record<string, { promptId: string; promptName: string; modelId: string }> = {};
         
-        experiments.forEach((exp: { prompt_id: any; id: string | number; }) => {
+        experiments.forEach((exp: { prompt_id: any; id: string | number; model: string}) => {
             const promptId = exp.prompt_id; // adjust if field name differs
             console.log("promptId = ", promptId)
             promptsNameExperimentIdDictTemp[exp.id] = {
                 promptId,
-                promptName: promptLookup[promptId] ?? "Unknown"
+                promptName: promptLookup[promptId] ?? "Unknown",
+                modelId: exp.model
             };
         });
         console.log("promptsNameExperimentIdDict = ", promptsNameExperimentIdDictTemp)
