@@ -378,10 +378,31 @@ class ExperimentService:
 
         formatted_prompt = LlmHelper.custom_formatting(
             prompt=prompt_entity.prompt,
-            conversation_thread=str(cluster_unit_entity.thread_path_text),
+            conversation_thread=ExperimentService.parse_conversation_thread(cluster_unit_entity.thread_path_text, cluster_unit_entity.thread_path_author),
             final_reddit_message=cluster_unit_entity.text)
 
         return formatted_prompt
+    
+    @staticmethod
+    def parse_conversation_thread(thread_path_text: List[str], thread_path_author: List[str]):
+        if not thread_path_text:
+            return "Final reddit message is the reddit post, so no conversation thread available"
+        combined_author_text = ""
+        if len(thread_path_text) != len(thread_path_author):
+            for index, text in enumerate(thread_path_text):
+                
+                new_text = f"<author: {index} indent={index}> {text} </author: {index}>"
+                combined_author_text += new_text
+            
+            return combined_author_text
+        else:
+            for index, text in enumerate(thread_path_text):
+                new_text = f"<author: {thread_path_author[index]} indent={index}> {text} </author: {thread_path_author[index]}>"
+                combined_author_text += new_text + "\n"
+            
+            return combined_author_text
+            
+
     
 
     @staticmethod

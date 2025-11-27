@@ -87,11 +87,11 @@ class ClusterPrepService:
         # First we add the post as text by itself. since it is already valuable. Should we also add metadata of the replies/ comments?
         cluster_unit_entities: List[ClusterUnitEntity] = []
         
-        cluster_unit_entity = ClusterUnitEntity.from_post(post_entity, cluster_entity.id)
-        cluster_unit_entities.append(cluster_unit_entity)
+        cluster_unit_entity_post = ClusterUnitEntity.from_post(post_entity, cluster_entity.id)
+        cluster_unit_entities.append(cluster_unit_entity_post)
         # now we loop over each comment. To convert them into cluster unit entities. It also takes care of the replies
         for comment in post_entity.comments:
-            cluster_unit_entity = ClusterUnitEntity.from_comment(comment, cluster_entity.id, post_id, post_entity.subreddit, cluster_unit_entity)
+            cluster_unit_entity = ClusterUnitEntity.from_comment(comment, cluster_entity.id, post_id, post_entity.subreddit, cluster_unit_entity_post)
             cluster_unit_entities.append(cluster_unit_entity)
             comment_index = len(cluster_unit_entities) -1
             if comment.replies:

@@ -31,15 +31,16 @@ export const ThreadFromUnit: React.FC<ThreadFromUnitProps> = ({
     if (!currentUnit) return null;
 
     const threadPath = currentUnit.thread_path_text || [];
+    const threadPathAuthor = currentUnit.thread_path_author || [];
     const currentText = currentUnit.text;
 
     return (
       <ThreadBox>
         {isExpanded && threadPath.map((text, index) => {
-          if (index === 0) {
-            return <ThreadPost key={index} username={`u/author${index}`} content={text} />;
+          if (index === 0) { 
+            return <ThreadPost key={index} username={`u/${threadPathAuthor[index] ?? `u/author${index}`}`} content={text} />;
           }
-          return <ThreadComment key={index} username={`u/author${index}`} content={text} />;
+          return <ThreadComment key={index} username={`u/${threadPathAuthor[index] ?? `u/author${index}`}`} content={text} />;
         })}
         <ThreadTarget username={currentUnit.author} content={currentText} />
       </ThreadBox>

@@ -165,15 +165,18 @@ export function ViewerContent({
     if (!currentClusterUnit) return null;
 
     const threadPath = currentClusterUnit.thread_path_text || [];
+    const threadPathAuthor = currentClusterUnit.thread_path_author || [];
     const currentText = currentClusterUnit.text;
 
     return (
       <ThreadBox>
         {threadPath.map((text, index) => {
+            const author = threadPathAuthor[index] || `author${index}`;
+
           if (index === 0) {
-            return <ThreadPost key={index} username={`u/author${index}`} content={text} />;
+            return <ThreadPost key={index} username={`u/${author}`}  content={text} />;
           }
-          return <ThreadComment key={index} username={`u/author${index}`} content={text} />;
+          return <ThreadComment key={index} username={`u/${author}`}  content={text} />;
         })}
         <ThreadTarget username={currentClusterUnit.author} content={currentText} />
       </ThreadBox>

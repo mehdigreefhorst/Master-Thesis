@@ -17,7 +17,11 @@ from app.responses.get_experiments_response import GetExperimentsResponse
 from app.services.experiment_service import ExperimentService
 from app.utils.api_validation import validate_request_body, validate_query_params
 from app.utils.llm_helper import LlmHelper
+from app.utils.logging_config import get_logger
 from app.utils.types import StatusType
+
+
+logger = get_logger(__name__)
 
 
 experiment_bp = Blueprint("experiment", __name__, url_prefix="/experiment")
@@ -245,6 +249,7 @@ def parse_prompt(body: ParsePrompt):
 @validate_request_body(ParseRawPrompt)
 @jwt_required()
 def parse_raw_prompt(body: ParseRawPrompt):
+    """parses the promt as is made in the user interface. without saving it to any other data entity"""
     user_id = get_jwt_identity()
     current_user = get_user_repository().find_by_id(user_id)
     if not current_user:
@@ -257,7 +262,7 @@ def parse_raw_prompt(body: ParseRawPrompt):
     
     parsed_prompt = LlmHelper.custom_formatting(
             prompt=body.prompt,
-            conversation_thread=str(cluster_unit_entity.thread_path_text),
+            conversation_thread=ExperimentService.parse_conversation_thread(cluster_unit_entity.thread_path_text, cluster_unit_entity.thread_path_author),
             final_reddit_message=cluster_unit_entity.text)
 
     return jsonify(parsed_prompt), 200
@@ -304,10 +309,17 @@ def create_sample(body: CreateSample) -> SampleEntity:
     if not current_user:
         return jsonify(error="No such user"), 401
     
+    scraper_cluster_entity = get_scraper_cluster_repository().find_by_id_and_user(user_id, body.scraper_cluster_id)
+
+    if not scraper_cluster_entity:
+        return jsonify(error="No such scraper_cluster_entity"), 401
+    
+    if not scraper_cluster_entity.cluster_entity_id:
+        return jsonify(error="no cluster_entity_id available for the scraper_cluster_entity"), 401
 
     selected_cluster_units = get_cluster_unit_repository().find_many_by_ids(body.picked_posts_cluster_unit_ids)
     selected_cluster_unit_post_ids = [cluster_unit.post_id for cluster_unit in selected_cluster_units]
-    cluster_unit_ids_with_corresponding_post_id = get_cluster_unit_repository().find_ids({"post_id": {"$in": selected_cluster_unit_post_ids}})
+    cluster_unit_ids_with_corresponding_post_id = get_cluster_unit_repository().find_ids({"post_id": {"$in": selected_cluster_unit_post_ids}, "cluster_entity_id": scraper_cluster_entity.cluster_entity_id})
     if len(cluster_unit_ids_with_corresponding_post_id) < body.sample_size:
         return jsonify(error=f"Not enough cluster units. Found {len(cluster_unit_ids_with_corresponding_post_id)} but need {body.sample_size}"), 400
     
@@ -359,10 +371,19 @@ def get_sample_units(query: GetSampleUnits):
     
     if sample_enity.sample_labeled_status == StatusType.Initialized:
         get_sample_repository().update(sample_enity.id, {"sample_labeled_status": StatusType.Ongoing})
+
+    logger.info(f"len(sample_enity.sample_cluster_unit_ids) = {len(sample_enity.sample_cluster_unit_ids)}")
+    
     
     cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_enity.sample_cluster_unit_ids)
+    logger.info(f"len(cluster_unit_entities = ), {len(cluster_unit_entities)}")
+
     returnable_cluster_units = [cluster_unit_entity.model_dump() for cluster_unit_entity in cluster_unit_entities]
-    print("a total of units = ", len(returnable_cluster_units))
+    logger.info(f"len(returnable_cluster_units) = {len(returnable_cluster_units)}")
+
+    found_cluster_unit_ids = [cluster_unit_id.id for cluster_unit_id in cluster_unit_entities]
+
+    logger.info(f"units not in db but in sample: {[unit_id for unit_id in sample_enity.sample_cluster_unit_ids if unit_id not in found_cluster_unit_ids]}")
     if returnable_cluster_units:
         return jsonify(returnable_cluster_units), 200
     else:

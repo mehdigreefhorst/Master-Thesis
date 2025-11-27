@@ -38,6 +38,7 @@ export interface ClusterUnitEntity {
   downvotes: number;
   created_utc: number;
   thread_path_text: string[] | null;
+  thread_path_author: string[] | null;
   enriched_comment_thread_text: string | null;
   predicted_category: Record<string, ClusterUnitEntityPredictedCategory> // List of predictions from different prompts
   ground_truth: ClusterUnitEntityCategory | null;
