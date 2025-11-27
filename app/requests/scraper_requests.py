@@ -1,6 +1,6 @@
 
 
-from typing import List, Optional
+from typing import List, Literal, Optional
 from pydantic import BaseModel
 
 from app.database.entities.base_entity import PyObjectId
@@ -27,3 +27,10 @@ class UpdateScraperClusterRequest(BaseModel):
     target_audience: Optional[str] = None
     keywords: Optional[List[str]] = None
     subreddits:  Optional[List[str]] = None
+
+
+class ScraperUpdate(BaseModel):
+    scraper_cluster_id: PyObjectId
+    age: Optional[Literal["hour", "day", "week", "month", "year", "all"]] = None
+    filter: Optional[Literal["new", "hot", "top", "rising"]] = None
+    posts_per_keyword: Optional[int] = 30

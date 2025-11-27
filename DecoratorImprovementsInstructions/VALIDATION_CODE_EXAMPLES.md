@@ -71,7 +71,7 @@ def require_user()(func):
 @require_user()  # That's it!
 def get_scraper_cluster_instances(current_user):  # Get user as parameter
     # current_user is already validated
-    scraper_instances = get_scraper_cluster_repository().find_by_user_id(current_user.id)
+    scraper_entities = get_scraper_cluster_repository().find_by_user_id(current_user.id)
     # ...
 ```
 

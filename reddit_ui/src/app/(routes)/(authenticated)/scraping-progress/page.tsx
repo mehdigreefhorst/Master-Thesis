@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ProgressBar } from '@/components/progress/ProgressBar';
 import { StatCard } from '@/components/progress/StatCard';
 import { SubredditProgressCard } from '@/components/progress/SubredditProgressCard';
 import { KeywordMatrix } from '@/components/progress/KeywordMatrix';
+import { ScraperConfigCard } from '@/components/progress/ScraperConfigCard';
 import { Button } from '@/components/ui/Button';
 import type { ScraperEntity, ScrapingProgressStats } from '@/types/scraper-cluster';
 import { HeaderStep } from '@/components/layout/HeaderStep';
@@ -30,7 +31,7 @@ export default function ScrapingProgressPage() {
   const [isPreparingCluster, setIsPreparingCluster] = useState(false);
 
   // Fetch scraper data
-  const fetchScraperData = async () => {
+  const fetchScraperData = useCallback(async () => {
     if (!scraperClusterId) {
       setError('No scraper cluster ID provided');
       setLoading(false);
@@ -51,12 +52,12 @@ export default function ScrapingProgressPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [scraperClusterId, authFetch]);
 
   // Initial fetch on mount
   useEffect(() => {
     fetchScraperData();
-  }, [scraperClusterId]);
+  }, [fetchScraperData]);
 
   // Polling for real-time updates when status is ongoing
   useEffect(() => {
@@ -64,7 +65,7 @@ export default function ScrapingProgressPage() {
       const interval = setInterval(fetchScraperData, 5000); // Poll every 5 seconds
       return () => clearInterval(interval);
     }
-  }, [scraperData?.status, scraperClusterId]);
+  }, [scraperData?.status, fetchScraperData]);
 
   // Handle button actions
   const handleStartOrContinue = async () => {
@@ -73,6 +74,8 @@ export default function ScrapingProgressPage() {
     try {
       setIsActionLoading(true);
       await scraperApi.startScraper(authFetch, scraperClusterId);
+      // Small delay to allow backend to update status
+      await new Promise(resolve => setTimeout(resolve, 500));
       await fetchScraperData(); // Refresh data
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start scraper');
@@ -87,6 +90,8 @@ export default function ScrapingProgressPage() {
     try {
       setIsActionLoading(true);
       await scraperApi.pauseScraper(authFetch, scraperClusterId);
+      // Small delay to allow backend to update status
+      await new Promise(resolve => setTimeout(resolve, 500));
       await fetchScraperData(); // Refresh data
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to pause scraper');
@@ -313,8 +318,14 @@ export default function ScrapingProgressPage() {
             }
           />
         {/* Action Button */}
-        
 
+
+        {/* Scraper Configuration */}
+        <ScraperConfigCard
+          scraperData={scraperData}
+          scraperClusterId={scraperClusterId!}
+          onConfigUpdated={fetchScraperData}
+        />
 
         {/* Overall Progress Card */}
         <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-8 border-2 border-blue-200 shadow-lg animate-[slideInDown_500ms_ease-out]">

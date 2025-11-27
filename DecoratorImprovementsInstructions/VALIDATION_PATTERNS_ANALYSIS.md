@@ -52,10 +52,10 @@ if not scraper_cluster_entity:
 1. **Scraper Cluster Existence** - Most common (20+ occurrences)
    - clustering_routes.py:32-35 (prepare_cluster)
    - experiment_routes.py:33-36 (get_experiment_instances)
-   - scraper_routes.py:55-58 (create_scraper_instance)
+   - scraper_routes.py:55-58 (create_scraper_entity)
 
 2. **Scraper Entity Existence** - Medium frequency (5+ occurrences)
-   - scraper_routes.py:35-37 (get_scraper_instance)
+   - scraper_routes.py:35-37 (get_scraper_entity)
    - clustering_routes.py:46-48 (prepare_cluster)
 
 3. **Sample Entity Existence** - Low frequency (3+ occurrences)

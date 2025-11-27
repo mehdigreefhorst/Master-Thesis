@@ -47,6 +47,8 @@ class ClusterPrepService:
 
     @staticmethod
     def start_preparing_clustering(scraper_cluster_entity: ScraperClusterEntity) -> int:
+        """Converts the found posts into cluster units. It checks whether a post is already converted, if so it skips it
+        normally this is never the case, but happened frequently during testing. Also if it goes wrong, we can restart it so it is good to have"""
         cluster_entity = ClusterPrepService.get_or_create_cluster_entity(scraper_cluster_entity)
 
         # Retrieve all cluster units that have already been created

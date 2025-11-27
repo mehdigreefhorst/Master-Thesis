@@ -359,6 +359,25 @@ export const scraperApi = {
     });
     return await data.json()
   },
+  async updateScraper(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    scraperClusterId: string,
+    age?: string,
+    postsPerKeyword?: number,
+    filter?: "new" | "hot" | "top"|  "rising"
+
+  ): Promise<{ message: string }> {
+    const data = await authFetch('/scraper', {
+      method: 'PUT',
+      body: {
+        scraper_cluster_id: scraperClusterId,
+        age: age,
+        posts_per_keyword: postsPerKeyword,
+        filter: filter
+      }
+    });
+    return await data.json()
+  },
   async getKeywordSearches(
     authFetch: ReturnType<typeof useAuthFetch>,
     scraper_cluster_id: string

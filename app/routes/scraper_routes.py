@@ -7,7 +7,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from app.database import get_scraper_cluster_repository, get_scraper_repository, get_user_repository
 from app.database.entities.scraper_cluster_entity import ScraperClusterEntity
 from app.requests.scraping_commands import ScraperClusterId, ScrapingId
-from app.requests.scraper_requests import CreateScraperRequest, GetScraper
+from app.requests.scraper_requests import CreateScraperRequest, GetScraper, ScraperUpdate
 from app.responses.get_keyword_searches import GetKeywordSearches
 from app.responses.reddit_post_comments_response import RedditResponse
 from app.services.scraper_service import ScraperService
@@ -20,8 +20,7 @@ scraper_bp = Blueprint("scraper", __name__, url_prefix="/scraper")
 @scraper_bp.route("/", methods=["GET"])
 @validate_query_params(GetScraper)
 @jwt_required()
-def get_scraper_instance(query: GetScraper):
-    print("Scraper instance retrieved ")
+def get_scraper_entity(query: GetScraper):
     user_id = get_jwt_identity()
     current_user = get_user_repository().find_by_id(user_id)
     if not current_user:
@@ -38,15 +37,15 @@ def get_scraper_instance(query: GetScraper):
         return jsonify(scraper.model_dump()), 200
 
     # Otherwise, return all scrapers for the user
-    scraper_instances = get_scraper_repository().find_by_user_id(user_id)
-    returnable_instances = [instance.model_dump() for instance in scraper_instances]
+    scraper_entities = get_scraper_repository().find_by_user_id(user_id)
+    returnable_instances = [instance.model_dump() for instance in scraper_entities]
     return jsonify(returnable_instances), 200
 
 
 @scraper_bp.route("/", methods=["POST"])
 @validate_request_body(CreateScraperRequest)
 @jwt_required()
-def create_scraper_instance(body: CreateScraperRequest):
+def create_scraper_entity(body: CreateScraperRequest):
     user_id = get_jwt_identity()
     current_user = get_user_repository().find_by_id(user_id)
     if not current_user:
@@ -61,8 +60,8 @@ def create_scraper_instance(body: CreateScraperRequest):
         return jsonify(message="scraper has already been created before"), 409
     
     
-    scraper_instance = ScraperService.create_scraper_instance(body, user_id)
-    inserted_id = get_scraper_repository().insert(scraper_instance).inserted_id
+    scraper_entity = ScraperService.create_scraper_entity(body, user_id)
+    inserted_id = get_scraper_repository().insert(scraper_entity).inserted_id
 
     scraper_cluster_entity.stages.define = StatusType.Completed
     scraper_cluster_entity.scraper_entity_id = inserted_id
@@ -70,6 +69,45 @@ def create_scraper_instance(body: CreateScraperRequest):
     get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity) # TODO: this is not correct ,we also want to update the stages
 
     return jsonify(scraper_id=inserted_id), 200
+
+
+@scraper_bp.route("/", methods=["PUT"])
+@validate_request_body(ScraperUpdate)
+@jwt_required()
+def update_scraper(body: ScraperUpdate):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    
+    scraper_cluster_entity = get_scraper_cluster_repository().find_by_id_and_user(user_id, body.scraper_cluster_id)
+
+    if not scraper_cluster_entity:
+        return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {body.scraper_cluster_id}"), 400
+    
+    if not scraper_cluster_entity.scraper_entity_id:
+        return jsonify(message="scraper entity has not been created "), 409
+
+    scraper_entity = get_scraper_repository().find_by_id_and_user(user_id, scraper_cluster_entity.scraper_entity_id)
+
+    if not scraper_entity:
+        return jsonify(error="no such scraper entity exists"), 401
+    
+    if scraper_entity.status in [StatusType.Completed, StatusType.Error,StatusType.Ongoing, StatusType.Paused]:
+        return jsonify("Update is not possible. We scraper is already initialized, we cannot change it anymore"), 204
+    
+    if body.posts_per_keyword and isinstance(body.posts_per_keyword, int):
+        scraper_entity.posts_per_keyword = body.posts_per_keyword
+    
+    if body.age and isinstance(body.age, str):
+        scraper_entity.age = body.age
+
+    if body.filter and isinstance(body.filter, int):
+        scraper_entity.filter = body.filter
+    updated = get_scraper_repository().update(scraper_entity.id, scraper_entity).modified_count
+
+    return jsonify(f"updated the scraper route status = {updated}"), 200
+
 
 @scraper_bp.route("/pause", methods=["PUT"])
 @validate_request_body(ScraperClusterId)
@@ -92,13 +130,13 @@ def pause_scraper(body: ScraperClusterId):
     
     get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
     
-    scraper_instance = get_scraper_repository().find_by_id_and_user(user_id, scraper_cluster_entity.scraper_entity_id)
-    if not scraper_instance:
-        return jsonify(error="no such scraper instance exists"), 401
+    scraper_entity = get_scraper_repository().find_by_id_and_user(user_id, scraper_cluster_entity.scraper_entity_id)
+    if not scraper_entity:
+        return jsonify(error="no such scraper entity exists"), 401
     
-    get_scraper_repository().update(scraper_instance.id, {"status": "paused"})
+    get_scraper_repository().update(scraper_entity.id, {"status": "paused"})
 
-    return jsonify(message=f"{scraper_instance.id} is now paused"), 200
+    return jsonify(message=f"{scraper_entity.id} is now paused"), 200
 
 
 @scraper_bp.route("/start", methods=["PUT"])
@@ -122,23 +160,23 @@ def start_scraper(body: ScraperClusterId):
     get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
 
 
-    scraper_instance = get_scraper_repository().find_by_id_and_user(user_id, scraper_cluster_entity.scraper_entity_id)
-    print(scraper_instance)
-    if not scraper_instance:
-        return jsonify(error="no such scraper instance exists"), 401
+    scraper_entity = get_scraper_repository().find_by_id_and_user(user_id, scraper_cluster_entity.scraper_entity_id)
+    print(scraper_entity)
+    if not scraper_entity:
+        return jsonify(error="no such scraper entity exists"), 401
     
-    if scraper_instance.status == "ongoing":
+    if scraper_entity.status == "ongoing":
         return jsonify(message="scraper is already busy!"), 200
     
-    scraper_instance.status = "ongoing"
-    get_scraper_repository().update(scraper_instance.id, {"status": scraper_instance.status})
+    scraper_entity.status = "ongoing"
+    get_scraper_repository().update(scraper_entity.id, {"status": scraper_entity.status})
     
-    scraper_response = ScraperService().scrape_all_subreddits_keywords(scraper_instance)
+    scraper_response = ScraperService().scrape_all_subreddits_keywords(scraper_entity)
 
     scraper_cluster_entity.stages.scraping = StatusType.Completed
     get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
     return jsonify(scraper_response.model_dump()), 200
-    return jsonify(message="successfully scraped the scraper instance on reddit")
+    return jsonify(message="successfully scraped the scraper entity on reddit")
  
 
 @scraper_bp.route("/get_keyword_searches", methods=["GET"])
@@ -164,3 +202,5 @@ def get_keyword_searches(query: ScraperClusterId) -> GetKeywordSearches:
         return jsonify(message="scraper entity is not findable"), 409
     
     return jsonify(ScraperService.get_all_post_ids_for_keyword_searches(scraper_entity).model_dump()), 200
+
+

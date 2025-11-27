@@ -99,7 +99,7 @@ def get_scraper_cluster_instances():
 @require_user()
 def get_scraper_cluster_instances(current_user):
     # current_user is already fetched and validated
-    scraper_instances = get_scraper_cluster_repository().find_by_user_id(current_user.id)
+    scraper_entities = get_scraper_cluster_repository().find_by_user_id(current_user.id)
     # ... rest of code
 ```
 

@@ -23,9 +23,9 @@ def get_scraper_cluster_instances():
     if not current_user:
         return jsonify(error="No such user"), 401
 
-    scraper_instances = get_scraper_cluster_repository().find_by_user_id(user_id)
+    scraper_entities = get_scraper_cluster_repository().find_by_user_id(user_id)
 
-    returnable_instances = [instance.model_dump() for instance in scraper_instances]
+    returnable_instances = [instance.model_dump() for instance in scraper_entities]
     print("len(returnable_instances) = ", len(returnable_instances))
     return jsonify(returnable_instances), 200
 
