@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, SetStateAction } from 'react';
 import { useRouter } from 'next/navigation';
 import { experimentApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
@@ -12,10 +12,12 @@ import type { StatusType } from '@/types/scraper-cluster';
 
 interface SampleViewProps {
   scraperClusterId?: string | null;
+  setCanCreateExperiments: React.Dispatch<SetStateAction<boolean>>
 }
 
 export const SampleView: React.FC<SampleViewProps> = React.memo(({
-  scraperClusterId
+  scraperClusterId,
+  setCanCreateExperiments
 }) => {
   const router = useRouter();
   const authFetch = useAuthFetch();
@@ -47,6 +49,10 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
           throw Error("no sample found!")
         }
         setSample(sample);
+        if (sample.sample_labeled_status === "completed") {
+          setCanCreateExperiments(true)
+          
+        }
         setTotalPostsAvailable(sample.picked_post_cluster_unit_ids.length || 0);
         setClusterUnitsUsed(sample.sample_size   || 0);
       } catch (err) {

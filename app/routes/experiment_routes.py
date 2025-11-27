@@ -102,6 +102,9 @@ def create_experiment(body: CreateExperiment):
     if not sample_entity.sample_cluster_unit_ids:
         return jsonify(message=f"No cluster units have been assigned in the sample for us to do an experiment with | sample_id: {scraper_cluster_entity.sample_id}"), 400
 
+    if not (sample_entity.sample_labeled_status == StatusType.Completed):
+        return jsonify(message=f"Before experiment creation the Sample must be labeled first!"), 400
+
     experiment_entity = ExperimentEntity(user_id=user_id,
                                          scraper_cluster_id=scraper_cluster_entity.id,
                                          prompt_id=prompt_entity.id,
@@ -109,10 +112,12 @@ def create_experiment(body: CreateExperiment):
                                          model= body.model,
                                          runs_per_unit=body.runs_per_unit,
                                          reasoning_effort=body.reasoning_effort)
+
     if scraper_cluster_entity.stages.experiment == StatusType.Initialized:
         print("I am setting the status type to ongoing!")
         scraper_cluster_entity.stages.experiment = StatusType.Ongoing
         get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
+
     experiment_entity.status = StatusType.Ongoing
     get_experiment_repository().insert(experiment_entity)
     try:

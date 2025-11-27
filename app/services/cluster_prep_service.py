@@ -8,7 +8,11 @@ from app.database.entities.post_entity import CommentEntity
 from app.database.entities.scraper_cluster_entity import ScraperClusterEntity
 from app.database.entities.scraper_entity import ScraperEntity
 from app.database import get_cluster_repository, get_cluster_unit_repository, get_post_repository, get_scraper_cluster_repository, get_scraper_repository
+from app.utils.logging_config import get_logger
 from app.utils.types import StatusType
+
+
+logger = get_logger(__name__)
 
 
 class ClusterPrepService:
@@ -38,11 +42,14 @@ class ClusterPrepService:
         if not scraper_cluster_entity.cluster_entity_id:
             cluster_entity = ClusterPrepService.prepare_cluster_entity(scraper_cluster_entity)
             scraper_cluster_entity.cluster_entity_id = cluster_entity.id
+            logger.info(f"creating a new cluster entity since we don't have one with id {cluster_entity.id}")
             get_cluster_repository().insert(cluster_entity)
             get_scraper_cluster_repository().update(scraper_cluster_entity.id, {"cluster_entity_id": cluster_entity.id})
             return cluster_entity
         else:
             cluster_entity = get_cluster_repository().find_by_id(scraper_cluster_entity.cluster_entity_id)
+            logger.info(f"Retrieving already existing cluster entity since we have one with id {cluster_entity.id}")
+
             return cluster_entity
 
     @staticmethod
@@ -54,7 +61,7 @@ class ClusterPrepService:
         # Retrieve all cluster units that have already been created
         all_previously_added_cluster_units = get_cluster_unit_repository().find({"cluster_entity_id": cluster_entity.id})
         previous_found_post_ids_set = set([cluster_unit.post_id for cluster_unit in all_previously_added_cluster_units])
-
+        logger.info(f"we have {len(all_previously_added_cluster_units)} already existing cluster units, from {len(previous_found_post_ids_set)} different posts")
         all_inserted_cluster_unit_entities = [] # contains only a list of the inserted ids
         for post_id, post_prep_status  in cluster_entity.post_entity_ids_prep_status.items():
             print("processing post_id = ", post_id)
@@ -76,12 +83,16 @@ class ClusterPrepService:
     @staticmethod
     def convert_post_entity_to_cluster_units(cluster_entity: ClusterEntity, post_id: PyObjectId) -> List[PyObjectId]:
         post_entity = get_post_repository().find_by_id(post_id)
+        logger.info(f"converting post {post_entity.id} into cluster units")
         # First we add the post as text by itself. since it is already valuable. Should we also add metadata of the replies/ comments?
         cluster_unit_entities: List[ClusterUnitEntity] = []
-        cluster_unit_entities.append(ClusterUnitEntity.from_post(post_entity, cluster_entity.id))
+        
+        cluster_unit_entity = ClusterUnitEntity.from_post(post_entity, cluster_entity.id)
+        cluster_unit_entities.append(cluster_unit_entity)
         # now we loop over each comment. To convert them into cluster unit entities. It also takes care of the replies
         for comment in post_entity.comments:
-            cluster_unit_entities.append(ClusterUnitEntity.from_comment(comment, cluster_entity.id, post_id, post_entity.subreddit))
+            cluster_unit_entity = ClusterUnitEntity.from_comment(comment, cluster_entity.id, post_id, post_entity.subreddit, cluster_unit_entity)
+            cluster_unit_entities.append(cluster_unit_entity)
             comment_index = len(cluster_unit_entities) -1
             if comment.replies:
                 ClusterPrepService.convert_comment_entity_to_cluster_units(
@@ -89,22 +100,37 @@ class ClusterPrepService:
                     post_id=post_id, 
                     cluster_entity=cluster_entity, 
                     cluster_unit_entities=cluster_unit_entities,
-                    subreddit=post_entity.subreddit)
+                    subreddit=post_entity.subreddit,
+                    reply_to_cluster_unit=cluster_unit_entity)
             
             cluster_unit_entities[comment_index].total_nested_replies = len(cluster_unit_entities) - comment_index - 1 
         
         cluster_unit_entities[0].total_nested_replies = len(cluster_unit_entities) - 1
+        logger.info(f"Created a total of {len(cluster_unit_entities)} for this post")
                 
         return get_cluster_unit_repository().insert_list_entities(cluster_unit_entities).inserted_ids
 
     @staticmethod
-    def convert_comment_entity_to_cluster_units(replies: List[CommentEntity], post_id: PyObjectId, cluster_entity: ClusterEntity, cluster_unit_entities:List[ClusterUnitEntity], subreddit: str):
+    def convert_comment_entity_to_cluster_units(
+        replies: List[CommentEntity], 
+        post_id: PyObjectId, 
+        cluster_entity: ClusterEntity, 
+        cluster_unit_entities:List[ClusterUnitEntity], 
+        subreddit: str,
+        reply_to_cluster_unit: ClusterUnitEntity):
         """recursively calls until there are no more replies left to convert into cluster_unit entities"""
         for reply in replies:
-            cluster_unit_entities.append(ClusterUnitEntity.from_comment(reply, cluster_entity.id, post_id, subreddit))
+            cluster_unit_entity = ClusterUnitEntity.from_comment(reply, cluster_entity.id, post_id, subreddit, reply_to_cluster_unit)
+            cluster_unit_entities.append(cluster_unit_entity)
             reply_index = len(cluster_unit_entities) -1
             if reply.replies:
-                ClusterPrepService.convert_comment_entity_to_cluster_units(reply.replies, post_id, cluster_entity, cluster_unit_entities, subreddit)
+                ClusterPrepService.convert_comment_entity_to_cluster_units(
+                    replies=reply.replies, 
+                    post_id=post_id, 
+                    cluster_entity=cluster_entity, 
+                    cluster_unit_entities=cluster_unit_entities, 
+                    subreddit=subreddit, 
+                    reply_to_cluster_unit=cluster_unit_entity)
 
             cluster_unit_entities[reply_index].total_nested_replies = len(cluster_unit_entities) - reply_index - 1
 

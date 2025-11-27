@@ -71,6 +71,7 @@ class ClusterUnitEntity(BaseEntity):
     cluster_entity_id: PyObjectId # ClusterInstanceEntity
     post_id: PyObjectId # The post_id of the entity
     comment_post_id: PyObjectId # RedditBaseEntity
+    replied_to_cluster_unit_id: Optional[PyObjectId] = None
     type: Literal["post", "comment"]
     reddit_id: str # official "REDDIT" reddit id
     author: str
@@ -78,7 +79,8 @@ class ClusterUnitEntity(BaseEntity):
     upvotes: int
     downvotes: int
     created_utc: int
-    thread_path_text: List[str] | None # the full prior thread (post -> comment -> reply --> ...) up until the current comment
+    thread_path_text: List[str] | None # the text of posts full prior thread (post -> comment -> reply --> ...) up until the current comment
+    thread_path_author: List[str] = [] # the author of posts full prior thread (post -> comment -> reply --> ...) up until the current comment
     enriched_comment_thread_text: str | None # what the LLM made from the thread path text & text
     predicted_category: Dict[PyObjectId, ClusterUnitEntityPredictedCategory] | None = None # experiment_id: PyObjectId as key
     ground_truth: ClusterUnitEntityCategory  = Field(default_factory=ClusterUnitEntityCategory)
@@ -96,6 +98,7 @@ class ClusterUnitEntity(BaseEntity):
             cluster_entity_id=cluster_entity_id,
             post_id= post_entity.id,
             comment_post_id= post_entity.id,
+            replied_to_cluster_unit_id=None,
             type= "post",
             reddit_id= post_entity.reddit_id,
             author= post_entity.author,
@@ -103,7 +106,8 @@ class ClusterUnitEntity(BaseEntity):
             upvotes= post_entity.upvotes,
             downvotes= post_entity.downvotes,
             created_utc=post_entity.created_utc,
-            thread_path_text=  [],# the full prior thread (post -> comment -> reply --> ...) up until the current comment
+            thread_path_text=  [], # the text full prior thread (post -> comment -> reply --> ...) up until the current comment
+            thread_path_author= [], # the author full prior thread (post -> comment -> reply --> ...) up until the current comment
             enriched_comment_thread_text= None, # what the LLM made from the thread path text & text
             text= "post_title: " + post_entity.title + "\n" + post_entity.text, # the author's individual text contribution to reddit
             subreddit=post_entity.subreddit
@@ -111,7 +115,7 @@ class ClusterUnitEntity(BaseEntity):
         )
     
     @classmethod
-    def from_comment(cls, comment_entity: CommentEntity, cluster_entity_id: PyObjectId, post_id: PyObjectId, subreddit: str):
+    def from_comment(cls, comment_entity: CommentEntity, cluster_entity_id: PyObjectId, post_id: PyObjectId, subreddit: str, reply_to_cluster_unit: "ClusterUnitEntity"):
         if not isinstance(comment_entity, CommentEntity):
             raise Exception(f"Wrong type: {type(comment_entity)}it should be a comment entity for comment: = {comment_entity}!")
         
@@ -119,6 +123,7 @@ class ClusterUnitEntity(BaseEntity):
             cluster_entity_id=cluster_entity_id,
             post_id= post_id,
             comment_post_id= comment_entity.id,
+            replied_to_cluster_unit_id=reply_to_cluster_unit.id,
             type= "comment",
             reddit_id= comment_entity.reddit_id,
             author= comment_entity.author,
@@ -126,7 +131,8 @@ class ClusterUnitEntity(BaseEntity):
             upvotes= comment_entity.upvotes,
             downvotes= comment_entity.downvotes,
             created_utc= comment_entity.created_utc,
-            thread_path_text=  comment_entity.prior_comments_thread,# the full prior thread (post -> comment -> reply --> ...) up until the current comment
+            thread_path_text= comment_entity.prior_comments_thread,# the full prior thread (post -> comment -> reply --> ...) up until the current comment
+            thread_path_author= reply_to_cluster_unit.thread_path_author + [reply_to_cluster_unit.author],
             enriched_comment_thread_text= None, # what the LLM made from the thread path text & text
             text= comment_entity.text, # the author's individual text contribution to reddit
             subreddit=subreddit
