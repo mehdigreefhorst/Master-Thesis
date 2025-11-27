@@ -14,6 +14,7 @@ import { ViewerSkeleton } from '@/components/ui/Skeleton';
 import type { ClusterUnitEntity, ClusterUnitEntityCategory } from '@/types/cluster-unit';
 import Link from 'next/link';
 import { PromptEntity } from '@/types/prompt';
+import { ThreadFromUnit } from '../thread/ThreadFromUnit';
 
 export interface ViewerContentProps {
   scraperClusterId: string | null;
@@ -160,28 +161,28 @@ export function ViewerContent({
     return { models: modelsData, labels: labelsData, stats: statsData };
   }, [currentClusterUnit, ExperimentIds, promptsNameExperimentIdDict]);
 
-  // Render thread from thread_path_text
-  const renderThread = () => {
-    if (!currentClusterUnit) return null;
+  // // Render thread from thread_path_text
+  // const renderThread = () => {
+  //   if (!currentClusterUnit) return null;
 
-    const threadPath = currentClusterUnit.thread_path_text || [];
-    const threadPathAuthor = currentClusterUnit.thread_path_author || [];
-    const currentText = currentClusterUnit.text;
+  //   const threadPath = currentClusterUnit.thread_path_text || [];
+  //   const threadPathAuthor = currentClusterUnit.thread_path_author || [];
+  //   const currentText = currentClusterUnit.text;
 
-    return (
-      <ThreadBox>
-        {threadPath.map((text, index) => {
-            const author = threadPathAuthor[index] || `author${index}`;
+  //   return (
+  //     <ThreadBox>
+  //       {threadPath.map((text, index) => {
+  //           const author = threadPathAuthor[index] || `author${index}`;
 
-          if (index === 0) {
-            return <ThreadPost key={index} username={`u/${author}`}  content={text} />;
-          }
-          return <ThreadComment key={index} username={`u/${author}`}  content={text} />;
-        })}
-        <ThreadTarget username={currentClusterUnit.author} content={currentText} />
-      </ThreadBox>
-    );
-  };
+  //         if (index === 0) {
+  //           return <ThreadPost key={index} username={`u/${author}`}  content={text} />;
+  //         }
+  //         return <ThreadComment key={index} username={`u/${author}`}  content={text} />;
+  //       })}
+  //       <ThreadTarget username={currentClusterUnit.author} content={currentText} />
+  //     </ThreadBox>
+  //   );
+  // };
 
   // Loading state
   if (isLoading) {
@@ -236,18 +237,7 @@ export function ViewerContent({
         />
 
         {/* Thread Context */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-semibold">
-              r/{currentClusterUnit.type === 'post' ? 'post' : 'comment'} Thread:
-            </h2>
-            <Button className="text-sm text-blue-600" variant="invisible">
-              View Full ▼
-            </Button>
-          </div>
-
-          {renderThread()}
-        </div>
+         <ThreadFromUnit currentUnit={currentClusterUnit}/>
 
         {/* Label Comparison Table */}
         <div className="mb-6">

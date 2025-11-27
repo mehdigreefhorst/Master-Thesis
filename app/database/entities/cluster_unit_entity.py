@@ -74,6 +74,7 @@ class ClusterUnitEntity(BaseEntity):
     replied_to_cluster_unit_id: Optional[PyObjectId] = None
     type: Literal["post", "comment"]
     reddit_id: str # official "REDDIT" reddit id
+    permalink: str = ""
     author: str
     usertag: Optional[str]
     upvotes: int
@@ -101,6 +102,7 @@ class ClusterUnitEntity(BaseEntity):
             replied_to_cluster_unit_id=None,
             type= "post",
             reddit_id= post_entity.reddit_id,
+            permalink=post_entity.permalink,
             author= post_entity.author,
             usertag= post_entity.user_tag,
             upvotes= post_entity.upvotes,
@@ -115,7 +117,7 @@ class ClusterUnitEntity(BaseEntity):
         )
     
     @classmethod
-    def from_comment(cls, comment_entity: CommentEntity, cluster_entity_id: PyObjectId, post_id: PyObjectId, subreddit: str, reply_to_cluster_unit: "ClusterUnitEntity"):
+    def from_comment(cls, comment_entity: CommentEntity, cluster_entity_id: PyObjectId, post_id: PyObjectId, subreddit: str, post_permalink: str, reply_to_cluster_unit: "ClusterUnitEntity"):
         if not isinstance(comment_entity, CommentEntity):
             raise Exception(f"Wrong type: {type(comment_entity)}it should be a comment entity for comment: = {comment_entity}!")
         
@@ -126,6 +128,7 @@ class ClusterUnitEntity(BaseEntity):
             replied_to_cluster_unit_id=reply_to_cluster_unit.id,
             type= "comment",
             reddit_id= comment_entity.reddit_id,
+            permalink=f"{post_permalink}/{comment_entity.reddit_id}",
             author= comment_entity.author,
             usertag= comment_entity.user_tag,
             upvotes= comment_entity.upvotes,

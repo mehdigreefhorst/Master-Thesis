@@ -5,6 +5,8 @@ import { ThreadBox } from "./ThreadBox";
 import { ThreadPost } from "./ThreadPost";
 import { ThreadComment } from "./ThreadComment";
 import { ThreadTarget } from "./ThreadTarget";
+import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 
 
 interface ThreadFromUnitProps {
@@ -78,6 +80,18 @@ export const ThreadFromUnit: React.FC<ThreadFromUnitProps> = ({
             <span className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full border border-blue-200">
               <span className="font-medium">Date:</span> {formatDate(currentUnit.created_utc)}
             </span>
+
+          <Link 
+            href={`https://www.reddit.com${currentUnit.permalink}`} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="cursor-pointer"
+          >
+              <span className="flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-full border border-orange-200 hover:bg-orange-200 transition-colors cursor-pointer">
+                <span className="font-medium">View on Reddit</span>
+                <ExternalLink className="h-4 w-4" />
+            </span>
+          </Link>
           </div>
         </div>
         <Button

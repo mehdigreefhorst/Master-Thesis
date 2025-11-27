@@ -32,6 +32,7 @@ export interface ClusterUnitEntity {
   comment_post_id: string;
   type: 'post' | 'comment';
   reddit_id: string;
+  permalink: string;
   author: string;
   usertag: string | null;
   upvotes: number;

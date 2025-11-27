@@ -91,13 +91,20 @@ class ClusterPrepService:
         cluster_unit_entities.append(cluster_unit_entity_post)
         # now we loop over each comment. To convert them into cluster unit entities. It also takes care of the replies
         for comment in post_entity.comments:
-            cluster_unit_entity = ClusterUnitEntity.from_comment(comment, cluster_entity.id, post_id, post_entity.subreddit, cluster_unit_entity_post)
+            cluster_unit_entity = ClusterUnitEntity.from_comment(
+                comment_entity=comment, 
+                cluster_entity_id=cluster_entity.id, 
+                post_id=post_id,
+                post_permalink=post_entity.permalink,
+                subreddit=post_entity.subreddit, 
+                reply_to_cluster_unit=cluster_unit_entity_post)
             cluster_unit_entities.append(cluster_unit_entity)
             comment_index = len(cluster_unit_entities) -1
             if comment.replies:
                 ClusterPrepService.convert_comment_entity_to_cluster_units(
                     replies=comment.replies, 
                     post_id=post_id, 
+                    post_permalink=post_entity.permalink,
                     cluster_entity=cluster_entity, 
                     cluster_unit_entities=cluster_unit_entities,
                     subreddit=post_entity.subreddit,
@@ -113,20 +120,29 @@ class ClusterPrepService:
     @staticmethod
     def convert_comment_entity_to_cluster_units(
         replies: List[CommentEntity], 
-        post_id: PyObjectId, 
+        post_id: PyObjectId,
+        post_permalink: str,
         cluster_entity: ClusterEntity, 
         cluster_unit_entities:List[ClusterUnitEntity], 
         subreddit: str,
         reply_to_cluster_unit: ClusterUnitEntity):
         """recursively calls until there are no more replies left to convert into cluster_unit entities"""
         for reply in replies:
-            cluster_unit_entity = ClusterUnitEntity.from_comment(reply, cluster_entity.id, post_id, subreddit, reply_to_cluster_unit)
+            cluster_unit_entity = ClusterUnitEntity.from_comment(
+                comment_entity=reply, 
+                cluster_entity_id=cluster_entity.id, 
+                post_id=post_id, 
+                subreddit=subreddit, 
+                post_permalink=post_permalink,
+                reply_to_cluster_unit=reply_to_cluster_unit
+                )
             cluster_unit_entities.append(cluster_unit_entity)
             reply_index = len(cluster_unit_entities) -1
             if reply.replies:
                 ClusterPrepService.convert_comment_entity_to_cluster_units(
                     replies=reply.replies, 
                     post_id=post_id, 
+                    post_permalink=post_permalink,
                     cluster_entity=cluster_entity, 
                     cluster_unit_entities=cluster_unit_entities, 
                     subreddit=subreddit, 
