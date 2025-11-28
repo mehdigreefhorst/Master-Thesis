@@ -300,14 +300,16 @@ class ExperimentService:
         - Tokens wasted on failed attempts
         - Tokens from retry attempts
         - Success/failure counts
+
+        Also the experiment cost is calculated if model pricing is available in the object
         """
         total_successful_predictions = 0
         total_failed_attempts = 0
 
-        # Aggregated token counts
-        total_tokens = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "reasoning_tokens": 0}
-        tokens_wasted = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "reasoning_tokens": 0}
-        tokens_from_retries = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "reasoning_tokens": 0}
+        # # Aggregated token counts
+        # total_tokens = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "reasoning_tokens": 0}
+        # tokens_wasted = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "reasoning_tokens": 0}
+        # tokens_from_retries = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "reasoning_tokens": 0}
 
         for cluster_unit_entity in cluster_unit_entities:
             if cluster_unit_entity.predicted_category is None:
@@ -328,48 +330,54 @@ class ExperimentService:
                 # Process all attempts for this prediction
                 for attempt in prediction.all_attempts:
                     # Add to total tokens
-                    for key in ["prompt_tokens", "completion_tokens", "total_tokens"]:
-                        token_count = attempt.tokens_used.get(key, 0)
-                        total_tokens[key] += token_count
+
+                    experiment_entity.token_statistics.total_tokens_used.prompt_tokens += attempt.tokens_used.get("prompt_tokens", 0)
+                    experiment_entity.token_statistics.total_tokens_used.completion_tokens += attempt.tokens_used.get("completion_tokens", 0)
+                    experiment_entity.token_statistics.total_tokens_used.total_tokens += attempt.tokens_used.get("total_tokens", 0)
                     
                     reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
-                    if reasoning_tokens:
-                        total_tokens["reasoning_tokens"] += reasoning_tokens
+                    experiment_entity.token_statistics.total_tokens_used.total_tokens += reasoning_tokens
                     # Track failed attempts
                     if not attempt.success:
                         total_failed_attempts += 1
-                        for key in ["prompt_tokens", "completion_tokens", "total_tokens"]:
-                            token_count = attempt.tokens_used.get(key, 0)
-                            tokens_wasted[key] += token_count
+                        experiment_entity.token_statistics.total_failed_attempts.prompt_tokens += attempt.tokens_used.get("prompt_tokens", 0)
+                        experiment_entity.token_statistics.total_failed_attempts.completion_tokens += attempt.tokens_used.get("completion_tokens", 0)
+                        experiment_entity.token_statistics.total_failed_attempts.total_tokens += attempt.tokens_used.get("total_tokens", 0)
                         
                         reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
-                        if reasoning_tokens:
-                            tokens_wasted["reasoning_tokens"] += reasoning_tokens
+                        experiment_entity.token_statistics.total_failed_attempts.total_tokens += reasoning_tokens
 
                     # Track retry attempts (attempt_number > 1)
                     if attempt.attempt_number > 1: # len(prediction.all_attempts) > 1 # TODO needed because an attempt can also have a second number without there being a first one (retry because of our own rate limiter)
-                        for key in ["prompt_tokens", "completion_tokens", "total_tokens"]:
-                            token_count = attempt.tokens_used.get(key, 0)
-                            tokens_from_retries[key] += token_count
+                        experiment_entity.token_statistics.tokens_from_retries.prompt_tokens += attempt.tokens_used.get("prompt_tokens", 0)
+                        experiment_entity.token_statistics.tokens_from_retries.completion_tokens += attempt.tokens_used.get("completion_tokens", 0)
+                        experiment_entity.token_statistics.tokens_from_retries.total_tokens += attempt.tokens_used.get("total_tokens", 0)
                         
                         reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
-                        if reasoning_tokens:
-                            tokens_from_retries["reasoning_tokens"] += reasoning_tokens
+                        experiment_entity.token_statistics.tokens_from_retries.total_tokens += reasoning_tokens
+        
+        # Calculate the cost of the model
+        if experiment_entity.model_pricing is not None:
+            
+            total_cost = experiment_entity.calculate_and_set_total_cost()#.total_tokens_used.calculate_total_cost(experiment_entity.model_pricing)
+        else:
+            logger.error("the experiment does not have a model pricing. So we cannot calculate the total cost of the experiment")
+            total_cost = 0
 
         # Store in experiment entity
         experiment_entity.token_statistics.total_successful_predictions = total_successful_predictions
         experiment_entity.token_statistics.total_failed_attempts = total_failed_attempts
-        experiment_entity.token_statistics.total_tokens_used = total_tokens
-        experiment_entity.token_statistics.tokens_wasted_on_failures = tokens_wasted
-        experiment_entity.token_statistics.tokens_from_retries = tokens_from_retries
+
+        experiment_entity.experiment_cost = total_cost
+
 
         logger.info(f"Token Statistics for Experiment ", extra={'extra_fields': {"experiment_entity": experiment_entity.id} })
+        logger.info(f"  Experiment cost spend = {total_cost}$")
         logger.info(f"  Successful predictions: {total_successful_predictions}")
         logger.info(f"  Failed attempts: {total_failed_attempts}")
-        logger.info(f"  Total tokens: {total_tokens}")
-        logger.info(f"  Tokens wasted: {tokens_wasted}")
-        logger.info(f"  Tokens from retries: {tokens_from_retries}")
-
+        logger.info(f"  Total tokens: {experiment_entity.token_statistics.total_tokens_used}")
+        logger.info(f"  Tokens wasted: {experiment_entity.token_statistics.tokens_wasted_on_failures}")
+        logger.info(f"  Tokens from retries: {experiment_entity.token_statistics.tokens_from_retries}")
 
     @staticmethod
     def parse_classification_prompt(cluster_unit_entity: ClusterUnitEntity, prompt_entity: PromptEntity):
@@ -408,7 +416,7 @@ class ExperimentService:
     @staticmethod
     def convert_experiment_entities_for_user_interface(experiment_entities: List[ExperimentEntity], 
                                                        sample_entity: SampleEntity,
-                                                       user_threshold: Optional[int] = None) -> List[GetExperimentsResponse]:
+                                                       user_threshold: Optional[float] = None) -> List[GetExperimentsResponse]:
         """user threshold, is the minimum number of occurences out of the runs to be correct in order for the prediction to be accepted
         for example 2/3 runs need to be correct or 3/3 runs need to be correct. Or 3/5 depending on the runs taken. """
         returnable_experiments = []
@@ -430,8 +438,10 @@ class ExperimentService:
                                                          overall_kappa=overall_kappa,
                                                          prediction_metrics=prediction_metrics,
                                                          runs_per_unit=experiment.runs_per_unit,
+                                                         threshold_runs_true=experiment.threshold_runs_true,
                                                          reasoning_effort=experiment.reasoning_effort,
                                                          token_statistics=experiment.token_statistics,
+                                                         experiment_cost=experiment.experiment_cost,
                                                          status=experiment.status)
             
             returnable_experiments.append(experiment_response)  
@@ -469,7 +479,7 @@ class ExperimentService:
     @staticmethod
     def calculate_prediction_metrics(experiment_entity: ExperimentEntity,
                                      sample_entity: SampleEntity,
-                                     user_threshold: Optional[int] = None) -> List[PredictionMetric]:
+                                     user_threshold: Optional[float] = None) -> List[PredictionMetric]:
         total_prediction_metrics: PredictionMetric = []
         for prediction_result_variable_name in experiment_entity.aggregate_result.field_names():
             
@@ -497,21 +507,33 @@ class ExperimentService:
             total_times_predicted += int(runs_predicted_true_count) * int(occurences)
         
         return total_times_predicted
+    
+    @staticmethod
+    def get_user_threshold(experiment_entity: ExperimentEntity,user_threshold: Optional[float] = None ):
+        if user_threshold:
+            min_runs =  math.ceil(user_threshold * experiment_entity.runs_per_unit)
+        if user_threshold is None:
+            if experiment_entity.threshold_runs_true:
+                min_runs = experiment_entity.threshold_runs_true
+            else:
+                min_runs = math.ceil(experiment_entity.runs_per_unit/2)
+        
+        return min(min_runs, experiment_entity.runs_per_unit)
+            
 
     @staticmethod
     def calculate_single_prediction_metric(experiment_entity: ExperimentEntity, 
                                            prediction_result_variable_name: str,
                                            sample_entity: SampleEntity,
-                                           user_threshold: Optional[int] = None) -> PredictionMetric:
+                                           user_threshold: Optional[float] = None) -> PredictionMetric:
         """calculates everything that is needed for the prediction metric to be created and returns that"""
-        if user_threshold is None:
-            user_threshold = math.ceil(experiment_entity.runs_per_unit/2)
+        formatted_user_threshold = ExperimentService.get_user_threshold(experiment_entity=experiment_entity, user_threshold=user_threshold)
         prediction_result: PredictionResult = getattr(experiment_entity.aggregate_result, prediction_result_variable_name)
         total_times_predicted = ExperimentService.calculate_total_times_predicted(prediction_result)
         total_sample_runs = sample_entity.sample_size * experiment_entity.runs_per_unit
         
         confusion_matrix = ExperimentService.calculate_confusion_matrix(prediction_result=prediction_result,
-                                                                        user_threshold=user_threshold,
+                                                                        user_threshold=formatted_user_threshold,
         )
                                                
         prediction_metric = PredictionMetric(prediction_category_name=prediction_result_variable_name, 

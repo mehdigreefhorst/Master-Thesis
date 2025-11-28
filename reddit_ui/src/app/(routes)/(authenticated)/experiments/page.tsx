@@ -1,20 +1,15 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Button } from '@/components/ui/Button';
-import { ExperimentCard, ExperimentData } from '@/components/experiments/ExperimentCard';
-import { experimentApi } from '@/lib/api';
-import { useAuthFetch } from '@/utils/fetch';
+
 import { HeaderStep } from '@/components/layout/HeaderStep';
 import { SampleView } from '@/components/sample/SampleView';
 import { ExperimentsSearchBarResults } from '@/components/experiments/experimentsSearchBarResults';
 
 function ExperimentsPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const authFetch = useAuthFetch();
   const scraperClusterId = searchParams.get('scraper_cluster_id');
 
   const [canCreateExperiments, setCanCreateExperiments] = useState(false)

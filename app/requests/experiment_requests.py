@@ -8,7 +8,7 @@ from app.database.entities.prompt_entity import PromptCategory
 class GetExperiments(BaseModel):
     scraper_cluster_id: PyObjectId
     experiment_ids: Optional[List[PyObjectId]] = None
-    user_threshold: Optional[int] = None # Threshold for the prediction to be accepted for the TP rate
+    user_threshold: Optional[float] = None #  0-1 threshold proportion of how many runs a classification must have become true. If not set, the experiment specific one is used
 
 
 class CreateExperiment(BaseModel):
@@ -16,7 +16,13 @@ class CreateExperiment(BaseModel):
     prompt_id: PyObjectId
     model: str
     runs_per_unit: int = 3
+    threshold_runs_true: int = 1
     reasoning_effort: Optional[str]
+
+
+class UpdateExperimentThreshold(BaseModel):
+    experiment_id: PyObjectId
+    threshold_runs_true: int = 1
 
 
 class ExperimentId(BaseModel):

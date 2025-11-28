@@ -6,13 +6,13 @@ from flask import Blueprint, jsonify
 from flask_jwt_extended import get_jwt_identity, jwt_required
 import random
 
-from app.database import get_cluster_unit_repository, get_experiment_repository, get_prompt_repository, get_sample_repository, get_scraper_cluster_repository, get_user_repository
+from app.database import get_cluster_unit_repository, get_experiment_repository, get_openrouter_data_repository, get_prompt_repository, get_sample_repository, get_scraper_cluster_repository, get_user_repository
 from app.database.entities.experiment_entity import ExperimentEntity
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.database.entities.scraper_cluster_entity import StageStatus
 from app.requests.cluster_prep_requests import ScraperClusterId
-from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, ExperimentId, GetExperiments, GetSample, GetSampleUnits, ParsePrompt, ParseRawPrompt, UpdateSample
+from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, ExperimentId, GetExperiments, GetSample, GetSampleUnits, ParsePrompt, ParseRawPrompt, UpdateExperimentThreshold, UpdateSample
 from app.responses.get_experiments_response import GetExperimentsResponse
 from app.services.experiment_service import ExperimentService
 from app.utils.api_validation import validate_request_body, validate_query_params
@@ -36,7 +36,8 @@ def get_experiment_instances(query: GetExperiments) -> List[GetExperimentsRespon
         return jsonify(error="No such user"), 401
         
     scraper_cluster_entity = get_scraper_cluster_repository().find_by_id_and_user(user_id, query.scraper_cluster_id)
-
+    if query.user_threshold is not None and (query.user_threshold > 1 or query.user_threshold < 0):
+        return jsonify(error=f"user_threshold must be between 0 and 1 | NOT {query.user_threshold}"), 400
     if not scraper_cluster_entity:
         return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {query.scraper_cluster_id}"), 400
     
@@ -59,9 +60,32 @@ def get_experiment_instances(query: GetExperiments) -> List[GetExperimentsRespon
 
     if not sample_entity:
         return jsonify(f"Scraper cluster entity: {scraper_cluster_entity.id} with sample_id: {scraper_cluster_entity.sample_id} is not findable")        
-  
+
     returnable_instances = ExperimentService.convert_experiment_entities_for_user_interface(experiment_entities, sample_entity, query.user_threshold)
     return jsonify(returnable_instances), 200
+
+
+@experiment_bp.route("/", methods=["PUT"])
+@validate_request_body(UpdateExperimentThreshold)
+@jwt_required()
+def update_experiment_threshold(body: UpdateExperimentThreshold):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    experiment_entity = get_experiment_repository().find_by_id(body.experiment_id)
+
+    if not experiment_entity:
+        return jsonify(message=f"No experiment entity found for experiment id : {body.experiment_id}"), 404
+    
+    if body.threshold_runs_true > experiment_entity.runs_per_unit:
+        return jsonify(error=f"threshold({body.threshold_runs_true}) is larger than runs per unit ({body.runs_per_unit}), impossible !"), 400
+    
+    
+    updated = get_experiment_repository().update(experiment_entity.id, {"threshold_runs_true": body.threshold_runs_true}).acknowledged
+
+    if updated:
+        return jsonify(message="successfully updated the threshold"), 200
 
 
 @experiment_bp.route("/", methods=["POST"])
@@ -72,6 +96,9 @@ def create_experiment(body: CreateExperiment):
     current_user = get_user_repository().find_by_id(user_id)
     if not current_user:
         return jsonify(error="No such user"), 401
+    
+    if body.threshold_runs_true > body.runs_per_unit:
+        return jsonify(error=f"threshold({body.threshold_runs_true}) is larger than runs per unit ({body.runs_per_unit}), impossible !"), 400
     
     scraper_cluster_entity = get_scraper_cluster_repository().find_by_id_and_user(user_id, body.scraper_cluster_id)
 
@@ -109,12 +136,16 @@ def create_experiment(body: CreateExperiment):
     if not (sample_entity.sample_labeled_status == StatusType.Completed):
         return jsonify(message=f"Before experiment creation the Sample must be labeled first!"), 400
 
+    model_pricing = get_openrouter_data_repository().find_pricing_of_model(body.model)
+
     experiment_entity = ExperimentEntity(user_id=user_id,
                                          scraper_cluster_id=scraper_cluster_entity.id,
                                          prompt_id=prompt_entity.id,
                                          sample_id=sample_entity.id,
                                          model= body.model,
+                                         model_pricing=model_pricing,
                                          runs_per_unit=body.runs_per_unit,
+                                         threshold_runs_true=body.threshold_runs_true,
                                          reasoning_effort=body.reasoning_effort)
 
     if scraper_cluster_entity.stages.experiment == StatusType.Initialized:

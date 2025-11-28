@@ -6,6 +6,8 @@ import re
 
 from pydantic import BaseModel, Field, field_validator
 from app.database.entities.base_entity import BaseEntity, PyObjectId
+from app.database.entities.openrouter_data_entity import Pricing
+from app.services.openrouter_analytics_service import ModelPricing
 from app.utils.types import StatusType
 
 
@@ -42,16 +44,30 @@ class AggregateResult(BaseModel):
     @classmethod
     def field_names(cls) -> list[str]:
         return list(cls.model_fields.keys())
+    
+
+class TokenUsage(BaseModel):
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    internal_reasoning_tokens: int = 0
+    total_tokens: int = 0
 
 
 class ExperimentTokenStatistics(BaseModel):
     """Aggregate token usage statistics for the entire experiment"""
     total_successful_predictions: int = 0
     total_failed_attempts: int = 0
-    total_tokens_used: Dict[str, int] = Field(default_factory=dict)  # e.g., {"prompt_tokens": 1000, "completion_tokens": 500, "total_tokens": 1500}
-    tokens_wasted_on_failures: Dict[str, int] = Field(default_factory=dict)  # Tokens from failed attempts
-    tokens_from_retries: Dict[str, int] = Field(default_factory=dict)  # Tokens from retry attempts (even if they succeeded)
+    total_tokens_used: TokenUsage = Field(default_factory=TokenUsage)  # e.g., {"prompt_tokens": 1000, "completion_tokens": 500, "total_tokens": 1500}
+    tokens_wasted_on_failures: TokenUsage = Field(default_factory=TokenUsage)  # Tokens from failed attempts
+    tokens_from_retries: TokenUsage = Field(default_factory=TokenUsage)  # Tokens from retry attempts (even if they succeeded)
 
+
+class ExperimentCost(BaseModel):
+    """cost in dollar spend on experiment"""
+    total: float
+    completion: float
+    prompt: float
+    internal_reasoning: float
 
 class ExperimentEntity(BaseEntity):
     user_id: PyObjectId
@@ -59,9 +75,29 @@ class ExperimentEntity(BaseEntity):
     prompt_id: PyObjectId
     sample_id: PyObjectId
     model: str
+    model_pricing: Optional[Pricing] = None
+    experiment_cost: Optional[ExperimentCost] = None
     reasoning_effort: Optional[str] = None
     aggregate_result: AggregateResult = Field(default_factory=AggregateResult)
     runs_per_unit: int = 3
+    threshold_runs_true: int = 1
     status: StatusType = StatusType.Initialized
     token_statistics: ExperimentTokenStatistics = Field(default_factory=ExperimentTokenStatistics)
+
+    def calculate_and_set_total_cost(self) -> float:
+        """only calculates for now the completion and prompt tokens, since reasoning is priced same as completion 
+        also it doesn't take caching into account :TODO Improve calculation"""
+        total_cost = 0
+        prompt_cost = self.token_statistics.total_tokens_used.prompt_tokens * self.model_pricing.prompt
+        completion_cost =self.token_statistics.total_tokens_used.completion_tokens  * self.model_pricing.completion
+        internal_reasoning_cost = self.token_statistics.total_tokens_used.internal_reasoning_tokens  * self.model_pricing.internal_reasoning
+
+        total_cost = prompt_cost + completion_cost
+
+        experiment_cost = ExperimentCost(total=total_cost,
+                                         completion=completion_cost,
+                                         prompt=prompt_cost,
+                                         internal_reasoning=internal_reasoning_cost)
+        self.experiment_cost = experiment_cost
+        return experiment_cost.total
     

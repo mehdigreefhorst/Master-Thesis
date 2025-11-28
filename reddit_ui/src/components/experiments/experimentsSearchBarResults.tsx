@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ExperimentCard, ExperimentData } from "./ExperimentCard"
 import { useRouter } from "next/navigation";
 import { experimentApi } from "@/lib/api";
@@ -25,10 +25,14 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
   const [searchQuery, setSearchQuery] = useState('');
   const [experiments, setExperiments] = useState<ExperimentData[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [globalThreshold, setGlobalThreshold] = useState<number | null>(null);
+  const [tempThresholdValue, setTempThresholdValue] = useState<number>(0.5);
+  const [showThresholdSlider, setShowThresholdSlider] = useState(false);
 
   const router = useRouter()
   const authFetch = useAuthFetch();
-  
+  const thresholdDropdownRef = useRef<HTMLDivElement>(null);
+
 
   
   const uniqueModels = Array.from(new Set(experiments.map(p => p.model)));
@@ -65,7 +69,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
             : exp
         )
       );
-  
+
       try {
         await experimentApi.continueExperiment(authFetch, experiment_id);
       } catch (err) {
@@ -78,6 +82,27 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
               : exp
           )
         );
+      }
+    }
+
+    const handleThresholdUpdate = async (experiment_id: string) => {
+      if (!scraperClusterId) return;
+
+      try {
+        // Fetch only the updated experiment
+        const data = await experimentApi.getExperiments(authFetch, scraperClusterId, [experiment_id], globalThreshold);
+        const updatedExperiments = (data.experiments || data || []).map(transformExperimentData);
+
+        if (updatedExperiments.length > 0) {
+          // Update the experiments state while maintaining position and preserving name
+          setExperiments(prevExperiments => {
+            return prevExperiments.map(exp =>
+              exp.id === experiment_id ? { ...updatedExperiments[0], name: exp.name } : exp
+            );
+          });
+        }
+      } catch (err) {
+        console.error('Failed to refresh experiment after threshold update:', err);
       }
     }
 
@@ -131,6 +156,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       overallKappa: exp.overall_kappa * 100, // Convert to percentage
       predictionMetrics: predictionMetrics,
       runsPerUnit: exp.runs_per_unit,
+      thresholdRunsTrue: exp.threshold_runs_true,
       status: exp.status,
       tokenStatistics: tokenStatistics
     };
@@ -148,12 +174,24 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       try {
         setIsLoading(true);
         setError(null);
-        const data = await experimentApi.getExperiments(authFetch, scraperClusterId);
+        const data = await experimentApi.getExperiments(authFetch, scraperClusterId, undefined, globalThreshold);
 
         // Transform backend data to ExperimentData format
         const transformedData: ExperimentData[] = (data.experiments || data || []).map(transformExperimentData);
 
-        setExperiments(transformedData);
+        // Preserve original names when updating with global threshold
+        setExperiments(prevExperiments => {
+          if (prevExperiments.length === 0) {
+            return transformedData;
+          }
+
+          return transformedData.map(newExp => {
+            const existingExp = prevExperiments.find(e => e.id === newExp.id);
+            return existingExp
+              ? { ...newExp, name: existingExp.name }
+              : newExp;
+          });
+        });
       } catch (err) {
         console.error('Failed to fetch experiments:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch experiments');
@@ -164,7 +202,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
     }
 
     fetchExperiments();
-  }, [scraperClusterId, authFetch]);
+  }, [scraperClusterId, authFetch, globalThreshold]);
 
   // Poll running experiments every second
   useEffect(() => {
@@ -181,14 +219,14 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
 
       try {
         // Fetch only the running experiments
-        const data = await experimentApi.getExperiments(authFetch, scraperClusterId, runningExperimentIds);
+        const data = await experimentApi.getExperiments(authFetch, scraperClusterId, runningExperimentIds, globalThreshold);
         const updatedExperiments = (data.experiments || data || []).map(transformExperimentData);
 
-        // Update the experiments state by merging the new data
+        // Update the experiments state by merging the new data, preserving original names
         setExperiments(prevExperiments => {
           return prevExperiments.map(exp => {
             const updatedExp = updatedExperiments.find((updated: ExperimentData) => updated.id === exp.id);
-            return updatedExp || exp;
+            return updatedExp ? { ...updatedExp, name: exp.name } : exp;
           });
         });
       } catch (err) {
@@ -203,6 +241,23 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
     // Cleanup interval on unmount or when dependencies change
     return () => clearInterval(intervalId);
   }, [experiments, scraperClusterId, authFetch]);
+
+  // Handle click outside threshold dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (thresholdDropdownRef.current && !thresholdDropdownRef.current.contains(event.target as Node)) {
+        setShowThresholdSlider(false);
+      }
+    };
+
+    if (showThresholdSlider) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showThresholdSlider]);
 
   // Loading state
     if (isLoading) {
@@ -292,6 +347,65 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
               ))}
             </select>
           </div>
+
+          {/* Global Threshold Selector */}
+          <div className="relative" ref={thresholdDropdownRef}>
+            <button
+              onClick={() => {
+                // Sync temp value with global threshold when opening
+                if (!showThresholdSlider && globalThreshold !== null) {
+                  setTempThresholdValue(globalThreshold);
+                }
+                setShowThresholdSlider(!showThresholdSlider);
+              }}
+              className="px-4 py-2 border border-(--border) rounded-(--radius) bg-background text-foreground text-sm
+                         focus:outline-none focus:ring-2 focus:ring-(--ring) cursor-pointer hover:bg-gray-50 transition-colors
+                         min-w-[180px] text-left flex items-center justify-between"
+            >
+              <span>{globalThreshold === null ? 'Experiment specific' : `Threshold: ${globalThreshold.toFixed(2)}`}</span>
+              <span className="ml-2">▼</span>
+            </button>
+
+            {showThresholdSlider && (
+              <div className="absolute top-full mt-2 right-0 bg-white border border-gray-300 rounded-lg shadow-lg p-4 z-50 w-[280px]">
+                <div className="mb-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-sm font-medium text-gray-700">Global Threshold</label>
+                    <button
+                      onClick={() => {
+                        setGlobalThreshold(null);
+                        setTempThresholdValue(0.5);
+                        setShowThresholdSlider(false);
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={tempThresholdValue}
+                    onChange={(e) => setTempThresholdValue(parseFloat(e.target.value))}
+                    onMouseUp={() => setGlobalThreshold(tempThresholdValue)}
+                    onTouchEnd={() => setGlobalThreshold(tempThresholdValue)}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>0.0</span>
+                    <span className="font-medium text-gray-700">{tempThresholdValue.toFixed(2)}</span>
+                    <span>1.0</span>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500">
+                  Set a global threshold (0-1) to override experiment-specific thresholds
+                </div>
+              </div>
+            )}
+          </div>
+
           <Button variant="primary" onClick={handleNewExperiment}>
             + New Experiment
           </Button>
@@ -317,6 +431,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
                   onView={handleView}
                   onClone={handleClone}
                   onContinue={handleExperimentContinue}
+                  onThresholdUpdate={handleThresholdUpdate}
                 />
               </div>
             ))}

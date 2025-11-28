@@ -463,6 +463,7 @@ export const experimentApi = {
     scraperClusterId: string,
     model: string,
     runs_per_unit: number,
+    thresholdRunsPerUnits:number,
     reasoning_effort: string | null,
   ){
     const data = await authFetch('/experiment', {
@@ -471,8 +472,24 @@ export const experimentApi = {
         prompt_id: prompt_id,
         scraper_cluster_id: scraperClusterId,
         model: model,
-        runs_per_unit,
+        runs_per_unit: runs_per_unit,
+        threshold_runs_true: thresholdRunsPerUnits,
         reasoning_effort: reasoning_effort
+      }
+    })
+    return await data.json()
+
+  },
+    async UpdateExperimentThreshold(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    experiment_id: string,
+    thresholdRunsPerUnits:number,
+  ){
+    const data = await authFetch('/experiment', {
+      method: 'PUT',
+      body: {
+        experiment_id: experiment_id,
+        threshold_runs_true: thresholdRunsPerUnits,
       }
     })
     return await data.json()
@@ -494,7 +511,8 @@ export const experimentApi = {
   async getExperiments(
     authFetch: ReturnType<typeof useAuthFetch>,
     scraperClusterId: string,
-    experimentIds?: string[]
+    experimentIds?: string[],
+    userThreshold?: number | null
   ) {
     if (experimentIds) {
       console.log("experimentIds = ", experimentIds.toString())
@@ -504,9 +522,15 @@ export const experimentApi = {
     if (experimentIds) {
       experimentParamText = `&experiment_ids=${experimentIds.toString()}`
     }
+
+    // Add user_threshold parameter if provided
+    if (userThreshold !== null && userThreshold !== undefined) {
+      experimentParamText += `&user_threshold=${userThreshold}`
+    }
+
     console.log("experimentParamText = ", experimentParamText)
-    
-    
+
+
     const data = await authFetch(`/experiment?scraper_cluster_id=${scraperClusterId}${experimentParamText}`);
     return await data.json();
   },

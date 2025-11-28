@@ -6,7 +6,7 @@ from datetime import datetime
 import math
 
 
-from app.database.entities.experiment_entity import ExperimentTokenStatistics, PrevalenceDistribution
+from app.database.entities.experiment_entity import ExperimentCost, ExperimentTokenStatistics, PrevalenceDistribution
 from app.utils.types import StatusType
 
 
@@ -669,10 +669,12 @@ class GetExperimentsResponse(BaseModel):
     prompt_id: str
     created: datetime
     runs_per_unit: int
+    threshold_runs_true: Optional[int]
     total_samples: int
     overall_accuracy: float
     overall_kappa: float
     prediction_metrics: List[PredictionMetric]
     reasoning_effort: Literal[None, "low", "medium", "high", "auto"]
     token_statistics: Optional[ExperimentTokenStatistics] = None
+    experiment_cost: Optional[ExperimentCost] = None
     status: StatusType

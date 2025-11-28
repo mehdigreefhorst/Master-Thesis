@@ -39,6 +39,7 @@ export default function CreateExperimentPage() {
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [selectedModelInfo, setSelectedModelInfo] = useState<ModelInfo | undefined>();
   const [runsPerUnit, setRunsPerUnit] = useState<number>(3);
+  const [thresholdRunsPerUnits, setThresholdRunsPerUnit] = useState<number>(1);
   const [reasoningEffort, setReasoningEffort] = useState<string>('medium');
 
   // Cluster unit state
@@ -287,6 +288,7 @@ export default function CreateExperimentPage() {
       scraperClusterId,
       selectedModel,
       runsPerUnit,
+      thresholdRunsPerUnits,
       reasoningEffort
     );
     router.push(`/experiments?scraper_cluster_id=${scraperClusterId}`);
@@ -302,8 +304,23 @@ export default function CreateExperimentPage() {
         setReasoningEffort('medium')
 
     }
-    
+
   }
+
+  const handleRunsPerUnitChange = (newRunsPerUnit: number) => {
+    setRunsPerUnit(newRunsPerUnit);
+    // Reset threshold if it exceeds new runs per unit
+    if (thresholdRunsPerUnits > newRunsPerUnit) {
+      setThresholdRunsPerUnit(newRunsPerUnit);
+    }
+  };
+
+  const handleThresholdChange = (newThreshold: number) => {
+    // Only allow threshold if it doesn't exceed runs per unit
+    if (newThreshold <= runsPerUnit) {
+      setThresholdRunsPerUnit(newThreshold);
+    }
+  };
 
   const currentUnit = clusterUnits[currentUnitIndex];
 
@@ -373,7 +390,7 @@ export default function CreateExperimentPage() {
                 <select
                   id="runsSelector"
                   value={runsPerUnit}
-                  onChange={(e) => setRunsPerUnit(Number(e.target.value))}
+                  onChange={(e) => handleRunsPerUnitChange(Number(e.target.value))}
                   className="w-full h-12 px-4 py-2 border-2 border-gray-200 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:border-blue-500 cursor-pointer transition-all"
                 >
                   {[1, 2, 3, 4, 5].map((runs) => (
@@ -381,6 +398,27 @@ export default function CreateExperimentPage() {
                       {runs}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              {/* Threshold Selector */}
+              <div className="flex-1">
+                <label htmlFor="thresholdSelector" className="block text-sm font-bold text-gray-900 mb-2">
+                  Threshold
+                </label>
+                <select
+                  id="thresholdSelector"
+                  value={thresholdRunsPerUnits}
+                  onChange={(e) => handleThresholdChange(Number(e.target.value))}
+                  className="w-full h-12 px-4 py-2 border-2 border-gray-200 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:border-blue-500 cursor-pointer transition-all"
+                >
+                  {[1, 2, 3, 4, 5]
+                    .filter(threshold => threshold <= runsPerUnit)
+                    .map((threshold) => (
+                      <option key={threshold} value={threshold}>
+                        {threshold}
+                      </option>
+                    ))}
                 </select>
               </div>
 

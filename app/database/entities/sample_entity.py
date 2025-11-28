@@ -12,4 +12,3 @@ class SampleEntity(BaseEntity):
     sample_size: int # sample size of how many Cluster units to take
     sample_labeled_status: StatusType = StatusType.Initialized# sample lababled manually
 
-

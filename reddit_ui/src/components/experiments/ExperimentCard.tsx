@@ -6,6 +6,8 @@ import { MetricBar } from './MetricBar';
 import { PredictionMetricVisualization, PredictionMetric } from './PredictionMetrics';
 import { StatusType } from '@/types/scraper-cluster';
 import { TokenStatistics as TokenStatsDisplay } from './TokenStatistics';
+import { experimentApi } from '@/lib/api';
+import { useAuthFetch } from '@/utils/fetch';
 
 export interface TokenStatistics {
   total_successful_predictions: number;
@@ -28,6 +30,13 @@ export interface TokenStatistics {
   };
 }
 
+class ExperimentCost(BaseModel):
+    """cost in dollar spend on experiment"""
+    total: float
+    completion: float
+    prompt: float
+    internal_reasoning: float
+
 export interface ExperimentData {
   id: string;
   name: string;
@@ -37,9 +46,11 @@ export interface ExperimentData {
   overallAccuracy: number;
   overallKappa: number;
   predictionMetrics: PredictionMetric[];
-  runsPerUnit: 1 | 2 | 3 | 4 | 5
+  runsPerUnit: 1 | 2 | 3 | 4 | 5;
+  thresholdRunsTrue: 1 | 2 | 3 | 4 | 5;
   status: StatusType
   tokenStatistics?: TokenStatistics;
+  experimentCost?: ExperimentCost;
 }
 
 interface ExperimentCardProps {
@@ -47,6 +58,7 @@ interface ExperimentCardProps {
   onView?: (experiment_id: string) => void;
   onClone?: (experiment_id: string) => void;
   onContinue?: (experiment_id: string) => void;
+  onThresholdUpdate?: (experiment_id: string) => void;
   className?: string;
 }
 
@@ -55,9 +67,13 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
   onView,
   onClone,
   onContinue,
+  onThresholdUpdate,
   className = ''
 }) => {
+  const authFetch = useAuthFetch();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isEditingThreshold, setIsEditingThreshold] = useState(false);
+  const [isUpdatingThreshold, setIsUpdatingThreshold] = useState(false);
 
   // Get status badge color and styles
   const getStatusStyles = (status: StatusType): { bg: string; text: string; label: string } => {
@@ -103,6 +119,28 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
 
   const statusStyles = getStatusStyles(experiment.status);
 
+  const handleThresholdUpdate = async (newThreshold: number) => {
+    try {
+      setIsUpdatingThreshold(true);
+      await experimentApi.UpdateExperimentThreshold(
+        authFetch,
+        experiment.id,
+        newThreshold
+      );
+
+      // Wait 500ms before triggering refresh
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Trigger parent to refresh this specific experiment
+      onThresholdUpdate?.(experiment.id);
+
+      setIsEditingThreshold(false);
+    } catch (error) {
+      console.error('Failed to update threshold:', error);
+    } finally {
+      setIsUpdatingThreshold(false);
+    }
+  };
 
   return (
     <Card className={`p-4 hover:shadow-(--shadow-md) transition-shadow duration-200 ${className}`}>
@@ -127,6 +165,36 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
             <span>{experiment.created}</span>
             <span>•</span>
             <span>{experiment.totalSamples} samples</span>
+            <span>•</span>
+            <span>Runs: {experiment.runsPerUnit}</span>
+            <span>•</span>
+            {isEditingThreshold ? (
+              <div className="inline-flex items-center gap-1">
+                <span>Threshold:</span>
+                <select
+                  value={experiment.thresholdRunsTrue}
+                  onChange={(e) => handleThresholdUpdate(Number(e.target.value))}
+                  disabled={isUpdatingThreshold}
+                  className="px-1 py-0 border border-gray-300 rounded text-xs bg-white"
+                  onBlur={() => setIsEditingThreshold(false)}
+                  autoFocus
+                >
+                  {Array.from({ length: experiment.runsPerUnit }, (_, i) => i + 1).map((val) => (
+                    <option key={val} value={val}>
+                      {val}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <span
+                onClick={() => setIsEditingThreshold(true)}
+                className="cursor-pointer hover:text-blue-600 transition-colors"
+                title="Click to edit threshold"
+              >
+                Threshold: {experiment.thresholdRunsTrue} ✏️
+              </span>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
