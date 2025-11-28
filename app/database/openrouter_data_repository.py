@@ -4,6 +4,11 @@ from flask_pymongo.wrappers import Database
 
 from app.database.base_repository import BaseRepository
 from app.database.entities.openrouter_data_entity import OpenRouterDataEntity, Pricing
+from app.utils.logging_config import get_logger
+
+
+logger = get_logger(__name__)
+
 
 class OpenRouterDataRepository(BaseRepository[OpenRouterDataEntity]):
     def __init__(self, database: Database):
@@ -16,8 +21,10 @@ class OpenRouterDataRepository(BaseRepository[OpenRouterDataEntity]):
 
     def find_pricing_of_model(self, model_id: str) -> Pricing | None:
         openrouter_entity =  self.find_of_today()
+        logger.info(f"model_id = {model_id}")
         if openrouter_entity:
             model =  [model for model in openrouter_entity.dev_api_data if model.id == model_id][0]
+
             if model:
                 
                 return model.pricing

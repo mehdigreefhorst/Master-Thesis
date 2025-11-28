@@ -158,7 +158,9 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       runsPerUnit: exp.runs_per_unit,
       thresholdRunsTrue: exp.threshold_runs_true,
       status: exp.status,
-      tokenStatistics: tokenStatistics
+      reasoningEffort: exp.reasoning_effort,
+      tokenStatistics: tokenStatistics,
+      experimentCost: exp.experiment_cost
     };
   };
 

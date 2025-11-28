@@ -466,6 +466,7 @@ export const experimentApi = {
     thresholdRunsPerUnits:number,
     reasoning_effort: string | null,
   ){
+    console.log("model = ", model)
     const data = await authFetch('/experiment', {
       method: 'POST',
       body: {

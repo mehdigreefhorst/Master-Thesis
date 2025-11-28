@@ -75,8 +75,9 @@ export function ViewerContent({
     ];
     //prompts.find((prompt: PromptEntity) => prompt.id === ExperimentId);
     // Build models array
-    console.log("promptsNameExperimentIdDict = ", promptsNameExperimentIdDict)
-    const modelsData = ExperimentIds.map((ExperimentId) => ({
+
+    const modelsData = ExperimentIds.map((ExperimentId) => (
+      {
       
       name: promptsNameExperimentIdDict[ExperimentId]["promptName"], // TODO: Get actual prompt name from backend
       modelId: promptsNameExperimentIdDict[ExperimentId]["modelId"],

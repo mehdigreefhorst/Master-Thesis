@@ -7,7 +7,6 @@ import re
 from pydantic import BaseModel, Field, field_validator
 from app.database.entities.base_entity import BaseEntity, PyObjectId
 from app.database.entities.openrouter_data_entity import Pricing
-from app.services.openrouter_analytics_service import ModelPricing
 from app.utils.types import StatusType
 
 
@@ -88,9 +87,9 @@ class ExperimentEntity(BaseEntity):
         """only calculates for now the completion and prompt tokens, since reasoning is priced same as completion 
         also it doesn't take caching into account :TODO Improve calculation"""
         total_cost = 0
-        prompt_cost = self.token_statistics.total_tokens_used.prompt_tokens * self.model_pricing.prompt
-        completion_cost =self.token_statistics.total_tokens_used.completion_tokens  * self.model_pricing.completion
-        internal_reasoning_cost = self.token_statistics.total_tokens_used.internal_reasoning_tokens  * self.model_pricing.internal_reasoning
+        prompt_cost = self.token_statistics.total_tokens_used.prompt_tokens * float(self.model_pricing.prompt)
+        completion_cost =self.token_statistics.total_tokens_used.completion_tokens  * float(self.model_pricing.completion)
+        internal_reasoning_cost = self.token_statistics.total_tokens_used.internal_reasoning_tokens  * float(self.model_pricing.internal_reasoning)
 
         total_cost = prompt_cost + completion_cost
 

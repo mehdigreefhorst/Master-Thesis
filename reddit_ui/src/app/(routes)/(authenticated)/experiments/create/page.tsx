@@ -36,7 +36,6 @@ export default function CreateExperimentPage() {
   const [selectedPromptId, setSelectedPromptId] = useState<string>('');
 
   // Model and runs configuration
-  const [selectedModel, setSelectedModel] = useState<string>('');
   const [selectedModelInfo, setSelectedModelInfo] = useState<ModelInfo | undefined>();
   const [runsPerUnit, setRunsPerUnit] = useState<number>(3);
   const [thresholdRunsPerUnits, setThresholdRunsPerUnit] = useState<number>(1);
@@ -274,19 +273,20 @@ export default function CreateExperimentPage() {
         variant: "destructive"
       });
     }
-    if (!scraperClusterId) {
+    if (!scraperClusterId || !selectedModelInfo) {
       return toast({
         title: "Error",
         description: "No scraper cluster ID is available!",
         variant: "destructive"
       });
     }
-
+    
+    console.log("selectedModel = ", selectedModelInfo.id)
     experimentApi.createExperiment(
       authFetch,
       selectedPromptId,
       scraperClusterId,
-      selectedModel,
+      selectedModelInfo?.id,
       runsPerUnit,
       thresholdRunsPerUnits,
       reasoningEffort

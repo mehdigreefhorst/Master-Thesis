@@ -30,12 +30,13 @@ export interface TokenStatistics {
   };
 }
 
-class ExperimentCost(BaseModel):
-    """cost in dollar spend on experiment"""
-    total: float
-    completion: float
-    prompt: float
-    internal_reasoning: float
+export interface ExperimentCost {
+    //cost in dollar spend on experiment
+    total: number
+    completion: number
+    prompt: number
+    internal_reasoning: number
+}
 
 export interface ExperimentData {
   id: string;
@@ -49,6 +50,7 @@ export interface ExperimentData {
   runsPerUnit: 1 | 2 | 3 | 4 | 5;
   thresholdRunsTrue: 1 | 2 | 3 | 4 | 5;
   status: StatusType
+  reasoningEffort: null | "low" | "medium" | "high";
   tokenStatistics?: TokenStatistics;
   experimentCost?: ExperimentCost;
 }
@@ -164,7 +166,8 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
             <span>•</span>
             <span>{experiment.created}</span>
             <span>•</span>
-            <span>{experiment.totalSamples} samples</span>
+            <span>samples {experiment.totalSamples} </span>
+            <span>reasoning {experiment.reasoningEffort}</span>
             <span>•</span>
             <span>Runs: {experiment.runsPerUnit}</span>
             <span>•</span>
@@ -240,6 +243,36 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
           <TokenStatsDisplay stats={experiment.tokenStatistics} />
         </div>
       )}
+
+      {/* Experiment Cost - Always visible */}
+      <div className="mt-3 pt-3 border-t border-(--border)">
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="text-sm font-semibold text-gray-700">Experiment Cost</h4>
+          <span className="text-lg font-bold text-green-600">
+            ${(experiment.experimentCost?.total ?? 0).toFixed(4)}
+          </span>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <div className="flex flex-col">
+            <span className="text-gray-500">Prompt</span>
+            <span className="font-medium text-gray-700">
+              ${(experiment.experimentCost?.prompt ?? 0).toFixed(4)}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-gray-500">Completion</span>
+            <span className="font-medium text-gray-700">
+              ${(experiment.experimentCost?.completion ?? 0).toFixed(4)}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-gray-500">Reasoning</span>
+            <span className="font-medium text-gray-700">
+              ${(experiment.experimentCost?.internal_reasoning ?? 0).toFixed(4)}
+            </span>
+          </div>
+        </div>
+      </div>
 
       {/* Expand/Collapse Toggle */}
       <Button

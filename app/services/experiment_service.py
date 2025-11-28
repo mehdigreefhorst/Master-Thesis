@@ -368,9 +368,6 @@ class ExperimentService:
         experiment_entity.token_statistics.total_successful_predictions = total_successful_predictions
         experiment_entity.token_statistics.total_failed_attempts = total_failed_attempts
 
-        experiment_entity.experiment_cost = total_cost
-
-
         logger.info(f"Token Statistics for Experiment ", extra={'extra_fields': {"experiment_entity": experiment_entity.id} })
         logger.info(f"  Experiment cost spend = {total_cost}$")
         logger.info(f"  Successful predictions: {total_successful_predictions}")

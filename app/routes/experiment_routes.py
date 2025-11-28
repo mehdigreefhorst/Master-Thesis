@@ -135,8 +135,9 @@ def create_experiment(body: CreateExperiment):
 
     if not (sample_entity.sample_labeled_status == StatusType.Completed):
         return jsonify(message=f"Before experiment creation the Sample must be labeled first!"), 400
-
-    model_pricing = get_openrouter_data_repository().find_pricing_of_model(body.model)
+    
+    logger.info("body.model = ", body.model)
+    model_pricing = get_openrouter_data_repository().find_pricing_of_model(model_id=body.model)
 
     experiment_entity = ExperimentEntity(user_id=user_id,
                                          scraper_cluster_id=scraper_cluster_entity.id,
