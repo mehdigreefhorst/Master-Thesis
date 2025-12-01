@@ -9,7 +9,7 @@ from app.database.entities.scraper_cluster_entity import ScraperClusterEntity
 from app.database.entities.scraper_entity import ScraperEntity
 from app.database import get_cluster_repository, get_cluster_unit_repository, get_post_repository, get_scraper_cluster_repository, get_scraper_repository
 from app.utils.logging_config import get_logger
-from app.utils.types import StatusType
+from app.utils.types import MediaStrategySkipType, StatusType
 
 
 logger = get_logger(__name__)
@@ -53,7 +53,7 @@ class ClusterPrepService:
             return cluster_entity
 
     @staticmethod
-    def start_preparing_clustering(scraper_cluster_entity: ScraperClusterEntity) -> int:
+    def start_preparing_clustering(scraper_cluster_entity: ScraperClusterEntity, media_strategy_skip_type: MediaStrategySkipType = MediaStrategySkipType.Ignore) -> int:
         """Converts the found posts into cluster units. It checks whether a post is already converted, if so it skips it
         normally this is never the case, but happened frequently during testing. Also if it goes wrong, we can restart it so it is good to have"""
         cluster_entity = ClusterPrepService.get_or_create_cluster_entity(scraper_cluster_entity)
@@ -68,7 +68,7 @@ class ClusterPrepService:
             if post_prep_status == StatusType.Initialized:
                 if post_id in previous_found_post_ids_set:
                     continue
-                inserted_cluster_unit_entities = ClusterPrepService.convert_post_entity_to_cluster_units(cluster_entity, post_id)
+                inserted_cluster_unit_entities = ClusterPrepService.convert_post_entity_to_cluster_units(cluster_entity, post_id, media_strategy_skip_type)
                 all_inserted_cluster_unit_entities.extend(inserted_cluster_unit_entities)
             elif post_prep_status == StatusType.Ongoing:
                 # TODO what do we do here, it is probably not finished correctly?
@@ -81,16 +81,25 @@ class ClusterPrepService:
         return len(all_inserted_cluster_unit_entities)
 
     @staticmethod
-    def convert_post_entity_to_cluster_units(cluster_entity: ClusterEntity, post_id: PyObjectId) -> List[PyObjectId]:
+    def convert_post_entity_to_cluster_units(cluster_entity: ClusterEntity, post_id: PyObjectId, media_strategy_skip_type: MediaStrategySkipType = MediaStrategySkipType.Ignore) -> List[PyObjectId]:
         post_entity = get_post_repository().find_by_id(post_id)
         logger.info(f"converting post {post_entity.id} into cluster units")
         # First we add the post as text by itself. since it is already valuable. Should we also add metadata of the replies/ comments?
         cluster_unit_entities: List[ClusterUnitEntity] = []
+
+
+        # skp the whole thread if post has media and that MediaStrategySkipType in SkipPostsUnits, SkipThreadUnits
+        if post_entity.has_media():
+            if media_strategy_skip_type == MediaStrategySkipType.SkipPostsUnits or media_strategy_skip_type == MediaStrategySkipType.SkipThreadUnits:
+                return []
         
         cluster_unit_entity_post = ClusterUnitEntity.from_post(post_entity, cluster_entity.id)
         cluster_unit_entities.append(cluster_unit_entity_post)
         # now we loop over each comment. To convert them into cluster unit entities. It also takes care of the replies
         for comment in post_entity.comments:
+            # Skip the whole thread below a has media type 
+            if comment.has_media() and media_strategy_skip_type == MediaStrategySkipType.SkipThreadUnits:
+                continue
             cluster_unit_entity = ClusterUnitEntity.from_comment(
                 comment_entity=comment, 
                 cluster_entity_id=cluster_entity.id, 
@@ -108,15 +117,23 @@ class ClusterPrepService:
                     cluster_entity=cluster_entity, 
                     cluster_unit_entities=cluster_unit_entities,
                     subreddit=post_entity.subreddit,
-                    reply_to_cluster_unit=cluster_unit_entity)
+                    reply_to_cluster_unit=cluster_unit_entity,
+                    media_strategy_skip_type=media_strategy_skip_type)
             
             cluster_unit_entities[comment_index].total_nested_replies = len(cluster_unit_entities) - comment_index - 1 
         
         cluster_unit_entities[0].total_nested_replies = len(cluster_unit_entities) - 1
         logger.info(f"Created a total of {len(cluster_unit_entities)} for this post")
-                
-        return get_cluster_unit_repository().insert_list_entities(cluster_unit_entities).inserted_ids
-
+        
+        cluster_unit_entities_remain = ClusterPrepService.process_cluster_units_media_type(cluster_unit_entities, media_strategy_skip_type)
+        logger.info(f" filtering resulted in reduction of {len(cluster_unit_entities) - len (cluster_unit_entities_remain)} for this post")
+        if cluster_unit_entities_remain:
+            # we must store the inserted_ids first in this variable. SOme issue pertains to the object liftime if we chain
+            # the result of the insertMany
+            inserted_ids = get_cluster_unit_repository().insert_list_entities(cluster_unit_entities_remain).inserted_ids
+            return inserted_ids
+        else:
+            return []
     @staticmethod
     def convert_comment_entity_to_cluster_units(
         replies: List[CommentEntity], 
@@ -125,9 +142,12 @@ class ClusterPrepService:
         cluster_entity: ClusterEntity, 
         cluster_unit_entities:List[ClusterUnitEntity], 
         subreddit: str,
-        reply_to_cluster_unit: ClusterUnitEntity):
+        reply_to_cluster_unit: ClusterUnitEntity,
+        media_strategy_skip_type: MediaStrategySkipType = MediaStrategySkipType.Ignore):
         """recursively calls until there are no more replies left to convert into cluster_unit entities"""
         for reply in replies:
+            if reply.has_media() and media_strategy_skip_type == MediaStrategySkipType.SkipThreadUnits:
+                continue
             cluster_unit_entity = ClusterUnitEntity.from_comment(
                 comment_entity=reply, 
                 cluster_entity_id=cluster_entity.id, 
@@ -146,7 +166,8 @@ class ClusterPrepService:
                     cluster_entity=cluster_entity, 
                     cluster_unit_entities=cluster_unit_entities, 
                     subreddit=subreddit, 
-                    reply_to_cluster_unit=cluster_unit_entity)
+                    reply_to_cluster_unit=cluster_unit_entity,
+                    media_strategy_skip_type=media_strategy_skip_type)
 
             cluster_unit_entities[reply_index].total_nested_replies = len(cluster_unit_entities) - reply_index - 1
 
@@ -161,6 +182,28 @@ class ClusterPrepService:
             cluster_unit_entities = sorted(cluster_unit_entities, key=lambda x: x.upvotes, reverse=True)
         returnable_entities = [cluster_unit_entity.model_dump() for cluster_unit_entity in cluster_unit_entities]
         return returnable_entities
+    
+    @staticmethod
+    def process_cluster_units_media_type(cluster_unit_entities: List[ClusterUnitEntity], media_strategy_skip_type: MediaStrategySkipType = MediaStrategySkipType.Ignore):
+        if media_strategy_skip_type == MediaStrategySkipType.SkipUnits:
+            return [unit for unit in cluster_unit_entities if not unit.includes_media]
+        elif media_strategy_skip_type == MediaStrategySkipType.SkipPostsUnits:
+            # Implemented throughout the converting process
+            if [unit for unit in cluster_unit_entities if  unit.type == "post" and unit.includes_media]:
+                raise Exception("There should not be any cluster units with media left")
+            return cluster_unit_entities
+        elif media_strategy_skip_type == MediaStrategySkipType.SkipThreadUnits:
+            # Implemented throughout the converting process
+            if [unit for unit in cluster_unit_entities if  unit.includes_media]:
+                raise Exception("There should not be any cluster units with media left")
+            return cluster_unit_entities
+        elif media_strategy_skip_type == MediaStrategySkipType.Ignore:
+            return cluster_unit_entities
+        elif media_strategy_skip_type == MediaStrategySkipType.Enrich:
+            raise Exception("Enriching is not implemented")
+        else:
+            raise Exception(f"No known media strategy skip type is used = {media_strategy_skip_type}")
+        
     
     @staticmethod
     def enrich_cluster_units(scraper_cluster_entity: ScraperClusterEntity):

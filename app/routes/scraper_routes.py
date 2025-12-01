@@ -94,9 +94,11 @@ def update_scraper(body: ScraperUpdate):
         return jsonify(error="no such scraper entity exists"), 401
     
     if scraper_entity.status in [StatusType.Completed, StatusType.Error,StatusType.Ongoing, StatusType.Paused]:
-        return jsonify("Update is not possible. We scraper is already initialized, we cannot change it anymore"), 204
+        return jsonify(error="Update is not possible. We scraper is already initialized, we cannot change it anymore"), 204
     
     if body.posts_per_keyword and isinstance(body.posts_per_keyword, int):
+        if body.posts_per_keyword <= 0 or body.posts_per_keyword > 100:
+            return jsonify(error="The posts per keyword has to be between 0 and 100 including a 100")
         scraper_entity.posts_per_keyword = body.posts_per_keyword
     
     if body.age and isinstance(body.age, str):

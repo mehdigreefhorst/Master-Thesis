@@ -83,10 +83,12 @@ class ScraperService(BaseModel):
             if i % 5 == 0:  # only check every 5 posts
                 if ScraperService.check_whether_scraped_is_paused(scraper_entity.id):
                     return {"message": "scraper is paused"}
+            # skip the posts that are already scraped
             if reddit_post.id in reddit_post_ids:
-                continue
-            reddit_comments = reddit_scraper_manager.scrape_comments_of_post(reddit_post)
-            post_entity = PostService().create_reddit_post_entity(reddit_post, reddit_comments)
+                #continue
+                print("I would normally skp here")
+            full_reddit_post, reddit_comments = reddit_scraper_manager.scrape_comments_of_post(reddit_post)
+            post_entity = PostService().create_reddit_post_entity(full_reddit_post, reddit_comments)
             PostService().insert_into_db(post_entity)
             next_keyword.found_post_ids.append(post_entity.id)
             get_scraper_repository().append_postid_to_subreddit_keyword_search(scraper_entity.id, next_subreddit.subreddit, next_keyword.keyword, post_entity.id)

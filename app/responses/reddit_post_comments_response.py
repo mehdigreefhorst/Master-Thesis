@@ -7,11 +7,35 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+class SizeMediaUrl(BaseModel):
+    """these are the possible variations in quality / image size of the media. """
+    x: int
+    y: int
+    u: str # This is the url that can be used to retrieve the media 
+
+
+
+MediaMetaDataId = str
+
+
+class MediaMetaData(BaseModel):
+    id: MediaMetaDataId # the id of the MedaMetaData
+    status: str
+    e: str
+    m: str
+    p: List[SizeMediaUrl] # All the version of the media, there can be many, each being a smaller version of the the orginal (s)
+    s: SizeMediaUrl # This is the largest version of the SizeMediaUrl. The original version of the media, in highest fidelty . 
+    t: Optional[str] = None  # An optional type parameter of the media. An example is  "giphy"
+    ext: Optional[str] = None # Optionallink to the orginal media, if media originated from external source
+
+
 class BaseRedditMessage(BaseModel):
     id: str # Id of the reddit post, this is in a string format
     subreddit: str # reddit where it was found
     ups: int # number of upvotes more than downvotes
     downs: int # number of downvotes more than upvotes
+    media_metadata: Optional[Dict[MediaMetaDataId, MediaMetaData]] = None
     send_replies: bool
     permalink: str # e.g. '/r/deaf/comments/1mg82a6/is_there_a_polite_way_to_decline_signing/'   | this is used to retrieve the comments
     author_flair_text: Optional[str] # user added tag for example deaf or HOH
@@ -26,6 +50,14 @@ class RedditPost(BaseRedditMessage):
     selftext: str # text in a reddit post
     link_flair_text: Optional[str] # user added tag for example "VENT"
     selftext_html: Optional[str] # we can use this to figure out whether a picture of link is added, as you won't see this in the selftext if embedded on reddit
+    is_video: bool = False # Not trustworthy. If youtube video is embedded, it still says false
+    media: Optional[Dict] = None
+    media_embed: Optional[Dict] = None
+    secure_media: Optional[Dict] = None
+    secure_media_embed: Optional[Dict] = None
+    url: str = ""
+    upvote_ratio: float
+
 
 
     model_config = {
@@ -40,7 +72,6 @@ class RedditComment(BaseRedditMessage):
     replies: Union["RedditResponse", str] = ""
     controversiality: float
     depth: int # How many nests are above this comment
-    media_metadata: Optional[Dict[str, Any]]  = None
 
     model_config = {
         "extra": "allow"

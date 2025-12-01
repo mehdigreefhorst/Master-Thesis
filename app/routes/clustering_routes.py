@@ -14,7 +14,7 @@ from app.services.cluster_prep_service import ClusterPrepService
 from app.services.scraper_service import ScraperService
 
 from app.utils.api_validation import validate_query_params, validate_request_body
-from app.utils.types import StatusType
+from app.utils.types import MediaStrategySkipType, StatusType
 
 clustering_bp = Blueprint("clustering", __name__, url_prefix="/clustering")
 
@@ -54,7 +54,7 @@ def prepare_cluster(body: ScraperClusterId):
 
     get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
     
-    cluster_units_created = ClusterPrepService.start_preparing_clustering(scraper_cluster_entity)
+    cluster_units_created = ClusterPrepService.start_preparing_clustering(scraper_cluster_entity, MediaStrategySkipType.Ignore)
     scraper_cluster_entity.stages.cluster_prep = StatusType.Completed
 
     get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)

@@ -77,15 +77,15 @@ class RedditScraperAPI:
         data = response.json()
         return RedditResponse.model_validate(data).get_posts()
     
-    def search_comments(self, permalink: str) -> List[RedditComment]:
+    def search_post_comments(self, permalink: str) -> Tuple[RedditPost, List[RedditComment]]:
         # Remove leading slash if present
         if permalink.startswith('/'):
             permalink = permalink[1:]
-        response = requests.get(f"https://oauth.reddit.com/{permalink}", headers=self.headers, params={'limit': 100})
+        response = requests.get(f"https://oauth.reddit.com/{permalink}?raw_json=1", headers=self.headers, params={'limit': 100})
         response.raise_for_status()
         response_data = response.json()
         full_submission_post =  response_data[0] # this is the post of the permalink that is connected to it, it is exactly the same as the post
-        post = RedditResponse.model_validate(full_submission_post)
+        full_post = RedditResponse.model_validate(full_submission_post).get_posts()[0]
         comments_data = response_data[1]
         print(f"Fetching comments for permalink: {permalink}")
         print(comments_data.keys())
@@ -95,7 +95,7 @@ class RedditScraperAPI:
          # Parse comments and handle 'more' recursively
         comments = self._process_comments_recursively(comments_data, permalink)
         #return RedditResponse.model_validate(comments).get_comments()
-        return comments
+        return full_post, comments
     def _fetch_more_comments(self, comment_ids: List[str], base_permalink: str, 
                            parent_id: str = None, limit: int = 100) -> List[RedditComment]:
         """
@@ -249,9 +249,10 @@ class RedditScraperAPI:
         )
    
 
-    def get_post_comments(self, reddit_post: RedditPost) -> List[RedditComment]:
-        comments = self.search_comments(reddit_post.permalink)
-        return comments
+    def get_post_comments(self, reddit_post: RedditPost) -> Tuple[RedditPost, List[RedditComment]]:
+        """retrieves the post and comments. The retrieved post is more extensive then the reddit_post as parameter"""
+        full_post, comments = self.search_post_comments(reddit_post.permalink)
+        return full_post, comments
 
 
 class RedditAPIManager:
@@ -293,13 +294,9 @@ class RedditAPIManager:
     def scrape_comments_of_post(self, reddit_post: RedditPost):
         # TODO: here we would like a try and except block because it might fail because of limits
         
-        comments = self.scraper.get_post_comments(reddit_post)
+        full_post, comments = self.scraper.get_post_comments(reddit_post)
 
-        # TODO: Here we have to make so that all the comments, that are not yet drilled down (have kind = "more"), are drilled down recursively
-
-        # comments = self.get_comments_drilled_down(comments)
-
-        return comments
+        return full_post, comments
 
 if __name__ == "__main__":
 

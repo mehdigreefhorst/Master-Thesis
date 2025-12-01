@@ -4,7 +4,7 @@
 from enum import Enum
 from typing import Dict, List, Literal, Optional
 from app.database.entities.base_entity import BaseEntity, PyObjectId
-from app.utils.types import StatusType
+from app.utils.types import MediaStrategySkipType, StatusType
 
 
 class ClusterTextThreadModeType(str, Enum):
@@ -19,6 +19,7 @@ class ClusterEntity(BaseEntity):
     prompt_standalone_id: Optional[PyObjectId] = None
     status: StatusType #Literal["initialized", "ongoing", "paused", "completed", "error"]
     post_entity_ids_prep_status: Dict[PyObjectId, StatusType]
+    media_strategy_skip_type: MediaStrategySkipType = MediaStrategySkipType.Ignore
 
     @classmethod
     def from_params(cls, scraper_entity_id: PyObjectId, text_thread_mode: ClusterTextThreadModeType, post_entity_ids: List[PyObjectId], prompt: str = None) -> "ClusterEntity":

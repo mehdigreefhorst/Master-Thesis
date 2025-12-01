@@ -80,7 +80,7 @@ export default function DefinePage() {
     fetchData();
   }, [searchParams, authFetch]);
 
-  const canProceedToKeywords = problemExplorationDescription.trim() && targetAudience.trim();
+  const canProceedToKeywords = problemExplorationDescription.trim() && targetAudience.trim() && subreddits.length>0;
   const isLocked = scrapingStatus !== 'initialized'; // Lock fields if not in initialized state
 
   const handleProceedToKeywords = () => {

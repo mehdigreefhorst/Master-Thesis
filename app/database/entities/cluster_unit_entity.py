@@ -88,6 +88,7 @@ class ClusterUnitEntity(BaseEntity):
     text: str # the author's individual text contribution to reddit
     total_nested_replies: Optional[int] = None # Total nr of replies on the post summed up, replies to replies also count
     subreddit: str
+    includes_media: Optional[bool] = None
 
 
     @classmethod
@@ -112,7 +113,8 @@ class ClusterUnitEntity(BaseEntity):
             thread_path_author= [], # the author full prior thread (post -> comment -> reply --> ...) up until the current comment
             enriched_comment_thread_text= None, # what the LLM made from the thread path text & text
             text= "post_title: " + post_entity.title + "\n" + post_entity.text, # the author's individual text contribution to reddit
-            subreddit=post_entity.subreddit
+            subreddit=post_entity.subreddit,
+            includes_media= post_entity.has_media()
 
         )
     
@@ -138,6 +140,7 @@ class ClusterUnitEntity(BaseEntity):
             thread_path_author= reply_to_cluster_unit.thread_path_author + [reply_to_cluster_unit.author],
             enriched_comment_thread_text= None, # what the LLM made from the thread path text & text
             text= comment_entity.text, # the author's individual text contribution to reddit
-            subreddit=subreddit
+            subreddit=subreddit,
+            includes_media=comment_entity.has_media()
         )
 
