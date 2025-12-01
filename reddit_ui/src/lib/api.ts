@@ -647,6 +647,10 @@ export const modelsApi = {
   },
 }
 
+export const categoryInfoApi ={
+    
+}
+
 
 
 

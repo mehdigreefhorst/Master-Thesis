@@ -3,6 +3,8 @@
 from typing import List, Literal, Optional
 
 from pydantic import BaseModel
+
+from app.database.entities.base_entity import BaseEntity
 #from app.database.entities.base_entity import BaseEntity, PyObjectId
 
 
@@ -28,12 +30,11 @@ class LLMLabelField(BaseModel):
             return f"{self.label}: '{self.explanation}'"
 
 
-class CategoryInfoEntity(BaseModel):
+class CategoryInfoEntity(BaseEntity):
     user_id: str # PyObjectId
     category_name: str
     category_description: str
     is_public: bool = True
-    llm_prediction_field_global: List[LLMLabelField] # The labels that are predicted once for a cluster unit
     labels: List[LLMLabelField] # List of the possible labels the llm can predict & also part of ground truth
     llm_prediction_fields_per_label: List[LLMLabelField] # extra labels predicted for each of the predicted labels.  such as reason
     multi_label_possible: bool # whether LLM should pick a single or may pick multiple

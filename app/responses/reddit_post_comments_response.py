@@ -20,7 +20,7 @@ MediaMetaDataId = str
 
 
 class MediaMetaData(BaseModel):
-    id: MediaMetaDataId # the id of the MedaMetaData
+    id: MediaMetaDataId #  Reddit's MediaMetaDataId for retrieval
     status: str
     e: str
     m: str
