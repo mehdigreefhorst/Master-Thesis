@@ -85,8 +85,7 @@ class ScraperService(BaseModel):
                     return {"message": "scraper is paused"}
             # skip the posts that are already scraped
             if reddit_post.id in reddit_post_ids:
-                #continue
-                print("I would normally skp here")
+                continue
             full_reddit_post, reddit_comments = reddit_scraper_manager.scrape_comments_of_post(reddit_post)
             post_entity = PostService().create_reddit_post_entity(full_reddit_post, reddit_comments)
             PostService().insert_into_db(post_entity)
