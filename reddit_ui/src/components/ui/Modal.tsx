@@ -6,6 +6,7 @@ interface ModalProps {
   children: React.ReactNode;
   showCloseButton?: boolean;
   blurBackground?: boolean;
+  maxWidth?: string;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -13,7 +14,8 @@ export const Modal: React.FC<ModalProps> = ({
   onClose,
   children,
   showCloseButton = false,
-  blurBackground = false
+  blurBackground = false,
+  maxWidth = 'max-w-md'
 }) => {
   if (!isOpen) return null;
 
@@ -30,7 +32,7 @@ export const Modal: React.FC<ModalProps> = ({
       />
 
       {/* Modal Content */}
-      <div className="relative bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 animate-[slideInDown_300ms_ease-out]">
+      <div className={`relative bg-white rounded-2xl shadow-2xl p-8 ${maxWidth} w-full mx-4 animate-[slideInDown_300ms_ease-out]`}>
         {showCloseButton && onClose && (
           <button
             onClick={onClose}

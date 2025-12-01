@@ -70,7 +70,7 @@ class ScraperService(BaseModel):
             keyword=next_keyword.keyword,
             age=scraper_entity.age,
             filter=scraper_entity.filter)
-        
+
         post_entity_ids, reddit_post_ids = ScraperService.get_posts_from_ids(found_reddit_posts)
         # scraper_entity.keyword_search_objective[next_subreddit]
         next_keyword.found_post_ids.extend(post_entity_ids)
@@ -124,7 +124,7 @@ class ScraperService(BaseModel):
         get_scraper_repository().update(scraper_entity.id, {"status": scraper_entity.status})
 
         return ScrapingMessage(message="successfully scraped the scraper instance on reddit", processed=index+1, total=total_keyword_searches, paused=False)
-    
+
     @staticmethod
     def get_all_post_ids_for_keyword_searches(scraper_entity: ScraperEntity) -> GetKeywordSearches:
         """retrieves a dictionary for keyword searches and the associated"""
@@ -133,13 +133,3 @@ class ScraperService(BaseModel):
             for keyword, keyword_search in subreddit_keyword_search.keyword_searches.items():
                 keywords_post_id_dict[keyword].extend(keyword_search.found_post_ids)
         return GetKeywordSearches(keyword_search_post_ids=keywords_post_id_dict)
-
-
-
-
-        
-
-
-
-
-

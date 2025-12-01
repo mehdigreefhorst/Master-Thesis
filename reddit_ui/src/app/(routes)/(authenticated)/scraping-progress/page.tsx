@@ -15,6 +15,8 @@ import { clusterApi, scraperApi, scraperClusterApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
 import { Modal } from '@/components/ui/Modal';
 import { AsymptoticProgressBar } from '@/components/ui/AsymptoticProgressBar';
+import { MediaStrategySkipType } from '@/types/cluster-prep';
+import { MediaStrategyModal } from '@/components/modals/MediaStrategyModal';
 
 export default function ScrapingProgressPage() {
   const searchParams = useSearchParams();
@@ -29,6 +31,7 @@ export default function ScrapingProgressPage() {
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [showPreparationModal, setShowPreparationModal] = useState(false);
   const [isPreparingCluster, setIsPreparingCluster] = useState(false);
+  const [showMediaStrategyModal, setShowMediaStrategyModal] = useState(false);
 
   // Fetch scraper data
   const fetchScraperData = useCallback(async () => {
@@ -100,8 +103,15 @@ export default function ScrapingProgressPage() {
     }
   };
 
-  const handleContinueToAnalysis = async () => {
+  const handleOpenMediaStrategyModal = () => {
+    setShowMediaStrategyModal(true);
+  };
+
+  const handleContinueToAnalysis = async (mediaStrategySkip: MediaStrategySkipType) => {
     if (!scraperClusterId) return;
+
+    // Close the media strategy modal
+    setShowMediaStrategyModal(false);
 
     try {
       setIsActionLoading(true);
@@ -109,7 +119,7 @@ export default function ScrapingProgressPage() {
       setIsPreparingCluster(true);
 
       // Start cluster preparation
-      await clusterApi.prepareCluster(authFetch, scraperClusterId);
+      await clusterApi.prepareCluster(authFetch, scraperClusterId, mediaStrategySkip);
 
       // Poll for cluster preparation status
       const checkClusterStatus = async () => {
@@ -306,7 +316,7 @@ export default function ScrapingProgressPage() {
                 variant="primary"
                 className='ml-4'
                 disabled={isActionLoading || scraperData.status !== 'completed'}
-                onClick={handleContinueToAnalysis}
+                onClick={handleOpenMediaStrategyModal}
               >
                 {isActionLoading ? 'Preparing...' : 'Continue to Analysis →'}
               </Button>
@@ -431,6 +441,13 @@ export default function ScrapingProgressPage() {
           keywordSearchObjective={scraperData.keyword_search_objective}
         />
       </div>
+
+      {/* Media Strategy Selection Modal */}
+      <MediaStrategyModal
+        isOpen={showMediaStrategyModal}
+        onClose={() => setShowMediaStrategyModal(false)}
+        onSelectStrategy={handleContinueToAnalysis}
+      />
 
       {/* Cluster Preparation Modal */}
       <Modal isOpen={showPreparationModal} showCloseButton={false} blurBackground={true}>

@@ -11,6 +11,7 @@ import { UserProfile } from "@/types/user";
 import { ModelInfo } from "@/types/model";
 import { PromptEntity } from "@/types/prompt";
 import { ExperimentData } from "@/components/experiments/ExperimentCard";
+import { MediaStrategySkipType } from "@/types/cluster-prep";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || 'http://localhost:5001';
 
@@ -109,18 +110,19 @@ export const clusterApi = {
   },
   async prepareCluster(
     authFetch: ReturnType<typeof useAuthFetch>,
-    scraper_cluster_id: string
+    scraper_cluster_id: string,
+    media_strategy_skip_type: MediaStrategySkipType
   ): Promise<ScraperClusterEntity[]> {
     const data = await authFetch("/clustering/prepare_cluster",
       {method: "POST",
         body: {
-          scraper_cluster_id: scraper_cluster_id
+          scraper_cluster_id: scraper_cluster_id,
+          media_strategy_skip_type: media_strategy_skip_type
         }
       }
     );
     return await data.json()
   },
-
   /**
    * Filter cluster units based on various criteria
    */

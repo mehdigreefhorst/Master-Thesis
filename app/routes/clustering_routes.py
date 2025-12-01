@@ -6,7 +6,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 # from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.database import get_cluster_unit_repository, get_scraper_repository, get_user_repository, get_scraper_cluster_repository
-from app.requests.cluster_prep_requests import GetClusterUnitsRequest, ScraperClusterId, UpdateGroundTruthRequest
+from app.requests.cluster_prep_requests import GetClusterUnitsRequest, PrepareClusterRequest, ScraperClusterId, UpdateGroundTruthRequest
 from app.requests.scraping_commands import ScrapingId
 from app.requests.scraper_requests import CreateScraperRequest
 from app.responses.reddit_post_comments_response import RedditResponse
@@ -20,9 +20,9 @@ clustering_bp = Blueprint("clustering", __name__, url_prefix="/clustering")
 
 
 @clustering_bp.route("/prepare_cluster", methods=["POST"])
-@validate_request_body(ScraperClusterId)
+@validate_request_body(PrepareClusterRequest)
 @jwt_required()
-def prepare_cluster(body: ScraperClusterId):
+def prepare_cluster(body: PrepareClusterRequest):
     user_id = get_jwt_identity()
     current_user = get_user_repository().find_by_id(user_id)
     if not current_user:
@@ -54,7 +54,7 @@ def prepare_cluster(body: ScraperClusterId):
 
     get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
     
-    cluster_units_created = ClusterPrepService.start_preparing_clustering(scraper_cluster_entity, MediaStrategySkipType.Ignore)
+    cluster_units_created = ClusterPrepService.start_preparing_clustering(scraper_cluster_entity, body.media_strategy_skip_type)
     scraper_cluster_entity.stages.cluster_prep = StatusType.Completed
 
     get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
