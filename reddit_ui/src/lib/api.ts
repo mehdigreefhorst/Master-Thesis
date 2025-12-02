@@ -12,6 +12,7 @@ import { ModelInfo } from "@/types/model";
 import { PromptEntity } from "@/types/prompt";
 import { ExperimentData } from "@/components/experiments/ExperimentCard";
 import { MediaStrategySkipType } from "@/types/cluster-prep";
+import { CreateCategoryInfoRequest, CategoryInfo } from "@/types/category-info";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || 'http://localhost:5001';
 
@@ -647,8 +648,36 @@ export const modelsApi = {
   },
 }
 
-export const categoryInfoApi ={
+export const categoryInfoApi = {
+  async getAllCategoryInfos(
+    authFetch: ReturnType<typeof useAuthFetch>
+  ): Promise<CategoryInfo[]> {
+    const data = await authFetch('/category_info');
+    const categoryInfoResponse= await data.json();
+    return categoryInfoResponse?.category_info_entities
+  },
+
+  async getCategoryInfoById(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    categoryInfoId?: string
+  ): Promise<CategoryInfo> {
     
+    const data = await authFetch(`/category_info${categoryInfoId && `?category_info_id=${categoryInfoId}`}`);
+    const categoryInfoResponse= await data.json();
+    console.log("categoryInfoResponse?.category_info_entities = ", categoryInfoResponse?.category_info_entities[0])
+    return categoryInfoResponse?.category_info_entities[0]
+  },
+
+  async createCategoryInfo(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    categoryInfo: CreateCategoryInfoRequest
+  ): Promise<CategoryInfo> {
+    const data = await authFetch('/category_info', {
+      method: 'POST',
+      body: categoryInfo
+    });
+    return await data.json();
+  }
 }
 
 

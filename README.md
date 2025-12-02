@@ -74,3 +74,10 @@ Word characters such as I'd, the apastrophe would be represented by I\u2019d. It
 SO we have a list of keywords that we want to scrape the posts and its comments for in a subreddit. The search will result in 1-100 posts. So we must determine this number, the default is 25. But the question is whether we should increase this number. Right now it is a fixed number, but if a keyword has a lot or very few hits. We should dynamcally adjust this number or in extreme events, look for the second page of the search result to get more posts. We could do this by having an LLM determine whether the last 3 post relates to the research question, and if this is the case, we look for another set of reddit posts. 
 
 Do something with flair_name which can be VENT -> which are posts that are about venting
+
+
+### When a post entity is too large
+an example of a too large post entity is the post with:
+permalink: /r/tressless/comments/mx6ncc/the_theory_that_explains_everything_please_help/
+
+The issue with this post entity is that it is 19mb and max supported is 16mb. This can happen because of two main reasons, the post is too large. or there are too many comments. Since I am adding the prior comment thread in the post entity, therefore I duplicate the complete post in every message. It will quickly and exponentially exlpore in size. But I already create the prior author thread when building the cluster units from the post entity. So I do not need the prior comment thread. It bloats up the total post entity exponentially. We must fix this.
