@@ -160,7 +160,7 @@ class RedditScraperAPI:
         """
         reddit_response = RedditResponse.model_validate(comments_data)
         processed_comments = []
-        
+
         for child in reddit_response.data.children:
             if child.kind == "t1":  # Regular comment
                 comment = child.data

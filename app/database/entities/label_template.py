@@ -30,7 +30,7 @@ class LLMLabelField(BaseModel):
             return f"{self.label}: '{self.explanation}'"
 
 
-class CategoryInfoEntity(BaseEntity):
+class LabelTemplateEntity(BaseEntity):
     user_id: str # PyObjectId
     category_name: str
     category_description: str
@@ -87,7 +87,7 @@ class CategoryInfoEntity(BaseEntity):
 
 
 if __name__ == "__main__":
-    category_info_entity = CategoryInfoEntity(user_id="1",
+    label_template_entity = LabelTemplateEntity(user_id="1",
                                               category_name="Painpoint analysis categories",
                                               category_description="these categories explain the painpoints of possible customes",
                                               is_public=True,
@@ -137,4 +137,4 @@ if __name__ == "__main__":
 
                                               )
     print()
-    print(category_info_entity.convert_llm_prediction_format())
+    print(label_template_entity.convert_llm_prediction_format())

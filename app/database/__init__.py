@@ -5,7 +5,7 @@ from flask import current_app, g
 from flask_pymongo import PyMongo
 from flask_pymongo.wrappers import Database
 
-from app.database.category_info_repository import CategoryInfoRepository
+from app.database.label_template_repository import LabelTemplateRepository
 from app.database.cluster_repository import ClusterRepository
 from app.database.cluster_unit_repository import ClusterUnitRepository
 from app.database.experiment_repository import ExperimentRepository
@@ -90,8 +90,8 @@ def get_openrouter_data_repository() -> OpenRouterDataRepository:
 
     return g.openrouter_data_repository
 
-def get_category_info_repository() -> CategoryInfoRepository:
-    if not hasattr(g,"category_info_repository"):
-        g.category_info_repository = CategoryInfoRepository(_get_db())
+def label_template_repository() -> LabelTemplateRepository:
+    if not hasattr(g,"label_template_repository"):
+        g.label_template_repository = LabelTemplateRepository(_get_db())
     
-    return g.category_info_repository
+    return g.label_template_repository

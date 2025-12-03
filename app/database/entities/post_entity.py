@@ -25,7 +25,6 @@ class CommentEntity(RedditBaseEntity):
     controversiality: float
     depth: int # How many nests are above this comment
     enriched_text: Optional[str] = None
-    prior_comments_thread: Optional[List[str]]
 
     def has_media(self) -> bool:
         if self.media_metadata:
@@ -36,7 +35,7 @@ class CommentEntity(RedditBaseEntity):
 
 
     @classmethod
-    def from_comment_response(cls, comment: RedditComment, prior_comments_thread: List[str] = list()) -> "CommentEntity":
+    def from_comment_response(cls, comment: RedditComment) -> "CommentEntity":
         return cls(
             reddit_id=comment.id,
             text= comment.body,
@@ -48,9 +47,8 @@ class CommentEntity(RedditBaseEntity):
             created_utc=comment.created_utc,
             controversiality=comment.controversiality,
             depth=comment.depth,
-            prior_comments_thread = prior_comments_thread.copy(),
             replies= [
-                CommentEntity.from_comment_response(reply, prior_comments_thread + [comment.body]) 
+                CommentEntity.from_comment_response(reply) 
                 for reply 
                 in comment.replies.get_comments()
                 ] if not isinstance(comment.replies , str) else []

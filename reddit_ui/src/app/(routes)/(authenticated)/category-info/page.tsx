@@ -2,32 +2,32 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { categoryInfoApi } from '@/lib/api';
+import { labelTemplateApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
-import type { CategoryInfo } from '@/types/category-info';
+import type { LabelTemplate } from '@/types/category-info';
 import { Card } from '@/components/ui/Card';
 
-export default function CategoryInfoViewPage() {
+export default function LabelTemplateViewPage() {
   const searchParams = useSearchParams();
   const categoryId = searchParams.get('id');
   const authFetch = useAuthFetch();
 
-  const [categoryInfo, setCategoryInfo] = useState<CategoryInfo | null>(null);
+  const [labelTemplate, setLabelTemplate] = useState<LabelTemplate | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!categoryId) {
-      setCategoryInfo(null);
+      setLabelTemplate(null);
       return;
     }
 
-    const fetchCategoryInfo = async () => {
+    const fetchLabelTemplate = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await categoryInfoApi.getCategoryInfoById(authFetch, categoryId);
-        setCategoryInfo(data);
+        const data = await labelTemplateApi.getLabelTemplateById(authFetch, categoryId);
+        setLabelTemplate(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch category info');
       } finally {
@@ -35,7 +35,7 @@ export default function CategoryInfoViewPage() {
       }
     };
 
-    fetchCategoryInfo();
+    fetchLabelTemplate();
   }, [categoryId, authFetch]);
 
   if (!categoryId) {
@@ -93,26 +93,26 @@ export default function CategoryInfoViewPage() {
     );
   }
 
-  if (!categoryInfo) {
+  if (!labelTemplate) {
     return null;
   }
   
-  console.log("categoryInfo = ", categoryInfo)
+  console.log("labelTemplate = ", labelTemplate)
 
   return (
     <div className="p-8">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">{categoryInfo.category_name}</h1>
-          <p className="mt-2 text-gray-600">{categoryInfo.category_description}</p>
+          <h1 className="text-3xl font-bold text-gray-900">{labelTemplate.category_name}</h1>
+          <p className="mt-2 text-gray-600">{labelTemplate.category_description}</p>
           <div className="mt-4 flex gap-3">
-            {categoryInfo.is_public && (
+            {labelTemplate.is_public && (
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800">
                 Public
               </span>
             )}
-            {categoryInfo.multi_label_possible && (
+            {labelTemplate.multi_label_possible && (
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
                 Multi-label
               </span>
@@ -124,7 +124,7 @@ export default function CategoryInfoViewPage() {
         <Card className="p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Labels</h2>
           <div className="space-y-4">
-            {categoryInfo.labels.map((label, index) => (
+            {labelTemplate.labels.map((label, index) => (
               <div key={index} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-semibold text-gray-900">{label.label}</h3>
@@ -156,11 +156,11 @@ export default function CategoryInfoViewPage() {
         </Card>
 
         {/* Per-Label Fields Section */}
-        {categoryInfo.llm_prediction_fields_per_label.length > 0 && (
+        {labelTemplate.llm_prediction_fields_per_label.length > 0 && (
           <Card className="p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Per-Label Fields</h2>
             <div className="space-y-4">
-              {categoryInfo.llm_prediction_fields_per_label.map((field, index) => (
+              {labelTemplate.llm_prediction_fields_per_label.map((field, index) => (
                 <div key={index} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="font-semibold text-gray-900">{field.label}</h3>

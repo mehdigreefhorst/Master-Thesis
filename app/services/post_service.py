@@ -23,7 +23,7 @@ class PostService:
         It is important to start with the comments first, because each of the comments have a thread and it might be very nested
         """
         post_title_content_text = reddit_post.title + "\n" + reddit_post.selftext
-        comment_entities = [CommentEntity.from_comment_response(comment, [post_title_content_text]) for comment in reddit_comments]
+        comment_entities = [CommentEntity.from_comment_response(comment) for comment in reddit_comments]
         post_entity = PostEntity.from_post_response(reddit_post, comment_entities)
         with open("data/post_entity.json", "w") as f:
             f.write(post_entity.model_dump_json(indent=4))

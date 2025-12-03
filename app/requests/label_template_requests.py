@@ -2,9 +2,9 @@
 from typing import List, Optional
 from pydantic import BaseModel
 
-from app.database.entities.category_info import LLMLabelField
+from app.database.entities.label_template import LLMLabelField
 
-class CreateCategoryInfoRequest(BaseModel):
+class CreateLabelTemplateRequest(BaseModel):
     category_name: str
     category_description: str
     is_public: bool= True
@@ -13,6 +13,6 @@ class CreateCategoryInfoRequest(BaseModel):
     multi_label_possible: bool
 
 
-class GetCategoryInfoRequest(BaseModel):
-    category_info_id: Optional[str] = None
+class GetLabelTemplateRequest(BaseModel):
+    label_template_id: Optional[str] = None
     

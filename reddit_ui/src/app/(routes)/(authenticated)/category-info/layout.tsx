@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
-import { categoryInfoApi } from '@/lib/api';
+import { labelTemplateApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
-import type { CategoryInfo } from '@/types/category-info';
+import type { LabelTemplate } from '@/types/category-info';
 
-export default function CategoryInfoLayout({
+export default function LabelTemplateLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -16,17 +16,17 @@ export default function CategoryInfoLayout({
   const pathname = usePathname();
   const authFetch = useAuthFetch();
 
-  const [categoryInfos, setCategoryInfos] = useState<CategoryInfo[]>([]);
+  const [labelTemplates, setLabelTemplates] = useState<LabelTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Fetch all category infos
   useEffect(() => {
-    const fetchCategoryInfos = async () => {
+    const fetchLabelTemplates = async () => {
       try {
         setLoading(true);
-        const data = await categoryInfoApi.getAllCategoryInfos(authFetch);
-        setCategoryInfos(data);
+        const data = await labelTemplateApi.getAllLabelTemplates(authFetch);
+        setLabelTemplates(data);
       } catch (err) {
         console.error('Failed to fetch category infos:', err);
       } finally {
@@ -34,7 +34,7 @@ export default function CategoryInfoLayout({
       }
     };
 
-    fetchCategoryInfos();
+    fetchLabelTemplates();
   }, [authFetch]);
 
   const isCreatePage = pathname.includes('/create');
@@ -63,14 +63,14 @@ export default function CategoryInfoLayout({
 
             {loading ? (
               <div className="text-sm text-gray-500">Loading...</div>
-            ) : categoryInfos.length === 0 ? (
+            ) : labelTemplates.length === 0 ? (
               <div className="text-sm text-gray-500 py-4">
                 No categories yet. Create your first one!
               </div>
             ) : (
               <div className="space-y-1">
                 
-                {categoryInfos.map((info) => (
+                {labelTemplates.map((info) => (
                   <button
                     key={info.id}
                     onClick={() => {
@@ -97,7 +97,7 @@ export default function CategoryInfoLayout({
           </div>
 
           {/* View Existing Button (shown when on create page) */}
-          {isCreatePage && categoryInfos.length > 0 && (
+          {isCreatePage && labelTemplates.length > 0 && (
             <div className="pt-4 border-t border-gray-200">
               <Button
                 variant="secondary"

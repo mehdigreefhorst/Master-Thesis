@@ -7,7 +7,7 @@ export interface LLMLabelField {
   type: LLMLabelFieldType; // type of what the possible label can be
 }
 
-export interface CreateCategoryInfoRequest {
+export interface CreateLabelTemplateRequest {
   category_name: string;
   category_description: string;
   is_public: boolean;
@@ -16,7 +16,7 @@ export interface CreateCategoryInfoRequest {
   multi_label_possible: boolean;
 }
 
-export interface CategoryInfo extends CreateCategoryInfoRequest {
+export interface LabelTemplate extends CreateLabelTemplateRequest {
   id: string;
   created_at: string;
   updated_at: string;

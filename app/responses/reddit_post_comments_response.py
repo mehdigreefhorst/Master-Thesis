@@ -12,7 +12,9 @@ class SizeMediaUrl(BaseModel):
     """these are the possible variations in quality / image size of the media. """
     x: int
     y: int
-    u: str # This is the url that can be used to retrieve the media 
+    u: Optional[str] = None  # Standard URL (present for images)
+    gif: Optional[str] = None  # GIF URL (present for giphy/animated images)
+    mp4: Optional[str] = None  # MP4 URL (present for giphy/animated images) 
 
 
 

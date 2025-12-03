@@ -81,3 +81,5 @@ an example of a too large post entity is the post with:
 permalink: /r/tressless/comments/mx6ncc/the_theory_that_explains_everything_please_help/
 
 The issue with this post entity is that it is 19mb and max supported is 16mb. This can happen because of two main reasons, the post is too large. or there are too many comments. Since I am adding the prior comment thread in the post entity, therefore I duplicate the complete post in every message. It will quickly and exponentially exlpore in size. But I already create the prior author thread when building the cluster units from the post entity. So I do not need the prior comment thread. It bloats up the total post entity exponentially. We must fix this.
+After removing the thread path text for each post entity's comments
+We went from 19mb -> became 0.589 mb

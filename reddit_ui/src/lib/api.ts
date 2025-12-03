@@ -12,7 +12,7 @@ import { ModelInfo } from "@/types/model";
 import { PromptEntity } from "@/types/prompt";
 import { ExperimentData } from "@/components/experiments/ExperimentCard";
 import { MediaStrategySkipType } from "@/types/cluster-prep";
-import { CreateCategoryInfoRequest, CategoryInfo } from "@/types/category-info";
+import { CreateLabelTemplateRequest, LabelTemplate } from "@/types/category-info";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || 'http://localhost:5001';
 
@@ -648,33 +648,33 @@ export const modelsApi = {
   },
 }
 
-export const categoryInfoApi = {
-  async getAllCategoryInfos(
+export const labelTemplateApi = {
+  async getAllLabelTemplates(
     authFetch: ReturnType<typeof useAuthFetch>
-  ): Promise<CategoryInfo[]> {
-    const data = await authFetch('/category_info');
-    const categoryInfoResponse= await data.json();
-    return categoryInfoResponse?.category_info_entities
+  ): Promise<LabelTemplate[]> {
+    const data = await authFetch('/label_template');
+    const labelTemplateResponse= await data.json();
+    return labelTemplateResponse?.label_template_entities
   },
 
-  async getCategoryInfoById(
+  async getLabelTemplateById(
     authFetch: ReturnType<typeof useAuthFetch>,
-    categoryInfoId?: string
-  ): Promise<CategoryInfo> {
+    labelTemplateId?: string
+  ): Promise<LabelTemplate> {
     
-    const data = await authFetch(`/category_info${categoryInfoId && `?category_info_id=${categoryInfoId}`}`);
-    const categoryInfoResponse= await data.json();
-    console.log("categoryInfoResponse?.category_info_entities = ", categoryInfoResponse?.category_info_entities[0])
-    return categoryInfoResponse?.category_info_entities[0]
+    const data = await authFetch(`/label_template${labelTemplateId && `?label_template_id=${labelTemplateId}`}`);
+    const labelTemplateResponse= await data.json();
+    console.log("labelTemplateResponse?.label_template_entities = ", labelTemplateResponse?.label_template_entities[0])
+    return labelTemplateResponse?.label_template_entities[0]
   },
 
-  async createCategoryInfo(
+  async createLabelTemplate(
     authFetch: ReturnType<typeof useAuthFetch>,
-    categoryInfo: CreateCategoryInfoRequest
-  ): Promise<CategoryInfo> {
-    const data = await authFetch('/category_info', {
+    labelTemplate: CreateLabelTemplateRequest
+  ): Promise<LabelTemplate> {
+    const data = await authFetch('/label_template', {
       method: 'POST',
-      body: categoryInfo
+      body: labelTemplate
     });
     return await data.json();
   }

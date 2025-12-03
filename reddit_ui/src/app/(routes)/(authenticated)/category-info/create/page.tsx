@@ -6,12 +6,12 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Modal } from '@/components/ui/Modal';
-import { categoryInfoApi } from '@/lib/api';
+import { labelTemplateApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
 import { LabelFieldCard } from '@/components/category-info/LabelFieldCard';
-import type { LLMLabelField, CreateCategoryInfoRequest } from '@/types/category-info';
+import type { LLMLabelField, CreateLabelTemplateRequest } from '@/types/category-info';
 
-export default function CreateCategoryInfoPage() {
+export default function CreateLabelTemplatePage() {
   const router = useRouter();
   const authFetch = useAuthFetch();
 
@@ -179,7 +179,7 @@ export default function CreateCategoryInfoPage() {
       setIsSubmitting(true);
       setError(null);
 
-      const request: CreateCategoryInfoRequest = {
+      const request: CreateLabelTemplateRequest = {
         category_name: categoryName,
         category_description: categoryDescription,
         is_public: isPublic,
@@ -188,7 +188,7 @@ export default function CreateCategoryInfoPage() {
         multi_label_possible: multiLabelPossible
       };
 
-      await categoryInfoApi.createCategoryInfo(authFetch, request);
+      await labelTemplateApi.createLabelTemplate(authFetch, request);
       setSuccess('Category info created successfully!');
       setHasStartedEditing(false);
 

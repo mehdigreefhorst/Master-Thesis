@@ -136,7 +136,7 @@ class ClusterUnitEntity(BaseEntity):
             upvotes= comment_entity.upvotes,
             downvotes= comment_entity.downvotes,
             created_utc= comment_entity.created_utc,
-            thread_path_text= comment_entity.prior_comments_thread,# the full prior thread (post -> comment -> reply --> ...) up until the current comment
+            thread_path_text= reply_to_cluster_unit.thread_path_text + [reply_to_cluster_unit.text], # the full prior thread (post -> comment -> reply --> ...) up until the current comment
             thread_path_author= reply_to_cluster_unit.thread_path_author + [reply_to_cluster_unit.author],
             enriched_comment_thread_text= None, # what the LLM made from the thread path text & text
             text= comment_entity.text, # the author's individual text contribution to reddit
