@@ -381,9 +381,19 @@ class ExperimentService:
         if not prompt_entity.category == PromptCategory.Classify_cluster_units:
             raise Exception("The prompt is of the wrong type!!!")
 
-        formatted_prompt = LlmHelper.custom_formatting(
+        formatted_prompt = ExperimentService.parse_prompt_cluster_unit_entity(
+            cluster_unit_entity=cluster_unit_entity,
             prompt=prompt_entity.prompt,
+            )
+
+        return formatted_prompt
+    
+    @staticmethod
+    def parse_prompt_cluster_unit_entity(cluster_unit_entity: ClusterUnitEntity, prompt: str):
+        formatted_prompt = LlmHelper.custom_formatting(
+            prompt=prompt,
             conversation_thread=ExperimentService.parse_conversation_thread(cluster_unit_entity.thread_path_text, cluster_unit_entity.thread_path_author),
+            final_reddit_author=cluster_unit_entity.author,
             final_reddit_message=cluster_unit_entity.text)
 
         return formatted_prompt

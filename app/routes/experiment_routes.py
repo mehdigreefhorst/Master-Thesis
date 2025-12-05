@@ -292,10 +292,11 @@ def parse_raw_prompt(body: ParseRawPrompt):
     if not cluster_unit_entity:
         return jsonify(message=f"cluster unit entity is not found id: {body.cluster_unit_id}"), 400
     
-    parsed_prompt = LlmHelper.custom_formatting(
-            prompt=body.prompt,
-            conversation_thread=ExperimentService.parse_conversation_thread(cluster_unit_entity.thread_path_text, cluster_unit_entity.thread_path_author),
-            final_reddit_message=cluster_unit_entity.text)
+    parsed_prompt = ExperimentService.parse_prompt_cluster_unit_entity(cluster_unit_entity=cluster_unit_entity, prompt=body.prompt)
+    # parsed_prompt = LlmHelper.custom_formatting(
+    #         prompt=body.prompt,
+    #         conversation_thread=ExperimentService.parse_conversation_thread(cluster_unit_entity.thread_path_text, cluster_unit_entity.thread_path_author),
+    #         final_reddit_message=cluster_unit_entity.text)
 
     return jsonify(parsed_prompt), 200
 
