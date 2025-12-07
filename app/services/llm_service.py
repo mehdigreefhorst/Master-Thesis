@@ -19,16 +19,13 @@ class LLMService:
     """service that handles how the LLM is called. With focus towards payment and billing"""
 
     @staticmethod
-    async def send_to_model(user_id: PyObjectId, system_prompt: str, prompt: str, model: str, reasoning_effort: Optional[str]):
-        user_entity: UserEntity =  get_user_repository().find_by_id(user_id)
-        if not user_entity.open_router_api_key:
-            raise Exception("No API key has been set by the user")
+    async def send_to_model(open_router_api_key: str, system_prompt: str, prompt: str, model: str, reasoning_effort: Optional[str]):
          # :TODO add a elif for user wanting to pay for the usage, then we use our own API key
         response = await call_with_retry(LlmHelper().async_send_to_openrouter,
                                          system_prompt=system_prompt,
             prompt=prompt,
             model=model,
-            open_router_api_key=user_entity.open_router_api_key,
+            open_router_api_key=open_router_api_key,
             reasoning_effort=reasoning_effort)
 
 
@@ -96,4 +93,12 @@ class LLMService:
                 aggregated[key] += attempt.tokens_used.get(key, 0)
 
         return aggregated
+    
+
+    @staticmethod
+    def get_user_open_router_api_key(user_id: PyObjectId) -> str | None:
+        user_entity: UserEntity =  get_user_repository().find_by_id(user_id)
+
+        if user_entity.open_router_api_key:
+            return user_entity.open_router_api_key
 

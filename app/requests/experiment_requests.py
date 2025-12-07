@@ -17,6 +17,7 @@ class CreateExperiment(BaseModel):
     model: str
     runs_per_unit: int = 3
     threshold_runs_true: int = 1
+    label_template_id: PyObjectId
     reasoning_effort: Optional[str]
 
 

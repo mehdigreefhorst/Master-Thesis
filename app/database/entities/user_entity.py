@@ -2,7 +2,7 @@
 
 from enum import Enum
 from typing import List, Optional
-from app.database.entities.base_entity import BaseEntity
+from app.database.entities.base_entity import BaseEntity, PyObjectId
 
 class UserRole(str, Enum):
     Default = 'DEFAULT'
@@ -18,4 +18,3 @@ class UserEntity(BaseEntity):
     open_router_api_key: Optional[str] = None
     role: UserRole = UserRole.Default
     favorite_models: List[str] = [] # List of models the user has made favorite (openrouter model ids)
-    

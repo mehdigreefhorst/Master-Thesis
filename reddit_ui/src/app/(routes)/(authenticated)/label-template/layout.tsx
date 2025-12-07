@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { labelTemplateApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
-import type { LabelTemplate } from '@/types/category-info';
+import type { LabelTemplate } from '@/types/label-template';
 
 export default function LabelTemplateLayout({
   children,
@@ -50,7 +50,7 @@ export default function LabelTemplateLayout({
           <Button
             variant="primary"
             className="w-full"
-            onClick={() => router.push('/category-info/create')}
+            onClick={() => router.push('/label-template/create')}
           >
             + Create New Category
           </Button>
@@ -75,7 +75,7 @@ export default function LabelTemplateLayout({
                     key={info.id}
                     onClick={() => {
                       setSelectedId(info.id);
-                      router.push(`/category-info?id=${info.id}`);
+                      router.push(`/label-template?id=${info.id}`);
                     }}
                     className={`
                       w-full text-left px-4 py-3 rounded-lg transition-all
@@ -102,7 +102,7 @@ export default function LabelTemplateLayout({
               <Button
                 variant="secondary"
                 className="w-full"
-                onClick={() => router.push('/category-info')}
+                onClick={() => router.push('/label-template')}
               >
                 ← View Category Info
               </Button>

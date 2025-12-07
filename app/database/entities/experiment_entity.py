@@ -73,6 +73,7 @@ class ExperimentEntity(BaseEntity):
     scraper_cluster_id: PyObjectId
     prompt_id: PyObjectId
     sample_id: PyObjectId
+    label_template_id: PyObjectId
     model: str
     model_pricing: Optional[Pricing] = None
     experiment_cost: Optional[ExperimentCost] = None

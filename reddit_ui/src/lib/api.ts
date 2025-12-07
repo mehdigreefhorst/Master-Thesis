@@ -12,7 +12,7 @@ import { ModelInfo } from "@/types/model";
 import { PromptEntity } from "@/types/prompt";
 import { ExperimentData } from "@/components/experiments/ExperimentCard";
 import { MediaStrategySkipType } from "@/types/cluster-prep";
-import { CreateLabelTemplateRequest, LabelTemplate } from "@/types/category-info";
+import { CreateLabelTemplateRequest, LabelTemplate } from "@/types/label-template";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || 'http://localhost:5001';
 

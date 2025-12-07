@@ -93,7 +93,7 @@ export const ModelCard: React.FC<ModelCardProps> = ({
         <div className="bg-gray-50 dark:bg-gray-700/50 rounded p-2">
           <div className="text-xs text-gray-500 dark:text-gray-400">Input</div>
           <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            {formatPrice(model.pricing.prompt*1000000)}$
+            {formatPrice(model.pricing.prompt*1000000).toPrecision(2)}$
             <span className="text-xs font-normal text-gray-500 dark:text-gray-400">/1M</span>
           </div>
         </div>
@@ -101,7 +101,7 @@ export const ModelCard: React.FC<ModelCardProps> = ({
         <div className="bg-gray-50 dark:bg-gray-700/50 rounded p-2">
           <div className="text-xs text-gray-500 dark:text-gray-400">Output</div>
           <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            {formatPrice(model.pricing.completion*1000000)}$
+            {formatPrice(model.pricing.completion*1000000).toPrecision(2)}$
             <span className="text-xs font-normal text-gray-500 dark:text-gray-400">/1M</span>
           </div>
         </div>

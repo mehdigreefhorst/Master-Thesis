@@ -143,6 +143,7 @@ def create_experiment(body: CreateExperiment):
                                          scraper_cluster_id=scraper_cluster_entity.id,
                                          prompt_id=prompt_entity.id,
                                          sample_id=sample_entity.id,
+                                         label_template_id= body.label_template_id,
                                          model= body.model,
                                          model_pricing=model_pricing,
                                          runs_per_unit=body.runs_per_unit,
@@ -293,10 +294,6 @@ def parse_raw_prompt(body: ParseRawPrompt):
         return jsonify(message=f"cluster unit entity is not found id: {body.cluster_unit_id}"), 400
     
     parsed_prompt = ExperimentService.parse_prompt_cluster_unit_entity(cluster_unit_entity=cluster_unit_entity, prompt=body.prompt)
-    # parsed_prompt = LlmHelper.custom_formatting(
-    #         prompt=body.prompt,
-    #         conversation_thread=ExperimentService.parse_conversation_thread(cluster_unit_entity.thread_path_text, cluster_unit_entity.thread_path_author),
-    #         final_reddit_message=cluster_unit_entity.text)
 
     return jsonify(parsed_prompt), 200
 

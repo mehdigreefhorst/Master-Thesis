@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { labelTemplateApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
-import type { LabelTemplate } from '@/types/category-info';
+import type { LabelTemplate } from '@/types/label-template';
 import { Card } from '@/components/ui/Card';
 
 export default function LabelTemplateViewPage() {

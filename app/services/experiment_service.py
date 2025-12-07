@@ -13,6 +13,7 @@ from app.database import get_cluster_unit_repository, get_experiment_repository
 from app.database.entities.experiment_entity import AggregateResult, ExperimentEntity, PredictionResult, PrevelanceUnitDistribution
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
+from app.database.entities.user_entity import UserEntity
 from app.responses.get_experiments_response import ConfusionMatrix, GetExperimentsResponse, PredictionMetric
 from app.services.llm_service import LLMService
 from app.utils.llm_helper import LlmHelper
@@ -76,6 +77,9 @@ class ExperimentService:
         max_retries=3) -> List[PredictionCategoryTokens]:
          # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(max_concurrent)
+        open_router_api_key = LLMService.get_user_open_router_api_key(user_id=experiment_entity.user_id)
+        if not open_router_api_key:
+            raise Exception("No API key has been set by the user")
 
         async def predict_single_with_semaphore_and_retry(cluster_unit_entity, run_index):
             """
@@ -92,8 +96,9 @@ class ExperimentService:
                         # This will also apply rate limiting internally
                         result = await ExperimentService.predict_single_run_cluster_unit(
                             experiment_entity=experiment_entity,
-                            prompt_entity=prompt_entity,
                             cluster_unit_entity=cluster_unit_entity,
+                            open_router_api_key=open_router_api_key,
+                            prompt_entity=prompt_entity,
                             attempt_number=attempt_number,
                             all_attempts=all_attempts  # Pass the list to accumulate attempts
                         )
@@ -183,6 +188,7 @@ class ExperimentService:
     async def predict_single_run_cluster_unit(
         experiment_entity: ExperimentEntity,
         cluster_unit_entity: ClusterUnitEntity,
+        open_router_api_key: str,
         prompt_entity: PromptEntity,
         attempt_number: int = 1,
         all_attempts: list = None
@@ -207,7 +213,7 @@ class ExperimentService:
 
         # Make the LLM call
         response = await LLMService.send_to_model(
-            user_id=experiment_entity.user_id,
+            open_router_api_key=open_router_api_key,
             system_prompt=prompt_entity.system_prompt,
             prompt=parsed_prompt,
             model=experiment_entity.model,

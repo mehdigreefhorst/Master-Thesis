@@ -8,8 +8,8 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Modal } from '@/components/ui/Modal';
 import { labelTemplateApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
-import { LabelFieldCard } from '@/components/category-info/LabelFieldCard';
-import type { LLMLabelField, CreateLabelTemplateRequest } from '@/types/category-info';
+import { LabelFieldCard } from '@/components/label-template/LabelFieldCard';
+import type { LLMLabelField, CreateLabelTemplateRequest } from '@/types/label-template';
 
 export default function CreateLabelTemplatePage() {
   const router = useRouter();
@@ -194,7 +194,7 @@ export default function CreateLabelTemplatePage() {
 
       // Redirect after 1.5 seconds
       setTimeout(() => {
-        router.push('/category-info');
+        router.push('/label-template');
       }, 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create category info');
@@ -217,7 +217,7 @@ export default function CreateLabelTemplatePage() {
           <div className="flex gap-3">
             <Button
               variant="secondary"
-              onClick={() => handleNavigationAttempt('/category-info')}
+              onClick={() => handleNavigationAttempt('/label-template')}
               disabled={isSubmitting}
             >
               Cancel

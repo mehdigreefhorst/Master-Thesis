@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
-import type { LLMLabelField, LLMLabelFieldType } from '@/types/category-info';
+import type { LLMLabelField, LLMLabelFieldType } from '@/types/label-template';
 
 interface LabelFieldCardProps {
   label: LLMLabelField;
@@ -45,14 +45,16 @@ export function LabelFieldCard({ label, index, onUpdate, onRemove, title }: Labe
         </button>
       </div>
 
-      <div className="space-y-4">
-        <Input
-          label="Label Name *"
-          value={label.label}
-          onChange={(e) => onUpdate('label', e.target.value)}
-          placeholder="e.g., problem_description"
-        />
-
+      <div className="space-y-4 w-full flex flex-grow justif-between gap-1">
+        <div className='flex-2'>
+            <Input
+            label="Label Name *"
+            value={label.label}
+            onChange={(e) => onUpdate('label', e.target.value)}
+            placeholder="e.g., problem_description"
+            />
+        </div>
+        <div className='flex-5'>
         <Textarea
           label="Explanation *"
           value={label.explanation}
@@ -60,8 +62,9 @@ export function LabelFieldCard({ label, index, onUpdate, onRemove, title }: Labe
           rows={2}
           placeholder="Explain what this label represents..."
         />
+        </div>
 
-        <div>
+        <div className='flex-1'>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Type *
           </label>
