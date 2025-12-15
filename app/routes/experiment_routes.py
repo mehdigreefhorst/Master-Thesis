@@ -13,7 +13,7 @@ from app.database.entities.sample_entity import SampleEntity
 from app.database.entities.scraper_cluster_entity import StageStatus
 from app.requests.cluster_prep_requests import ScraperClusterId
 from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, ExperimentId, GetExperiments, GetSample, GetSampleUnits, ParsePrompt, ParseRawPrompt, TestPrediction, UpdateExperimentThreshold, UpdateSample
-from app.responses.get_experiments_response import GetExperimentsResponse
+from app.responses.get_experiments_response import GetExperimentsResponse, TestPredictionsOutputFormat
 from app.services.cluster_prep_service import ClusterPrepService
 from app.services.experiment_service import ExperimentService
 from app.services.label_template_service import LabelTemplateService
@@ -71,8 +71,6 @@ def get_experiment_instances(query: GetExperiments) -> List[GetExperimentsRespon
             logger.error(f"DEBUG: Queried experiment_ids: {query.experiment_ids}")
         return jsonify(message=f"nothing found! Tried with filter: {filter}"), 400
     
-    print("experiment_entities= ", experiment_entities)
-
     if not scraper_cluster_entity.sample_id:
         return jsonify(f"Scraper cluster entity: {scraper_cluster_entity.id} is missing a sample entity id")
     
@@ -173,38 +171,38 @@ def create_experiment(body: CreateExperiment):
                                          model_pricing=model_pricing,
                                          runs_per_unit=body.runs_per_unit,
                                          threshold_runs_true=body.threshold_runs_true,
-                                         reasoning_effort=body.reasoning_effort)
+                                         reasoning_effort=body.reasoning_effort,
+                                         status=StatusType.Initialized)
 
     if scraper_cluster_entity.stages.experiment == StatusType.Initialized:
         print("I am setting the status type to ongoing!")
         scraper_cluster_entity.stages.experiment = StatusType.Ongoing
         get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
 
-    experiment_entity.status = StatusType.Ongoing
-    get_experiment_repository().insert(experiment_entity)
-    try:
-        cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_entity.sample_cluster_unit_ids)
+    inserted_result = get_experiment_repository().insert(experiment_entity)
+    experiment_id = str(inserted_result.inserted_id)
+    # try:
+    #     cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_entity.sample_cluster_unit_ids)
 
-        if not cluster_unit_entities or not len(cluster_unit_entities) == len(sample_entity.sample_cluster_unit_ids):
-            return jsonify(message=f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id}")
+    #     if not cluster_unit_entities or not len(cluster_unit_entities) == len(sample_entity.sample_cluster_unit_ids):
+    #         return jsonify(message=f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id}")
 
-        # Reset rate limiter locks before entering new event loop
-        from app.utils.rate_limiters import RateLimiterRegistry
-        for limiter in RateLimiterRegistry._rate_limiters.values():
-            limiter.reset_lock()
+    #     # Reset rate limiter locks before entering new event loop
+    #     from app.utils.rate_limiters import RateLimiterRegistry
+    #     for limiter in RateLimiterRegistry._rate_limiters.values():
+    #         limiter.reset_lock()
 
-        total_cluster_unit_predicted_categories = asyncio.run(ExperimentService.predict_categories_cluster_units(
-            experiment_entity=experiment_entity,
-            label_template_entity=label_template_entity,
-            cluster_unit_entities=cluster_unit_entities,
-            prompt_entity=prompt_entity))
-        
-    except Exception as e:
-        experiment_entity.status = StatusType.Error
-        get_experiment_repository().update(experiment_entity.id, experiment_entity)
-        raise Exception("The fuck!")
-        return jsonify(error=f"Error = {e}")
-    return jsonify(f"succesfully predicted a total of {total_cluster_unit_predicted_categories} categories for units")
+    #     total_cluster_unit_predicted_categories = asyncio.run(ExperimentService.predict_categories_cluster_units(
+    #         experiment_entity=experiment_entity,
+    #         label_template_entity=label_template_entity,
+    #         cluster_unit_entities=cluster_unit_entities,
+    #         prompt_entity=prompt_entity))
+
+    # except Exception as e:
+    #     experiment_entity.status = StatusType.Error
+    #     get_experiment_repository().update(experiment_entity.id, experiment_entity)
+    #     raise Exception("The fuck!")
+    return jsonify(experiment_id=experiment_id, message=f"succesfully created experiment with id {experiment_id}") # message=f"succesfully predicted a total of {total_cluster_unit_predicted_categories} categories for units")
 
 
 @experiment_bp.route("/continue_experiment", methods=["POST"])
@@ -543,7 +541,7 @@ def complete_sample_labeled_status(query: UpdateSample):
 @experiment_bp.route("/test/prediction", methods=["POST"])
 @validate_request_body(TestPrediction)
 @jwt_required()
-async def test_prediction(body: TestPrediction):
+async def test_prediction(body: TestPrediction) -> TestPredictionsOutputFormat:
     print("body = ", body)
     print("body.experiment_id = ",body.experiment_id)
     experiment_entity = get_experiment_repository().find_by_id(body.experiment_id)
@@ -552,7 +550,7 @@ async def test_prediction(body: TestPrediction):
         return jsonify(message=f"No experiment entity found for experiment id : {body.experiment_id}"), 404
     print(experiment_entity.model_dump())
     prompt_entity = get_prompt_repository().find_by_id(experiment_entity.prompt_id)
-    label_template_entity = get_label_template_repository().find_by_id(body.label_template_id)
+    label_template_entity = get_label_template_repository().find_by_id(experiment_entity.label_template_id)
 
     if not body.cluster_unit_ids:
         # only find other cluster units, if we do not have one provided in the request
@@ -567,11 +565,23 @@ async def test_prediction(body: TestPrediction):
         cluster_unit_entities_remain = get_cluster_unit_repository().find_many_by_ids(body.cluster_unit_ids)
 
     max_concurrent = 100
-    predicted_categories = ExperimentService.create_predicted_categories(
+    predicted_categories = await ExperimentService.create_predicted_categories(
                 experiment_entity=experiment_entity,
                 label_template_entity=label_template_entity,
                 prompt_entity=prompt_entity,
                 cluster_unit_enities=cluster_unit_entities_remain, 
-                max_concurrent=max_concurrent)
+                max_concurrent=max_concurrent,
+                max_retries=1,
+                return_test_predictions_format=True)
+    
+    test_predictions = await ExperimentService.test_predictions(
+        experiment_entity=experiment_entity,
+                label_template_entity=label_template_entity,
+                prompt_entity=prompt_entity,
+                cluster_unit_enities=cluster_unit_entities_remain, 
+                max_concurrent=max_concurrent
+    )
+    
+    
 
     return jsonify(predicted_categories=predicted_categories)

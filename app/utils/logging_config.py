@@ -259,6 +259,16 @@ class LoggingConfig:
         routes_handler.setFormatter(formatter)
         logging.getLogger('app.routes').addHandler(routes_handler)
 
+        # LLM interactions log
+        llm_handler = logging.handlers.RotatingFileHandler(
+            self.log_dir / 'llm.log',
+            maxBytes=50 * 1024 * 1024,  # 50 MB (larger due to prompt/response content)
+            backupCount=10
+        )
+        llm_handler.setLevel(logging.DEBUG)
+        llm_handler.setFormatter(formatter)
+        logging.getLogger('app.llm').addHandler(llm_handler)
+
     def _configure_third_party_loggers(self):
         """Configure logging levels for third-party libraries"""
 
@@ -507,4 +517,292 @@ def log_database_operation(operation_type: str):
                 raise
 
         return wrapper
+    return decorator
+
+
+def log_llm_call(operation_name: str = "llm_call"):
+    """
+    Decorator to log LLM API calls with comprehensive input/output tracking.
+
+    Captures:
+    - System and user prompts
+    - Model and configuration (reasoning_effort, etc.)
+    - Response content and token usage
+    - Duration and performance metrics
+    - Errors and retry attempts
+
+    Usage:
+        @log_llm_call("openrouter_completion")
+        async def async_send_to_openrouter(system_prompt, prompt, model, ...):
+            pass
+
+    Args:
+        operation_name: Name of the LLM operation being performed
+    """
+    def decorator(func):
+        llm_logger = logging.getLogger('app.llm')
+
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            start_time = time.time()
+            func_name = func.__qualname__
+
+            # Extract key parameters for logging (handle both args and kwargs)
+            system_prompt = kwargs.get('system_prompt', args[0] if len(args) > 0 else None)
+            user_prompt = kwargs.get('prompt', args[1] if len(args) > 1 else None)
+            model = kwargs.get('model', args[2] if len(args) > 2 else None)
+            reasoning_effort = kwargs.get('reasoning_effort', args[4] if len(args) > 4 else None)
+
+            # Truncate prompts for logging (store first 500 chars to avoid huge logs)
+            system_prompt_preview = (system_prompt[:500] + '...') if system_prompt and len(system_prompt) > 500 else system_prompt
+            user_prompt_preview = (user_prompt[:500] + '...') if user_prompt and len(user_prompt) > 500 else user_prompt
+
+            # Get request context if available
+            request_id = None
+            user_id = None
+            if has_request_context():
+                request_id = getattr(g, 'request_id', None)
+                user_id = getattr(g, 'user_id', None)
+
+            # Log the LLM call start
+            llm_logger.info(
+                f"LLM call started: {operation_name}",
+                extra={
+                    'extra_fields': {
+                        'operation': operation_name,
+                        'function': func_name,
+                        'model': model,
+                        'reasoning_effort': reasoning_effort,
+                        'system_prompt_length': len(system_prompt) if system_prompt else 0,
+                        'user_prompt_length': len(user_prompt) if user_prompt else 0,
+                        'system_prompt_preview': system_prompt_preview,
+                        'user_prompt_preview': user_prompt_preview,
+                        'request_id': request_id,
+                        'user_id': user_id
+                    }
+                }
+            )
+
+            try:
+                # Execute the actual LLM call
+                response = await func(*args, **kwargs)
+                duration_ms = (time.time() - start_time) * 1000
+
+                # Extract response details
+                response_content = None
+                token_usage = {}
+
+                try:
+                    if hasattr(response, 'choices') and len(response.choices) > 0:
+                        response_content = response.choices[0].message.content
+                        # Truncate response content for logging
+                        response_preview = (response_content[:500] + '...') if response_content and len(response_content) > 500 else response_content
+
+                    if hasattr(response, 'usage'):
+                        token_usage = response.usage.to_dict() if hasattr(response.usage, 'to_dict') else dict(response.usage)
+                except Exception as parse_error:
+                    llm_logger.warning(f"Could not parse response details: {parse_error}")
+                    response_preview = str(response)[:500]
+
+                # Log successful completion with full details
+                log_record = logging.LogRecord(
+                    name=llm_logger.name,
+                    level=logging.INFO,
+                    pathname='',
+                    lineno=0,
+                    msg=f"LLM call completed: {operation_name}",
+                    args=(),
+                    exc_info=None
+                )
+                log_record.duration_ms = duration_ms
+                log_record.extra_fields = {
+                    'operation': operation_name,
+                    'function': func_name,
+                    'model': model,
+                    'reasoning_effort': reasoning_effort,
+                    'success': True,
+                    'duration_ms': duration_ms,
+                    'token_usage': token_usage,
+                    'response_length': len(response_content) if response_content else 0,
+                    'response_preview': response_preview,
+                    'request_id': request_id,
+                    'user_id': user_id,
+                    # Full prompts for detailed analysis (will be redacted if needed)
+                    'system_prompt_full': system_prompt,
+                    'user_prompt_full': user_prompt
+                }
+                llm_logger.handle(log_record)
+
+                # Warn if LLM call is slow
+                if duration_ms > 10000:  # 10 seconds
+                    llm_logger.warning(
+                        f"Slow LLM call: {operation_name} took {duration_ms:.2f}ms",
+                        extra={
+                            'extra_fields': {
+                                'operation': operation_name,
+                                'model': model,
+                                'duration_ms': duration_ms,
+                                'token_usage': token_usage
+                            }
+                        }
+                    )
+
+                return response
+
+            except Exception as e:
+                duration_ms = (time.time() - start_time) * 1000
+
+                # Log the error with full context
+                llm_logger.error(
+                    f"LLM call failed: {operation_name} - {str(e)}",
+                    exc_info=True,
+                    extra={
+                        'extra_fields': {
+                            'operation': operation_name,
+                            'function': func_name,
+                            'model': model,
+                            'reasoning_effort': reasoning_effort,
+                            'success': False,
+                            'duration_ms': duration_ms,
+                            'error_type': type(e).__name__,
+                            'error_message': str(e),
+                            'request_id': request_id,
+                            'user_id': user_id,
+                            'system_prompt_preview': system_prompt_preview,
+                            'user_prompt_preview': user_prompt_preview
+                        }
+                    }
+                )
+                raise
+
+        @wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            start_time = time.time()
+            func_name = func.__qualname__
+
+            # Extract key parameters (same as async version)
+            system_prompt = kwargs.get('system_prompt', args[0] if len(args) > 0 else None)
+            user_prompt = kwargs.get('prompt', args[1] if len(args) > 1 else None)
+            model = kwargs.get('model', args[2] if len(args) > 2 else None)
+            reasoning_effort = kwargs.get('reasoning_effort', args[4] if len(args) > 4 else None)
+
+            system_prompt_preview = (system_prompt[:500] + '...') if system_prompt and len(system_prompt) > 500 else system_prompt
+            user_prompt_preview = (user_prompt[:500] + '...') if user_prompt and len(user_prompt) > 500 else user_prompt
+
+            request_id = None
+            user_id = None
+            if has_request_context():
+                request_id = getattr(g, 'request_id', None)
+                user_id = getattr(g, 'user_id', None)
+
+            llm_logger.info(
+                f"LLM call started: {operation_name}",
+                extra={
+                    'extra_fields': {
+                        'operation': operation_name,
+                        'function': func_name,
+                        'model': model,
+                        'reasoning_effort': reasoning_effort,
+                        'system_prompt_length': len(system_prompt) if system_prompt else 0,
+                        'user_prompt_length': len(user_prompt) if user_prompt else 0,
+                        'system_prompt_preview': system_prompt_preview,
+                        'user_prompt_preview': user_prompt_preview,
+                        'request_id': request_id,
+                        'user_id': user_id
+                    }
+                }
+            )
+
+            try:
+                response = func(*args, **kwargs)
+                duration_ms = (time.time() - start_time) * 1000
+
+                response_content = None
+                token_usage = {}
+
+                try:
+                    if hasattr(response, 'choices') and len(response.choices) > 0:
+                        response_content = response.choices[0].message.content
+                        response_preview = (response_content[:500] + '...') if response_content and len(response_content) > 500 else response_content
+
+                    if hasattr(response, 'usage'):
+                        token_usage = response.usage.to_dict() if hasattr(response.usage, 'to_dict') else dict(response.usage)
+                except Exception as parse_error:
+                    llm_logger.warning(f"Could not parse response details: {parse_error}")
+                    response_preview = str(response)[:500]
+
+                log_record = logging.LogRecord(
+                    name=llm_logger.name,
+                    level=logging.INFO,
+                    pathname='',
+                    lineno=0,
+                    msg=f"LLM call completed: {operation_name}",
+                    args=(),
+                    exc_info=None
+                )
+                log_record.duration_ms = duration_ms
+                log_record.extra_fields = {
+                    'operation': operation_name,
+                    'function': func_name,
+                    'model': model,
+                    'reasoning_effort': reasoning_effort,
+                    'success': True,
+                    'duration_ms': duration_ms,
+                    'token_usage': token_usage,
+                    'response_length': len(response_content) if response_content else 0,
+                    'response_preview': response_preview,
+                    'request_id': request_id,
+                    'user_id': user_id,
+                    'system_prompt_full': system_prompt,
+                    'user_prompt_full': user_prompt
+                }
+                llm_logger.handle(log_record)
+
+                if duration_ms > 10000:
+                    llm_logger.warning(
+                        f"Slow LLM call: {operation_name} took {duration_ms:.2f}ms",
+                        extra={
+                            'extra_fields': {
+                                'operation': operation_name,
+                                'model': model,
+                                'duration_ms': duration_ms,
+                                'token_usage': token_usage
+                            }
+                        }
+                    )
+
+                return response
+
+            except Exception as e:
+                duration_ms = (time.time() - start_time) * 1000
+
+                llm_logger.error(
+                    f"LLM call failed: {operation_name} - {str(e)}",
+                    exc_info=True,
+                    extra={
+                        'extra_fields': {
+                            'operation': operation_name,
+                            'function': func_name,
+                            'model': model,
+                            'reasoning_effort': reasoning_effort,
+                            'success': False,
+                            'duration_ms': duration_ms,
+                            'error_type': type(e).__name__,
+                            'error_message': str(e),
+                            'request_id': request_id,
+                            'user_id': user_id,
+                            'system_prompt_preview': system_prompt_preview,
+                            'user_prompt_preview': user_prompt_preview
+                        }
+                    }
+                )
+                raise
+
+        # Return appropriate wrapper based on function type
+        import asyncio
+        if asyncio.iscoroutinefunction(func):
+            return async_wrapper
+        else:
+            return sync_wrapper
+
     return decorator

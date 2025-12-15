@@ -5,6 +5,7 @@ import { experimentApi } from "@/lib/api";
 import { useAuthFetch } from "@/utils/fetch";
 import { Button } from "../ui";
 import { PageHeader } from "../layout";
+import { TestPredictionModal } from "./TestPredictionModal";
 
 
 interface ExperimentsSearchBarResultsProps {
@@ -28,6 +29,10 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
   const [globalThreshold, setGlobalThreshold] = useState<number | null>(null);
   const [tempThresholdValue, setTempThresholdValue] = useState<number>(0.5);
   const [showThresholdSlider, setShowThresholdSlider] = useState(false);
+
+  // Test modal state
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [testExperimentId, setTestExperimentId] = useState<string | null>(null);
 
   const router = useRouter()
   const authFetch = useAuthFetch();
@@ -54,10 +59,15 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
         router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&experiment_id=${experiment_id}`);
       }
     };
-  
+
     const handleClone = (experiment_id: string) => {
       console.log('Clone experiment:', experiment_id);
       // TODO: Open clone experiment dialog
+    };
+
+    const handleTest = (experiment_id: string) => {
+      setTestExperimentId(experiment_id);
+      setShowTestModal(true);
     };
   
     const handleExperimentContinue = async (experiment_id: string) => {
@@ -160,7 +170,8 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       status: exp.status,
       reasoningEffort: exp.reasoning_effort,
       tokenStatistics: tokenStatistics,
-      experimentCost: exp.experiment_cost
+      experimentCost: exp.experiment_cost,
+      labelTemplateId: exp.label_template_id
     };
   };
 
@@ -433,6 +444,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
                   onView={handleView}
                   onClone={handleClone}
                   onContinue={handleExperimentContinue}
+                  onTest={handleTest}
                   onThresholdUpdate={handleThresholdUpdate}
                 />
               </div>
@@ -449,6 +461,16 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
               + New Experiment
             </Button>
           </div>
+        )}
+
+        {/* Test Prediction Modal */}
+        {testExperimentId && (
+          <TestPredictionModal
+            isOpen={showTestModal}
+            onClose={() => setShowTestModal(false)}
+            experimentId={testExperimentId}
+            autoRun={true}
+          />
         )}
     </>
   )

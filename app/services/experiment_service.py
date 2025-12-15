@@ -79,7 +79,8 @@ class ExperimentService:
         prompt_entity: PromptEntity,
         cluster_unit_enities: List[ClusterUnitEntity],
         max_concurrent=1000,
-        max_retries=3) -> List[PredictionCategoryTokens]:
+        max_retries=3,) -> List[PredictionCategoryTokens]:
+        return_test_predictions_format: bool = False
          # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(max_concurrent)
         open_router_api_key = LLMService.get_user_open_router_api_key(user_id=experiment_entity.user_id)
@@ -606,120 +607,13 @@ class ExperimentService:
             fn=false_negatives
 
         )
-
-        # true_total = prediction_result.sum_ground_truth
-        # false_total = sample_size - prediction_result.sum_ground_truth
-        # true_predicted = sum([count
-        #                        for runs_true, count 
-        #                        in prediction_result.prevelance_distribution.items() 
-        #                        if runs_true >= user_threshold])
-        # false_predicted = sum([count
-        #                        for runs_true, count 
-        #                        in prediction_result.prevelance_distribution.items() 
-        #                        if runs_true < user_threshold])
-        
-        # if (true_predicted + false_predicted) != (true_total + false_total):
-        #     raise Exception("trues_predicted + falses_predicted) != (trues + falses")
-        
-            
-                                              
-        
     
-    
-
-# Test function to verify the prediction workflow
-if __name__ == "__main__":
-    from app.database.entities.base_entity import PyObjectId
-    from bson import ObjectId
-
-    print("Testing ExperimentService.predict_single_cluster_unit...")
-
-    # Create mock entities for testing
-    experiment_entity = ExperimentEntity(
-        id=PyObjectId(ObjectId()),
-        user_id=PyObjectId(ObjectId()),
-        scraper_cluster_id=PyObjectId(ObjectId()),
-        prompt_id=PyObjectId(ObjectId()),
-        sample_id=PyObjectId(ObjectId()),
-        label_template_id=PyObjectId(ObjectId),
-        model="gpt-4o-mini",  # Use a smaller model for testing
-        runs_per_unit=2,  # Only 2 runs for testing
-        aggregate_result=None
-    )
-
-    prompt_entity = PromptEntity(
-        id=PyObjectId(ObjectId()),
-        created_by_user_id=PyObjectId(ObjectId()),
-        category=PromptCategory.Classify_cluster_units,
-        system_prompt="""You are a Reddit comment classifier. Analyze the comment and classify it into categories.
-Return your response as valid JSON with this structure:
-{
-    "labels": {
-        "problem_description": true/false,
-        "frustration_expression": true/false,
-        "solution_seeking": true/false,
-        "solution_attempted": true/false,
-        "solution_proposing": true/false,
-        "agreement_empathy": true/false,
-        "none_of_the_above": true/false
-    },
-    "reason": "Brief explanation of classification",
-    "sentiment": "negative/neutral/positive"
-}""",
-        prompt="""Thread context: {{conversation_thread}}
-
-Final message to classify: {{final_reddit_message}}
-
-Classify this message according to the categories defined in the system prompt.""",
-        public_policy=True,
-    )
-
-    cluster_unit_entity = ClusterUnitEntity(
-        id=PyObjectId(ObjectId()),
-        cluster_entity_id=PyObjectId(ObjectId()),
-        post_id=PyObjectId(ObjectId()),
-        comment_post_id=PyObjectId(ObjectId()),
-        type="comment",
-        reddit_id="test123",
-        author="test_user",
-        usertag=None,
-        upvotes=5,
-        downvotes=0,
-        created_utc=1234567890,
-        thread_path_text=["Original post: My laptop keeps crashing", "Reply: Have you tried updating drivers?"],
-        enriched_comment_thread_text=None,
-        text="Yes I tried that but it still crashes during renders. So frustrated!",
-        subreddit="techsupport",
-        ground_truth=ClusterUnitEntityCategory(
-            solution_attempted=True,
-            frustration_expression=True
-        ),
-        predicted_category=None,
-        total_nested_replies=0
-    )
-
-    try:
-        # Test the prediction
-        print(f"\nMaking {experiment_entity.runs_per_unit} prediction runs...")
-        print(f"Model: {experiment_entity.model}")
-        print(f"Comment text: {cluster_unit_entity.text[:100]}...")
-
-        result = ExperimentService.predict_single_cluster_unit(
-            experiment_entity,
-            cluster_unit_entity,
-            prompt_entity
-        )
-
-        print(f"\n✓ Test completed successfully!")
-        print(f"Received {len(result)} predictions")
-        print(f"\nPredictions:")
-        for i, pred in enumerate(result, 1):
-            print(f"\nRun {i}:")
-            print(pred)
-
-    except Exception as e:
-        print(f"\n✗ Test failed with error:")
-        print(f"Error type: {type(e).__name__}")
-        print(f"Error message: {str(e)}")
-        import traceback
-        traceback.print_exc()
+    @staticmethod
+    def test_predictions(        
+        experiment_entity: ExperimentEntity,
+        label_template_entity: LabelTemplateEntity,
+        prompt_entity: PromptEntity,
+        cluster_unit_enities: List[ClusterUnitEntity],
+        max_concurrent=1000,
+        max_retries=3) -> List[PredictionCategoryTokens]:
+        

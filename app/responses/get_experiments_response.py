@@ -678,3 +678,15 @@ class GetExperimentsResponse(BaseModel):
     token_statistics: Optional[ExperimentTokenStatistics] = None
     experiment_cost: Optional[ExperimentCost] = None
     status: StatusType
+
+
+class SinglePredictionOutputFormat(BaseModel):
+    system_prompt: str
+    input_prompt: str
+    model_output_message: str
+    error: Optional[str]
+    success: bool
+    parsed_categories: BaseModel
+
+class TestPredictionsOutputFormat(BaseModel):
+    predictions: List[SinglePredictionOutputFormat]

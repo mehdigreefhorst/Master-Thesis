@@ -10,3 +10,5 @@ export { KeywordTag } from './KeywordTag';
 export { Input } from './Input';
 export { InfoTooltip } from './InfoTooltip';
 export { ConfirmationDialog } from './ConfirmationDialog';
+export { Modal } from './Modal';
+export { TruncatedText } from './TruncatedText';

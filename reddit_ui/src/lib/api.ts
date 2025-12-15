@@ -585,6 +585,30 @@ export const experimentApi = {
       method: 'PUT'
     })
     return await data.json()
+  },
+
+  async testPrediction(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    experimentId: string,
+    clusterUnitIds?: string[],
+    nrToPredict: number = 1
+  ): Promise<{
+    predicted_categories?: any;
+    error?: string;
+    system_prompt?: string;
+    parsed_prompt?: string;
+    output_llm?: string;
+    success: boolean;
+  }> {
+    const data = await authFetch('/experiment/test/prediction', {
+      method: 'POST',
+      body: {
+        experiment_id: experimentId,
+        cluster_unit_ids: clusterUnitIds,
+        nr_to_predict: nrToPredict
+      }
+    });
+    return await data.json();
   }
 };
 

@@ -8,7 +8,7 @@ from openai import OpenAI, AsyncOpenAI
 from app.utils.rate_limiters import RateLimitConfig, RateLimiterRegistry
 
 
-from app.utils.logging_config import get_logger
+from app.utils.logging_config import get_logger, log_llm_call
 
 # Initialize logger for this module
 logger = get_logger(__name__)
@@ -30,6 +30,7 @@ class LlmHelper:
     
 
     @staticmethod
+    @log_llm_call("openai_completion")
     def send_to_openai(system_prompt: str, prompt:str, model: str):
         llm = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         model_name =model
@@ -43,6 +44,7 @@ class LlmHelper:
     
 
     @staticmethod
+    @log_llm_call("openrouter_completion")
     def send_to_openrouter(system_prompt: str, prompt:str, model: str, open_router_api_key: str, reasoning_effort: Optional[str]):
         llm = OpenAI(
             base_url="https://openrouter.ai/api/v1",
@@ -51,7 +53,7 @@ class LlmHelper:
         messages = [
           {'role': 'system', 'content': system_prompt},
           {'role': 'user', 'content': prompt} ]
-        if reasoning_effort: 
+        if reasoning_effort:
             response = llm.chat.completions.create(
                         model=model_name,
                         messages=messages,
@@ -65,11 +67,12 @@ class LlmHelper:
     
 
     @staticmethod
+    @log_llm_call("openrouter_async_completion")
     async def async_send_to_openrouter(
-        system_prompt: str, 
-        prompt:str, 
-        model: str, 
-        open_router_api_key: str, 
+        system_prompt: str,
+        prompt:str,
+        model: str,
+        open_router_api_key: str,
         reasoning_effort: Optional[str],
         requests_per_minute: Optional[int] = 1000,
         burst_capacity: Optional[int]=25,
@@ -77,7 +80,7 @@ class LlmHelper:
         ):
 
         if "free" in model:
-            requests_per_minute: Optional[int] = 20,
+            requests_per_minute: Optional[int] = 20
         # Get or create rate limiter for this API key
         # This returns the SAME rate limiter instance for all coroutines using this API key
         if not skip_rate_limit:
@@ -99,8 +102,8 @@ class LlmHelper:
             messages = [
               {'role': 'system', 'content': system_prompt},
               {'role': 'user', 'content': prompt} ]
-            
-            logger.info("messages = ", messages)
+
+            logger.info(f"messages = {messages}")
             
             kwargs = {
                     'model': model,

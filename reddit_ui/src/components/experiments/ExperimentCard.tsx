@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
+import { TruncatedText } from '../ui/TruncatedText';
 import { MetricBar } from './MetricBar';
 import { PredictionMetricVisualization, PredictionMetric } from './PredictionMetrics';
 import { StatusType } from '@/types/scraper-cluster';
@@ -53,6 +54,7 @@ export interface ExperimentData {
   reasoningEffort: null | "low" | "medium" | "high";
   tokenStatistics?: TokenStatistics;
   experimentCost?: ExperimentCost;
+  labelTemplateId: string;
 }
 
 interface ExperimentCardProps {
@@ -60,6 +62,7 @@ interface ExperimentCardProps {
   onView?: (experiment_id: string) => void;
   onClone?: (experiment_id: string) => void;
   onContinue?: (experiment_id: string) => void;
+  onTest?: (experiment_id: string) => void;
   onThresholdUpdate?: (experiment_id: string) => void;
   className?: string;
 }
@@ -69,6 +72,7 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
   onView,
   onClone,
   onContinue,
+  onTest,
   onThresholdUpdate,
   className = ''
 }) => {
@@ -150,7 +154,9 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
       <div className="flex justify-between items-start mb-3">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-base font-semibold">📝 {experiment.name}</h3>
+            <h3 className="text-base font-semibold">
+              📝 <TruncatedText text={experiment.name} maxLength={5} />
+            </h3>
             <span
               className="px-2 py-0.5 rounded-full text-xs font-medium"
               style={{
@@ -160,6 +166,36 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
             >
               {statusStyles.label}
             </span>
+            <div className="flex gap-2 ">
+              <Button
+                variant="invisible"
+                className="mt-0! py-1! px-2! text-xs"
+                onClick={() => onTest?.(experiment.id)}
+              >
+                Test
+              </Button>
+              <Button
+                variant="invisible"
+                className="mt-0! py-1! px-2! text-xs"
+                onClick={() => onContinue?.(experiment.id)}
+              >
+                Continue
+              </Button>
+              <Button
+                variant="invisible"
+                className="mt-0! py-1! px-2! text-xs"
+                onClick={() => onView?.(experiment.id)}
+              >
+                View
+              </Button>
+              <Button
+                variant="invisible"
+                className="mt-0! !py-1 px-2! text-xs"
+                onClick={() => onClone?.(experiment.id)}
+              >
+                Clone
+              </Button>
+            </div>
           </div>
           <div className="flex gap-2 text-xs text-(--muted-foreground)">
             <Badge variant="default">{experiment.model}</Badge>
@@ -199,30 +235,9 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
               </span>
             )}
           </div>
+          
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="invisible"
-            className="mt-0! py-1! px-2! text-xs"
-            onClick={() => onContinue?.(experiment.id)}
-          >
-            Continue
-          </Button>
-          <Button
-            variant="invisible"
-            className="mt-0! py-1! px-2! text-xs"
-            onClick={() => onView?.(experiment.id)}
-          >
-            View
-          </Button>
-          <Button
-            variant="invisible"
-            className="mt-0! !py-1 px-2! text-xs"
-            onClick={() => onClone?.(experiment.id)}
-          >
-            Clone
-          </Button>
-        </div>
+        
       </div>
 
       {/* Overall Metrics */}

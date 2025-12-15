@@ -22,7 +22,6 @@ class CreateExperiment(BaseModel):
 
 class TestPrediction(BaseModel):
     experiment_id: PyObjectId
-    label_template_id: PyObjectId
     cluster_unit_ids: Optional[List[PyObjectId] ] = None
     nr_to_predict: int
 

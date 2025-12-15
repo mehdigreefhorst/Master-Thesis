@@ -51,7 +51,7 @@ export const ModelCard: React.FC<ModelCardProps> = ({
                 Reasoning
               </Badge>
             )}
-            
+
           </div>
           {model.free_available && (
               <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
