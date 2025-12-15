@@ -6,6 +6,7 @@ from datetime import datetime
 import math
 
 
+from app.database.entities.cluster_unit_entity import PredictionCategoryTokens
 from app.database.entities.experiment_entity import ExperimentCost, ExperimentTokenStatistics, PrevalenceDistribution
 from app.utils.types import StatusType
 
@@ -681,12 +682,15 @@ class GetExperimentsResponse(BaseModel):
 
 
 class SinglePredictionOutputFormat(BaseModel):
-    system_prompt: str
-    input_prompt: str
-    model_output_message: str
-    error: Optional[str]
-    success: bool
-    parsed_categories: BaseModel
+    system_prompt: Optional[str] = None
+    input_prompt: Optional[str] = None
+    model_output_message: Optional[str] = None
+    error: Optional[List[str]] = None
+    success: Optional[bool] = None
+    parsed_categories: Optional[PredictionCategoryTokens] = None
 
 class TestPredictionsOutputFormat(BaseModel):
     predictions: List[SinglePredictionOutputFormat]
+
+    def get_predictions(self) -> PredictionCategoryTokens:
+        return [prediction.parsed_categories for prediction in self.predictions]

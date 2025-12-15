@@ -565,14 +565,7 @@ async def test_prediction(body: TestPrediction) -> TestPredictionsOutputFormat:
         cluster_unit_entities_remain = get_cluster_unit_repository().find_many_by_ids(body.cluster_unit_ids)
 
     max_concurrent = 100
-    predicted_categories = await ExperimentService.create_predicted_categories(
-                experiment_entity=experiment_entity,
-                label_template_entity=label_template_entity,
-                prompt_entity=prompt_entity,
-                cluster_unit_enities=cluster_unit_entities_remain, 
-                max_concurrent=max_concurrent,
-                max_retries=1,
-                return_test_predictions_format=True)
+    predicted_categories = 
     
     test_predictions = await ExperimentService.test_predictions(
         experiment_entity=experiment_entity,

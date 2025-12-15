@@ -16,7 +16,7 @@ from app.database.entities.label_template import LabelTemplateEntity
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.database.entities.user_entity import UserEntity
-from app.responses.get_experiments_response import ConfusionMatrix, GetExperimentsResponse, PredictionMetric
+from app.responses.get_experiments_response import ConfusionMatrix, GetExperimentsResponse, PredictionMetric, SinglePredictionOutputFormat, TestPredictionsOutputFormat
 from app.services.llm_service import LLMService
 from app.utils.llm_helper import LlmHelper
 from app.utils.types import StatusType
@@ -79,7 +79,7 @@ class ExperimentService:
         prompt_entity: PromptEntity,
         cluster_unit_enities: List[ClusterUnitEntity],
         max_concurrent=1000,
-        max_retries=3,) -> List[PredictionCategoryTokens]:
+        max_retries=3,) -> List[PredictionCategoryTokens] | TestPredictionsOutputFormat:
         return_test_predictions_format: bool = False
          # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(max_concurrent)
@@ -87,13 +87,14 @@ class ExperimentService:
         if not open_router_api_key:
             raise Exception("No API key has been set by the user")
 
-        async def predict_single_with_semaphore_and_retry(cluster_unit_entity, run_index):
+        async def predict_single_with_semaphore_and_retry(cluster_unit_entity, run_index) -> SinglePredictionOutputFormat:
             """
             Wrapper that ensures we don't have too many concurrent connections.
             The rate limiter (in LlmHelper) ensures we don't exceed API limits.
             Includes retry logic with exponential backoff and comprehensive token tracking.
             """
             all_attempts = []  # Track all attempts for token accounting
+            single_prediction_format = SinglePredictionOutputFormat()
 
             async with semaphore:  # Limit concurrent connections
                 for attempt in range(max_retries):
@@ -106,21 +107,28 @@ class ExperimentService:
                             cluster_unit_entity=cluster_unit_entity,
                             open_router_api_key=open_router_api_key,
                             prompt_entity=prompt_entity,
+                            single_prediction_format=single_prediction_format,
                             attempt_number=attempt_number,
                             all_attempts=all_attempts  # Pass the list to accumulate attempts
                         )
                         logger.debug(f"Completed prediction for unit {cluster_unit_entity.id}, run {run_index}")
-                        return result
+                        single_prediction_format.parsed_categories = result
+                        return single_prediction_format
                     except Exception as e:
                         is_last_attempt = attempt == max_retries - 1
-
+                        
                         # Log the error
                         if is_last_attempt:
-                            logger.error(f"Failed prediction for unit {cluster_unit_entity.id}, run {run_index} "
-                                       f"after {max_retries} attempts: {e}")
+                            error_message = f"Failed prediction for unit {cluster_unit_entity.id}, run {run_index} " +\
+                                            f"after {max_retries} attempts: {e}"
+                            
                         else:
-                            logger.warning(f"Failed prediction for unit {cluster_unit_entity.id}, run {run_index} "
-                                         f"(attempt {attempt_number}/{max_retries}): {e}")
+                            error_message = f"Failed prediction for unit {cluster_unit_entity.id}, run {run_index} " +\
+                                            f"(attempt {attempt_number}/{max_retries}): {e}"
+
+                        logger.warning(error_message)
+
+                        single_prediction_format.error.append(error_message)
 
                         # If this is the last attempt, give up
                         if is_last_attempt:
@@ -140,22 +148,25 @@ class ExperimentService:
         logger.info(f"Created {len(tasks)} prediction tasks")
 
         # Execute with gather # Run the async predictions -> Results in one dimensional list of predictions
-        predicted_categories: List[PredictionCategoryTokens] = await asyncio.gather(
+        list_predictions_output_format: List[SinglePredictionOutputFormat] = await asyncio.gather(
             *tasks,
             return_exceptions=True
         )
 
         # Filter out None results and count failures
-        successful_predictions = [p for p in predicted_categories if p is not None and not isinstance(p, Exception)]
-        failed_count = len(predicted_categories) - len(successful_predictions)
+        successful_predictions = [p for p in list_predictions_output_format if p.parsed_categories is not None and not isinstance(p.parsed_categories, Exception)]
+        failed_count = len(list_predictions_output_format) - len(successful_predictions)
 
         if failed_count > 0:
             logger.warning(f"Completed with {len(successful_predictions)} successful predictions, "
                          f"{failed_count} failed after retries")
         else:
             logger.info(f"Finished with {len(tasks)} prediction tasks, all successful")
-
-        return predicted_categories
+        predictions_output_format = TestPredictionsOutputFormat(predictions=list_predictions_output_format)
+        if return_test_predictions_format:
+            return predictions_output_format.get_predictions()
+        
+        return predictions_output_format
     
 
     @staticmethod
@@ -198,8 +209,9 @@ class ExperimentService:
         cluster_unit_entity: ClusterUnitEntity,
         open_router_api_key: str,
         prompt_entity: PromptEntity,
+        single_prediction_format: SinglePredictionOutputFormat,
         attempt_number: int = 1,
-        all_attempts: list = None
+        all_attempts: list = None,
     ) -> PredictionCategoryTokens:
         """
         Make a single prediction run for a cluster unit.
@@ -609,11 +621,18 @@ class ExperimentService:
         )
     
     @staticmethod
-    def test_predictions(        
+    async def test_predictions(        
         experiment_entity: ExperimentEntity,
         label_template_entity: LabelTemplateEntity,
         prompt_entity: PromptEntity,
-        cluster_unit_enities: List[ClusterUnitEntity],
-        max_concurrent=1000,
-        max_retries=3) -> List[PredictionCategoryTokens]:
+        cluster_unit_enities: List[ClusterUnitEntity]
+        ) -> List[PredictionCategoryTokens]:
+        return await ExperimentService.create_predicted_categories(
+                experiment_entity=experiment_entity,
+                label_template_entity=label_template_entity,
+                prompt_entity=prompt_entity,
+                cluster_unit_enities=cluster_unit_enities, 
+                max_concurrent=20,
+                max_retries=1,
+                return_test_predictions_format=True)
         
