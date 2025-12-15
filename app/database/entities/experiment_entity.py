@@ -1,7 +1,7 @@
 
 
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 import re
 
 from pydantic import BaseModel, Field, field_validator
@@ -32,13 +32,7 @@ class PredictionResult(BaseModel):
 
 
 class AggregateResult(BaseModel):
-    problem_description: PredictionResult = Field(default_factory=PredictionResult)
-    frustration_expression: PredictionResult = Field(default_factory=PredictionResult)
-    solution_seeking: PredictionResult = Field(default_factory=PredictionResult)
-    solution_attempted: PredictionResult = Field(default_factory=PredictionResult)
-    solution_proposing: PredictionResult = Field(default_factory=PredictionResult)
-    agreement_empathy: PredictionResult = Field(default_factory=PredictionResult)
-    none_of_the_above: PredictionResult = Field(default_factory=PredictionResult)
+    labels: Dict[str, PredictionResult] = Field(default_factory=dict)
 
     @classmethod
     def field_names(cls) -> list[str]:
@@ -74,15 +68,24 @@ class ExperimentEntity(BaseEntity):
     prompt_id: PyObjectId
     sample_id: PyObjectId
     label_template_id: PyObjectId
+    label_template_labels: List[str] = Field(default_factory=list)
     model: str
     model_pricing: Optional[Pricing] = None
     experiment_cost: Optional[ExperimentCost] = None
-    reasoning_effort: Optional[str] = None
-    aggregate_result: AggregateResult = Field(default_factory=AggregateResult)
+    reasoning_effort: Optional[Literal["none", "minimal", "low", "medium", "high", "xhigh", "auto"]] = None
+    aggregate_result: Optional[AggregateResult] = None
     runs_per_unit: int = 3
     threshold_runs_true: int = 1
     status: StatusType = StatusType.Initialized
     token_statistics: ExperimentTokenStatistics = Field(default_factory=ExperimentTokenStatistics)
+
+    # @model_validator(mode="after")
+    # def auto_create_aggregate_result(self):
+    #     if self.aggregate_result is None:
+    #         self.aggregate_result = AggregateResult()
+    #     for label in self.label_template_labels:
+    #         self.aggregate_result.labels[label] = PredictionResult()
+
 
     def calculate_and_set_total_cost(self) -> float:
         """only calculates for now the completion and prompt tokens, since reasoning is priced same as completion 
