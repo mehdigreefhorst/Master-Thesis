@@ -71,7 +71,7 @@ class PostEntity (RedditBaseEntity):
     secure_media: Optional[Dict] = None
     secure_media_embed: Optional[Dict] = None
     url: str = ""
-    upvote_ratio: float
+    upvote_ratio: float = None
 
 
 
@@ -118,5 +118,4 @@ class PostEntity (RedditBaseEntity):
             send_replies=post.send_replies,
             comments=comments
             )
-
     
