@@ -90,7 +90,7 @@ def get_openrouter_data_repository() -> OpenRouterDataRepository:
 
     return g.openrouter_data_repository
 
-def label_template_repository() -> LabelTemplateRepository:
+def get_label_template_repository() -> LabelTemplateRepository:
     if not hasattr(g,"label_template_repository"):
         g.label_template_repository = LabelTemplateRepository(_get_db())
     

@@ -1,11 +1,11 @@
 
-from typing import Dict, List
+from typing import Any, Dict, List, Mapping, Optional
 from flask_pymongo.wrappers import Database
 from pymongo import UpdateOne
 
 from app.database.base_repository import BaseRepository
 from app.database.entities.base_entity import PyObjectId
-from app.database.entities.cluster_unit_entity import PredictionCategoryTokens, ClusterUnitCategoryFieldNames, ClusterUnitEntity, ClusterUnitEntityCategory, ClusterUnitEntityPredictedCategory
+from app.database.entities.cluster_unit_entity import ClusterUnitEntity, ClusterUnitEntityPredictedCategory
 from app.utils.logging_config import get_logger
 
 
@@ -17,13 +17,46 @@ class ClusterUnitRepository(BaseRepository[ClusterUnitEntity]):
         super().__init__(database, ClusterUnitEntity, "cluster_unit")
         self.collection.create_index({"cluster_entity_id": 1}) # To speed up the lookup for to find all the cluster units
 
-    def update_ground_truth_category(self, cluster_unit_entity_id: PyObjectId, ground_truth_category: ClusterUnitCategoryFieldNames, ground_truth: bool):
-        filter = {"_id": cluster_unit_entity_id}
-        update_path = f"ground_truth.{ground_truth_category}"
-        # Update only the nested value
-        update = {"$set": {update_path: ground_truth}}  # or keyword_search_subreddit.value if just one value
+    def _convert_to_entity(self, obj: Mapping[str, Any]) -> ClusterUnitEntity:
+        """Override to ensure None values in ground_truth nested fields are preserved during deserialization"""
+        # Use model_validate with context to preserve None values
+        return ClusterUnitEntity.model_validate(obj, strict=False, context={"preserve_none": True})
 
-        return self.collection.update_one(filter, update)
+    def update_ground_truth_category(self, cluster_unit_entity_id: PyObjectId, label_template_id: PyObjectId, ground_truth_category: str, ground_truth: bool, per_label_name: Optional[str]= None, per_label_value: Optional[Any] = None):
+        filter = {"_id": cluster_unit_entity_id}
+
+        # First, get the current document to find all None values
+        doc = self.collection.find_one(filter, {f"ground_truth.{label_template_id}.values": 1})
+
+        if not doc or "ground_truth" not in doc or str(label_template_id) not in doc["ground_truth"]:
+            # If the structure doesn't exist, just do a simple update
+            update_path = f"ground_truth.{label_template_id}.values.{ground_truth_category}.value"
+            return self.collection.update_one(filter, {"$set": {update_path: ground_truth}})
+
+        # Build update operations: set the target value and convert all None values to False
+        update_ops = {}
+        values = doc["ground_truth"][str(label_template_id)].get("values", {})
+
+        # Set the target category to the provided value
+        target_path = f"ground_truth.{label_template_id}.values.{ground_truth_category}.value"
+        update_ops[target_path] = ground_truth
+
+        # Convert all None values to False (excluding the target category we're updating)
+        for category, category_data in values.items():
+            if category != ground_truth_category and isinstance(category_data, dict):
+                if category_data.get("value") is None:
+                    none_path = f"ground_truth.{label_template_id}.values.{category}.value"
+                    update_ops[none_path] = False
+
+        # Perform single atomic update with all changes
+        return self.collection.update_one(filter, {"$set": update_ops})
+    
+    def update_ground_truth_category_per_label(self, cluster_unit_entity_id: PyObjectId, label_template_id: PyObjectId, ground_truth_category: str, per_label_name: str, per_label_value: Any):
+        filter = {"_id": cluster_unit_entity_id}
+        
+        update_path = f"ground_truth.{label_template_id}.values.{ground_truth_category}.{per_label_name}"
+        return self.collection.update_one(filter, {"$set": {update_path: per_label_value}})
+        
     
     def insert_predicted_category(self, cluster_unit_entity_id: PyObjectId, experiment_id: PyObjectId, cluster_unit_predicted_categories: ClusterUnitEntityPredictedCategory):
         filter = {"_id": cluster_unit_entity_id}
@@ -81,4 +114,16 @@ class ClusterUnitRepository(BaseRepository[ClusterUnitEntity]):
         inserted_count = self.collection.bulk_write(bulk_ops, ordered=False).inserted_count
         logger.info(f"inserted a total of {inserted_count} predictions. During {experiment_id} experiment")
         return 
+    
+    def delete_many_by_cluster_enity_id(self, cluster_entity_id: PyObjectId):
+        """Delete all cluster units associated with a specific cluster entity"""
 
+        # Convert to ObjectId if it's a string
+        # First, check how many exist
+        count_before = self.collection.count_documents({"cluster_entity_id": cluster_entity_id})
+        logger.info(f"[delete_many_by_cluster_enity_id] Found {count_before} cluster units for cluster_entity_id={cluster_entity_id}")
+
+        filter = {"cluster_entity_id": cluster_entity_id}
+        result = self.collection.delete_many(filter)
+        logger.info(f"[delete_many_by_cluster_enity_id] Deleted {result.deleted_count} cluster units for cluster_entity_id={cluster_entity_id}")
+        return result

@@ -3,8 +3,8 @@ from typing import Any, Dict, List, Literal, Mapping, Type, Optional
 import pymongo
 from flask_pymongo.wrappers import Database
 from pydantic import BaseModel
-from pymongo.results import InsertOneResult, UpdateResult, InsertManyResult
-
+from pymongo.results import InsertOneResult, UpdateResult, InsertManyResult, BulkWriteResult
+from pymongo import ReplaceOne
 
 from app.database.entities.base_entity import BaseEntity, PyObjectId
 from app.utils import utc_timestamp
@@ -30,7 +30,18 @@ class BaseRepository[T: BaseEntity]:
     def insert_list_entities(self, items: List[T]) -> InsertManyResult:
         data_list = [item.dump_for_database() for item in items]
         return self.collection.insert_many(data_list)
-        
+    
+    def upsert_list_entities(self, items: List[T]) -> BulkWriteResult:
+        operations = [
+            ReplaceOne(
+                {"_id": item.id},  # filter by ID
+                item.dump_for_database(),
+                upsert=True  # insert if not exists, replace if exists
+            )
+            for item in items
+        ]
+        return self.collection.bulk_write(operations)
+
 
     def find(self, filter: Dict[str, Any]) -> List[T]:
         documents = self.collection.find(self._soft_delete_filter(filter))
