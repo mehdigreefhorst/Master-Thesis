@@ -176,7 +176,7 @@ export const MediaStrategyModal: React.FC<MediaStrategyModalProps> = ({
           Choose how to handle posts and comments that contain media (images, videos, etc.)
         </p>
 
-        <div className="grid grid-cols-1 gap-4 max-h-[70vh] overflow-y-auto pr-2">
+        <div className="grid grid-cols-1 gap-4 max-h-[70vh] overflow-y-auto px-4 py-1">
           {strategyOptions.map((option) => (
             <button
               key={option.type}
@@ -187,7 +187,7 @@ export const MediaStrategyModal: React.FC<MediaStrategyModalProps> = ({
                 ${
                   option.disabled
                     ? 'bg-gray-50 border-gray-200 cursor-not-allowed opacity-60'
-                    : 'bg-white border-gray-300 hover:border-blue-500 hover:shadow-lg hover:scale-[1.02] cursor-pointer'
+                    : 'bg-white border-gray-300 hover:border-blue-500 hover:border-[3px] hover:shadow-lg hover:scale-[1.02] cursor-pointer'
                 }
               `}
             >

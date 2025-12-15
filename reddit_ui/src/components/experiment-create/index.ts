@@ -6,3 +6,4 @@ export { ActionBar } from './ActionBar';
 export { StatusMessages } from './StatusMessages';
 export { ModelSelector } from './ModelSelector';
 export { ModelCard } from './ModelCard';
+export { PromptVariablesPanel } from './PromptVariablesPanel';

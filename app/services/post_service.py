@@ -3,6 +3,8 @@ from typing import List
 from app.database import get_post_repository
 from app.database.entities.post_entity import CommentEntity, PostEntity
 from app.responses.reddit_post_comments_response import RedditComment, RedditPost
+from app.utils import utc_timestamp
+from app.utils.reddit_scraper_api import RedditAPIManager
 
 
 class PostService:
@@ -31,9 +33,28 @@ class PostService:
 
         return post_entity
     
+
     @staticmethod
     def insert_into_db(post: PostEntity) -> None:
         get_post_repository().insert(post)
+    
+    @staticmethod
+    def renew_posts_entities(post_entities: List[PostEntity]):
+        """:TODO this function will make the whole python project stall. Use async and await"""
+        reddit_scraper_manager = RedditAPIManager(number_posts_per_keyword=10)
+        post_entities_to_update: List[PostEntity] = list()
+        for post in post_entities:
+            
+            full_reddit_post, reddit_comments = reddit_scraper_manager.scrape_comments_of_post(post.permalink)
+            renewed_post_entity = PostService().create_reddit_post_entity(full_reddit_post, reddit_comments)
+            # We are only interested in the old version of the variables below:
+            renewed_post_entity.created_at = post.created_at
+            renewed_post_entity.id = post.id
+            renewed_post_entity.updated_at = utc_timestamp()
+            post_entities_to_update.append(renewed_post_entity)
+        
+        return get_post_repository().upsert_list_entities(post_entities_to_update).modified_count
+            
 
 
 

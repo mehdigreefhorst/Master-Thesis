@@ -1,20 +1,32 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { labelTemplateApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
-import type { LabelTemplate } from '@/types/label-template';
+import type { LabelTemplateEntity } from '@/types/label-template';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { OneShotExampleModal } from '@/components/modals/OneShotExampleModal';
+import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
+import { useToast } from '@/components/ui/use-toast';
+import { LabelTemplateLLMProjection } from '@/types/cluster-unit';
 
 export default function LabelTemplateViewPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const categoryId = searchParams.get('id');
   const authFetch = useAuthFetch();
 
-  const [labelTemplate, setLabelTemplate] = useState<LabelTemplate | null>(null);
+  const [labelTemplate, setLabelTemplate] = useState<LabelTemplateEntity | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  // One-shot example modal state
+  const [oneShotModalOpen, setOneShotModalOpen] = useState(false);
+  const [confirmationDialogOpen, setConfirmationDialogOpen] = useState(false);
+  const [pendingOneShotData, setPendingOneShotData] = useState<Record<string, LabelTemplateLLMProjection> | null>(null);
 
   useEffect(() => {
     if (!categoryId) {
@@ -37,6 +49,48 @@ export default function LabelTemplateViewPage() {
 
     fetchLabelTemplate();
   }, [categoryId, authFetch]);
+
+  // Handler to save one-shot example (with confirmation)
+  const handleSaveOneShotExample = (oneShotData: Record<string, LabelTemplateLLMProjection>) => {
+    setPendingOneShotData(oneShotData);
+    setOneShotModalOpen(false);
+    setConfirmationDialogOpen(true);
+  };
+
+  // Handler to confirm and submit one-shot example to API
+  const handleConfirmOneShotExample = async () => {
+    if (!labelTemplate || !pendingOneShotData) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await labelTemplateApi.UpdateOneShotExample(
+        authFetch,
+        labelTemplate.id,
+        pendingOneShotData
+      );
+
+      // Update local state to reflect the change
+      setLabelTemplate(prev => prev ? { ...prev, ground_truth_one_shot_example: pendingOneShotData } : null);
+
+      toast({
+        title: "Success",
+        description: "One-shot example has been saved successfully",
+      });
+    } catch (error) {
+      console.error('Error saving one-shot example:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save one-shot example",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+      setConfirmationDialogOpen(false);
+      setPendingOneShotData(null);
+    }
+  };
 
   if (!categoryId) {
     return (
@@ -99,13 +153,23 @@ export default function LabelTemplateViewPage() {
   
   console.log("labelTemplate = ", labelTemplate)
 
+  console.log("possible values = ", labelTemplate.labels[0].possible_values)
+
   return (
     <div className="p-8">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">{labelTemplate.category_name}</h1>
-          <p className="mt-2 text-gray-600">{labelTemplate.category_description}</p>
+          <div className="flex justify-between items-start mb-2">
+            <h1 className="text-3xl font-bold text-gray-900">{labelTemplate.label_template_name}</h1>
+            <Button
+              variant="primary"
+              onClick={() => router.push(`/label-template/create?copyFrom=${categoryId}`)}
+            >
+              Edit / Copy
+            </Button>
+          </div>
+          <p className="mt-2 text-gray-600">{labelTemplate.label_template_description}</p>
           <div className="mt-4 flex gap-3">
             {labelTemplate.is_public && (
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800">
@@ -119,6 +183,88 @@ export default function LabelTemplateViewPage() {
             )}
           </div>
         </div>
+        {/* One-Shot Example Section */}
+        <Card className="p-6">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">One-Shot Example</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Configure an example that demonstrates the expected labeling format
+              </p>
+            </div>
+            <Button
+              variant={labelTemplate.ground_truth_one_shot_example ? "secondary" : "primary"}
+              onClick={() => setOneShotModalOpen(true)}
+              size="md"
+            >
+              {labelTemplate.ground_truth_one_shot_example ? "Edit Example" : "Add Example"}
+            </Button>
+          </div>
+
+          {labelTemplate.ground_truth_one_shot_example ? (
+            <div className="space-y-4">
+              {Object.entries(labelTemplate.ground_truth_one_shot_example).map(([labelKey, labelData]) => (
+                <div key={labelKey} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-semibold text-gray-900">{labelData.label}</h3>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      labelData.value ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {labelData.value ? 'True' : 'False'}
+                    </span>
+                  </div>
+
+                  {labelData.per_label_details.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <h4 className="text-sm font-medium text-gray-700">Per-Label Details:</h4>
+                      {labelData.per_label_details.map((detail, idx) => (
+                        <div key={idx} className="flex items-center gap-3 text-sm">
+                          <span className="font-medium text-gray-600">{detail.label}:</span>
+                          <span className="text-gray-900">{String(detail.value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>No one-shot example configured yet.</p>
+              <p className="text-sm mt-1">Click "Add Example" to create one.</p>
+            </div>
+          )}
+        </Card>
+
+        {/* One-Shot Example Modal */}
+        {labelTemplate && (
+          <OneShotExampleModal
+            isOpen={oneShotModalOpen}
+            onClose={() => setOneShotModalOpen(false)}
+            onSave={handleSaveOneShotExample}
+            labelTemplate={labelTemplate}
+            existingData={labelTemplate.ground_truth_one_shot_example}
+          />
+        )}
+
+        {/* Confirmation Dialog */}
+        <ConfirmationDialog
+          isOpen={confirmationDialogOpen}
+          onClose={() => {
+            setConfirmationDialogOpen(false);
+            setPendingOneShotData(null);
+          }}
+          onConfirm={handleConfirmOneShotExample}
+          title={labelTemplate?.ground_truth_one_shot_example ? "Update One-Shot Example?" : "Add One-Shot Example?"}
+          message={
+            labelTemplate?.ground_truth_one_shot_example
+              ? "This will update the one-shot example for this label template. Are you sure?"
+              : "This will add a one-shot example to this label template. Are you sure?"
+          }
+          confirmText="Yes, Continue"
+          cancelText="Cancel"
+          variant="info"
+        />
 
         {/* Labels Section */}
         <Card className="p-6">
@@ -144,7 +290,7 @@ export default function LabelTemplateViewPage() {
                           key={i}
                           className="inline-flex px-2 py-1 rounded-full text-xs bg-blue-50 text-blue-700"
                         >
-                          {value}
+                          {JSON.stringify(value)}
                         </span>
                       ))}
                     </div>
@@ -191,6 +337,8 @@ export default function LabelTemplateViewPage() {
             </div>
           </Card>
         )}
+
+        
       </div>
     </div>
   );

@@ -20,6 +20,13 @@ class CreateExperiment(BaseModel):
     label_template_id: PyObjectId
     reasoning_effort: Optional[str]
 
+class TestPrediction(BaseModel):
+    experiment_id: PyObjectId
+    label_template_id: PyObjectId
+    cluster_unit_ids: Optional[List[PyObjectId] ] = None
+    nr_to_predict: int
+
+
 
 class UpdateExperimentThreshold(BaseModel):
     experiment_id: PyObjectId
@@ -33,11 +40,14 @@ class ExperimentId(BaseModel):
 class ParsePrompt(BaseModel):
     prompt_id: PyObjectId
     cluster_unit_id: PyObjectId
+    label_template_id: PyObjectId
+
 
 
 class ParseRawPrompt(BaseModel):
     prompt: str
     cluster_unit_id: PyObjectId
+    label_template_id: PyObjectId
 
 
 class CreatePrompt(BaseModel):

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuthFetch } from '@/utils/fetch';
-import { experimentApi, modelsApi } from '@/lib/api';
+import { experimentApi, labelTemplateApi, modelsApi } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 import type { ClusterUnitEntity } from '@/types/cluster-unit';
 import { ThreadFromUnit } from '@/components/thread/ThreadFromUnit';
@@ -15,9 +15,11 @@ import {
   ActionBar,
   StatusMessages,
 } from '@/components/experiment-create';
-import { ModelInfo } from '@/types/model';
-import { Button } from '@/components/ui';
+import { ModelInfo, ReasoningEffort, ReasoningEffortType } from '@/types/model';
+import { Button, InfoTooltip } from '@/components/ui';
 import { PromptEntity } from '@/types/prompt';
+import { LabelTemplateSelector } from '@/components/experiment-create/LabelTemplateSelector';
+import { LabelTemplateEntity } from '@/types/label-template';
 
 
 
@@ -27,6 +29,7 @@ export default function CreateExperimentPage() {
   const router = useRouter();
   const { toast } = useToast();
   const scraperClusterId = searchParams.get('scraper_cluster_id');
+  
 
   // Prompt state
   const [systemPrompt, setSystemPrompt] = useState('');
@@ -35,11 +38,16 @@ export default function CreateExperimentPage() {
   const [prompts, setPrompts] = useState<PromptEntity[]>([]);
   const [selectedPromptId, setSelectedPromptId] = useState<string>('');
 
+  // LabelTemplate state
+
+  const [selectedLabelTemplateId, setSelectedLabelTemplateId] = useState<string>("")
+  
+
   // Model and runs configuration
   const [selectedModelInfo, setSelectedModelInfo] = useState<ModelInfo | undefined>();
   const [runsPerUnit, setRunsPerUnit] = useState<number>(3);
   const [thresholdRunsPerUnits, setThresholdRunsPerUnit] = useState<number>(1);
-  const [reasoningEffort, setReasoningEffort] = useState<string>('medium');
+  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffortType>('medium');
 
   // Cluster unit state
   const [clusterUnits, setClusterUnits] = useState<ClusterUnitEntity[]>([]);
@@ -83,6 +91,8 @@ export default function CreateExperimentPage() {
     fetchSampleUnits();
   }, [scraperClusterId, authFetch]);
 
+  
+
   // Fetch prompts on mount
   useEffect(() => {
     async function fetchPrompts() {
@@ -100,41 +110,51 @@ export default function CreateExperimentPage() {
     fetchPrompts();
   }, [authFetch]);
 
+  
+
+  
+
   // Auto-parse prompt when cluster unit or prompt changes
   const autoParsePrompt = async () => {
-    if (!rawPrompt.trim() || !selectedPromptId || clusterUnits.length === 0) return;
+    if (!rawPrompt.trim() || !selectedPromptId || !selectedLabelTemplateId || clusterUnits.length === 0) return;
 
     try {
       setSuccess(null);
       const parsed = await experimentApi.parseRawPrompt(
         authFetch,
         clusterUnits[currentUnitIndex].id,
+        selectedLabelTemplateId,
         rawPrompt
       );
+
       setParsedPrompt(parsed);
     } catch (err) {
+      toast({
+        title: "Warning",
+        description: "Auto-parse failed. You can try parsing manually.",
+        variant: "destructive",
+      });
       console.error('Auto-parse failed:', err);
     }
   };
 
+  // Auto-parse when cluster unit, prompt, or label template changes
+  useEffect(() => {
+    if (rawPrompt.trim() && selectedPromptId && selectedLabelTemplateId && clusterUnits.length > 0) {
+      autoParsePrompt();
+    }
+  }, [currentUnitIndex, selectedPromptId, selectedLabelTemplateId]);
+
   // Handle cluster unit navigation
   const handlePrevUnit = () => {
     if (currentUnitIndex > 0) {
-      const newIndex = currentUnitIndex - 1;
-      setCurrentUnitIndex(newIndex);
-      if (selectedPromptId && rawPrompt) {
-        setTimeout(autoParsePrompt, 0);
-      }
+      setCurrentUnitIndex(currentUnitIndex - 1);
     }
   };
 
   const handleNextUnit = () => {
     if (currentUnitIndex < clusterUnits.length - 1) {
-      const newIndex = currentUnitIndex + 1;
-      setCurrentUnitIndex(newIndex);
-      if (selectedPromptId && rawPrompt) {
-        setTimeout(autoParsePrompt, 0);
-      }
+      setCurrentUnitIndex(currentUnitIndex + 1);
     }
   };
 
@@ -142,9 +162,6 @@ export default function CreateExperimentPage() {
     const unitIndex = clusterUnits.findIndex(u => u.id === unitId);
     if (unitIndex !== -1) {
       setCurrentUnitIndex(unitIndex);
-      if (selectedPromptId && rawPrompt) {
-        setTimeout(autoParsePrompt, 0);
-      }
     }
   };
 
@@ -156,13 +173,12 @@ export default function CreateExperimentPage() {
       setSystemPrompt(selectedPrompt.system_prompt || '');
       setRawPrompt(selectedPrompt.prompt || '');
       setParsedPrompt('');
-
-      // Auto-parse with current cluster unit data
-      if (clusterUnits.length > 0) {
-        setTimeout(autoParsePrompt, 0);
-      }
     }
   };
+
+  
+
+  
 
   const handleParsePrompt = async () => {
     if (!rawPrompt.trim()) {
@@ -182,6 +198,7 @@ export default function CreateExperimentPage() {
       const parsed = await experimentApi.parseRawPrompt(
         authFetch,
         clusterUnits[currentUnitIndex].id,
+        selectedLabelTemplateId,
         rawPrompt
       );
 
@@ -280,6 +297,14 @@ export default function CreateExperimentPage() {
         variant: "destructive"
       });
     }
+
+    if (!selectedLabelTemplateId) {
+        return toast({
+          title: "Error",
+          description: "No scraper cluster ID is available!",
+          variant: "destructive"
+      });
+    }
     
     console.log("selectedModel = ", selectedModelInfo.id)
     experimentApi.createExperiment(
@@ -289,6 +314,7 @@ export default function CreateExperimentPage() {
       selectedModelInfo?.id,
       runsPerUnit,
       thresholdRunsPerUnits,
+      selectedLabelTemplateId,
       reasoningEffort
     );
     router.push(`/experiments?scraper_cluster_id=${scraperClusterId}`);
@@ -299,8 +325,8 @@ export default function CreateExperimentPage() {
     setSelectedModelInfo(modelInfo);
     console.log("modelInfo.id = ", modelInfo.id)
     if (!modelInfo.supports_reasoning) {
-      setReasoningEffort('unavailable')
-    } else if (modelInfo.supports_reasoning && reasoningEffort === 'unavailable') {
+      setReasoningEffort('none')
+    } else if (modelInfo.supports_reasoning && reasoningEffort === 'none') {
         setReasoningEffort('medium')
 
     }
@@ -381,11 +407,18 @@ export default function CreateExperimentPage() {
                   isLoading={isLoadingPrompts}
                 />
               </div>
+              <div className="flex-1">
+                <LabelTemplateSelector
+                  selectedLabelTemplateId={selectedLabelTemplateId}
+                  setSelectedLabelTemplateId={setSelectedLabelTemplateId}
+                />
+              </div>
 
               {/* Runs Per Unit Selector */}
               <div className="flex-1">
-                <label htmlFor="runsSelector" className="block text-sm font-bold text-gray-900 mb-2">
+                <label htmlFor="runsSelector" className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-2">
                   Runs per Unit
+                  <InfoTooltip text="Number of times the AI model will analyze each cluster unit. Multiple runs help ensure consistency and reliability in the results." />
                 </label>
                 <select
                   id="runsSelector"
@@ -403,8 +436,9 @@ export default function CreateExperimentPage() {
 
               {/* Threshold Selector */}
               <div className="flex-1">
-                <label htmlFor="thresholdSelector" className="block text-sm font-bold text-gray-900 mb-2">
+                <label htmlFor="thresholdSelector" className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-2">
                   Threshold
+                  <InfoTooltip text="Minimum number of runs that must agree on a label for it to be considered valid. For example, with 3 runs and threshold 2, at least 2 runs must agree." />
                 </label>
                 <select
                   id="thresholdSelector"
@@ -424,20 +458,21 @@ export default function CreateExperimentPage() {
 
               {/* Reasoning Effort Selector */}
               <div className="flex-1">
-                <label htmlFor="reasoningSelector" className="block text-sm font-bold text-gray-900 mb-2">
+                <label htmlFor="reasoningSelector" className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-2">
                   Reasoning Effort
+                  <InfoTooltip text="Controls how deeply the AI model thinks through its analysis. Higher effort provides more thorough reasoning but takes longer. Only available for models that support extended thinking." />
                 </label>
                 <select
                   id="reasoningSelector"
                   value={reasoningEffort}
-                  onChange={(e) => setReasoningEffort(e.target.value)}
+                  onChange={(e) => setReasoningEffort(e.target.value as ReasoningEffortType)}
                   disabled={!selectedModelInfo?.supports_reasoning}
                   className="w-full h-12 px-4 py-2 border-2 border-gray-200 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:border-blue-500 cursor-pointer transition-all disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {!selectedModelInfo?.supports_reasoning ? (
-                    <option value="unavailable">Unavailable</option>
+                    <option value="none">Unavailable</option>
                   ) : (
-                    ['low', 'medium', 'high'].map((effort) => (
+                    [...ReasoningEffort].map((effort) => (
                       <option key={effort} value={effort}>
                         {effort.charAt(0).toUpperCase() + effort.slice(1)}
                       </option>
@@ -455,8 +490,8 @@ export default function CreateExperimentPage() {
                 onCreateExperiment={handleCreateExperiment}
                 isParsing={isLoading}
                 isSaving={isSaving}
-                canParse={!!rawPrompt.trim()}
-                canSave={!!rawPrompt.trim()}
+                canParse={!!rawPrompt.trim() && !!selectedLabelTemplateId}
+                canSave={!!rawPrompt.trim() && !!selectedLabelTemplateId}
                 canCreate={!!selectedPromptId && !!scraperClusterId}
               />
             </div>

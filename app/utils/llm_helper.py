@@ -19,6 +19,9 @@ class LlmHelper:
         for key, value in kwargs.items():
             if isinstance(value, list):
                 value = json.dumps(value, ensure_ascii=False)
+            elif value is None:
+                # skip for values that are none
+                continue
             else:
                 value = value
             # prompt = prompt.replace(f'{{{key}}}', value)
@@ -72,6 +75,9 @@ class LlmHelper:
         burst_capacity: Optional[int]=25,
         skip_rate_limit: bool = False  # For testing or priority requests
         ):
+
+        if "free" in model:
+            requests_per_minute: Optional[int] = 20,
         # Get or create rate limiter for this API key
         # This returns the SAME rate limiter instance for all coroutines using this API key
         if not skip_rate_limit:
@@ -94,11 +100,13 @@ class LlmHelper:
               {'role': 'system', 'content': system_prompt},
               {'role': 'user', 'content': prompt} ]
             
+            logger.info("messages = ", messages)
+            
             kwargs = {
                     'model': model,
                     'messages': messages
                 }
-            if reasoning_effort:
+            if reasoning_effort and reasoning_effort != "none":
                     kwargs['reasoning_effort'] = reasoning_effort
             response =  await llm.chat.completions.create(**kwargs)
             return response

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ViewerContent } from '@/components/viewer/ViewerContent';
 import { clusterApi, experimentApi } from '@/lib/api';
-import type { ClusterUnitEntity, ClusterUnitEntityCategory } from '@/types/cluster-unit';
+import type { ClusterUnitEntity } from '@/types/cluster-unit';
 import { useAuthFetch } from '@/utils/fetch';
 import { PromptEntity } from '@/types/prompt';
 import { toast } from '@/components/ui/use-toast';
@@ -55,26 +55,39 @@ export default function ViewerPageContent() {
     loadClusterUnits();
   }, [scraperClusterId, authFetch])
 
-  const handleClusterUnitGroundTruthUpdate =(clusterUnitEntityId: string, category: keyof ClusterUnitEntityCategory, newValue: boolean) => {
-      if (!clusterUnits || !clusterUnitEntityId) return;
-
-        setClusterUnits((prev) => {
-          if (!prev) return prev;
-
-          return prev.map((unit) => {
-            if (unit.id === clusterUnitEntityId && unit.ground_truth) {
-              return {
-                ...unit,
-                ground_truth: {
-                  ...unit.ground_truth,
-                  [category]: newValue,
-                },
-              };
-            }
-            return unit;
-          });
-        });
+  const handleClusterUnitGroundTruthUpdate =(clusterUnitEntityId: string, category: string, newValue: boolean) => {
+    if (!clusterUnits || !clusterUnitEntityId) {
+      return toast({
+        title: "Error",
+        description: "No clusterUnitEntity or clusterUnitEntityId is selected!",
+        variant: "destructive"
+      });
     }
+
+    if (!labelTemplateEntity) {
+      return toast({
+        title: "Error",
+        description: "No labelTemplateEntity is selected!",
+        variant: "destructive"
+      });
+    }
+    if (!labelTemplateEntity.labels.find(field=> field.label === category)){
+        return toast({
+          title: "Error",
+          description: `category: "${category}" is not part of ${labelTemplateEntity.labels}`,
+          variant: "destructive"
+      });
+    }
+    // we set the ground truth value of the cluster unit ground truth :TODO currently only works with booleans
+    setClusterUnits(
+      produce((draft) => {
+        const unit = draft.find(u=> u.id === clusterUnitEntityId);
+        if (unit && unit.ground_truth && unit.ground_truth[labelTemplateEntity.id] && unit.ground_truth[labelTemplateEntity.id].values[category]) {
+          unit.ground_truth[labelTemplateEntity.id].values[category].value = newValue
+        }
+        })
+    );
+  }
 
     // Fetch prompts on mount
   useEffect(() => {

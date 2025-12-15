@@ -3,6 +3,7 @@ import { Textarea } from '../ui/Textarea';
 import { Card } from '../ui/Card';
 import { ThreadFromUnit } from '../thread/ThreadFromUnit';
 import { ClusterUnitEntity } from '@/types/cluster-unit';
+import { PromptVariablesPanel } from './PromptVariablesPanel';
 
 interface PromptEditorProps {
   currentUnit: ClusterUnitEntity;
@@ -25,6 +26,9 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
 }) => {
   return (
     <div className={`space-y-6 ${className}`}>
+      {/* Variables Panel - Horizontal Bar */}
+      <PromptVariablesPanel rawPrompt={rawPrompt} />
+
       {/* Raw and Parsed Prompts - Two Column Layout */}
       <div className="grid grid-cols-2 gap-6">
         {/* Left: Raw Prompt */}
@@ -33,7 +37,7 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
           label="Raw Prompt (with variables)"
           value={rawPrompt}
           onChange={(e) => onRawPromptChange(e.target.value)}
-          placeholder="Enter your prompt here with variables like {conversation_thread}, {final_reddit_message}..."
+          placeholder="Enter your prompt here with variables like {{conversation_thread}}, {{final_reddit_author}}..."
           className="h-[400px] font-mono"
           variant="primary"
         />
@@ -46,7 +50,7 @@ export const PromptEditor: React.FC<PromptEditorProps> = ({
           </div>
         )}
 
-        
+
       </div>
         <div className="grid grid-cols-2 gap-6">
 

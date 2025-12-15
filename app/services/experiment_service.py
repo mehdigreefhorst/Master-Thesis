@@ -1,5 +1,6 @@
 # Experiment_service
 import sys
+sys.path.append("../..")
 
 import asyncio
 import json
@@ -8,9 +9,10 @@ from collections import defaultdict
 import math
 
 from pydantic import BaseModel
-from app.database.entities.cluster_unit_entity import ClusterUnitEntityPredictedCategory, PredictionCategory, PredictionCategoryTokens, ClusterUnitEntity, ClusterUnitEntityCategory, TokenUsageAttempt
+from app.database.entities.cluster_unit_entity import ClusterUnitEntityPredictedCategory, PredictionCategoryTokens, ClusterUnitEntity, ClusterUnitEntityCategory, TokenUsageAttempt
 from app.database import get_cluster_unit_repository, get_experiment_repository
-from app.database.entities.experiment_entity import AggregateResult, ExperimentEntity, PredictionResult, PrevelanceUnitDistribution
+from app.database.entities.experiment_entity import ExperimentEntity, PredictionResult, PrevelanceUnitDistribution
+from app.database.entities.label_template import LabelTemplateEntity
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.database.entities.user_entity import UserEntity
@@ -30,7 +32,8 @@ class ExperimentService:
 
     @staticmethod
     async def predict_categories_cluster_units(
-        experiment_entity: ExperimentEntity, 
+        experiment_entity: ExperimentEntity,
+        label_template_entity: LabelTemplateEntity,
         cluster_unit_entities: List[ClusterUnitEntity], 
         prompt_entity: PromptEntity, 
         max_concurrent: int=1000):
@@ -49,6 +52,7 @@ class ExperimentService:
         if cluster_unit_entities_remain:
             predicted_categories = await ExperimentService.create_predicted_categories(
                 experiment_entity=experiment_entity,
+                label_template_entity=label_template_entity,
                 prompt_entity=prompt_entity,
                 cluster_unit_enities=cluster_unit_entities_remain, 
                 max_concurrent=max_concurrent)
@@ -59,7 +63,7 @@ class ExperimentService:
         
             cluster_unit_entities_done.extend(cluster_unit_entities_remain)
         
-        ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities_done, experiment_entity)
+        ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities_done, experiment_entity, label_template_entity=label_template_entity)
 
         # Calculate and store aggregate token statistics
         ExperimentService.calculate_and_store_token_statistics(cluster_unit_entities_done, experiment_entity)
@@ -71,6 +75,7 @@ class ExperimentService:
     @staticmethod
     async def create_predicted_categories(
         experiment_entity: ExperimentEntity,
+        label_template_entity: LabelTemplateEntity,
         prompt_entity: PromptEntity,
         cluster_unit_enities: List[ClusterUnitEntity],
         max_concurrent=1000,
@@ -96,6 +101,7 @@ class ExperimentService:
                         # This will also apply rate limiting internally
                         result = await ExperimentService.predict_single_run_cluster_unit(
                             experiment_entity=experiment_entity,
+                            label_template_entity=label_template_entity,
                             cluster_unit_entity=cluster_unit_entity,
                             open_router_api_key=open_router_api_key,
                             prompt_entity=prompt_entity,
@@ -187,6 +193,7 @@ class ExperimentService:
     @staticmethod
     async def predict_single_run_cluster_unit(
         experiment_entity: ExperimentEntity,
+        label_template_entity: LabelTemplateEntity,
         cluster_unit_entity: ClusterUnitEntity,
         open_router_api_key: str,
         prompt_entity: PromptEntity,
@@ -209,7 +216,7 @@ class ExperimentService:
         if all_attempts is None:
             all_attempts = []
 
-        parsed_prompt = ExperimentService.parse_classification_prompt(cluster_unit_entity, prompt_entity)
+        parsed_prompt = ExperimentService.parse_classification_prompt(cluster_unit_entity, prompt_entity, label_template_entity)
 
         # Make the LLM call
         response = await LLMService.send_to_model(
@@ -225,7 +232,7 @@ class ExperimentService:
 
         # Try to parse the prediction (this is what might fail)
         try:
-            prediction_category_tokens = LLMService.response_to_prediction_tokens(response, all_attempts)
+            prediction_category_tokens = LLMService.response_to_prediction_tokens(response=response, experiment_entity=experiment_entity, label_template_entity=label_template_entity, all_attempts=all_attempts)
 
             # Record this successful attempt
             all_attempts.append(TokenUsageAttempt(
@@ -257,7 +264,9 @@ class ExperimentService:
 
     @staticmethod
     def convert_total_predicted_into_aggregate_results(cluster_unit_entities: List[ClusterUnitEntity], 
-                                                       experiment_entity: ExperimentEntity) -> int:
+                                                       experiment_entity: ExperimentEntity,
+                                                       label_template_entity: LabelTemplateEntity) -> int:
+        """:TODO currently it expects that the format of the predicted categories is True or False. For other variable types make the implementation"""
         
         prevelance_distribution_list_all_entities = []
         for cluster_unit_entity in cluster_unit_entities:
@@ -268,12 +277,12 @@ class ExperimentService:
             # Then we increase the counter of aggregate results with 1. This allows us to track how many runs have predicted that label.
             
             for prediction_category_name, count_value in prediction_counter_single_unit.items():
-                prediction_category_prediction_result: PredictionResult = getattr(experiment_entity.aggregate_result, prediction_category_name)
+                prediction_category_prediction_result: PredictionResult = experiment_entity.aggregate_result.labels.get(prediction_category_name)
                 count_key = str(count_value)  # Convert to string for MongoDB compatibility
                 prediction_category_prediction_result.prevelance_distribution[count_key] = prediction_category_prediction_result.prevelance_distribution.get(count_key, 0) + 1
 
                 # Now we add the ground truth to the prediction result as a counter
-                ground_truth_value: bool = getattr(cluster_unit_entity.ground_truth, prediction_category_name)
+                ground_truth_value: bool = cluster_unit_entity.get_value_of_ground_truth_variable(label_template_id=label_template_entity.id, variable_name=prediction_category_name)
                 prediction_category_prediction_result.individual_prediction_truth_label_list.append(PrevelanceUnitDistribution(runs_predicted_true=count_key,
                                                                                                                                ground_truth=ground_truth_value))
                 if ground_truth_value:
@@ -285,14 +294,8 @@ class ExperimentService:
     def create_prediction_counter_from_cluster_unit(cluster_unit_entity: ClusterUnitEntity, experiment_entity: ExperimentEntity) -> Dict[str, int]:
         """counts how often each of the classes in the prediction category are true accross the runs of the prediction.
         Works in a way that allows for changing of the prediction category variables or naming"""
-        tokens_used = 0
-        prediction_counter = defaultdict(int)
-        for prediction_category in cluster_unit_entity.predicted_category[experiment_entity.id].predicted_categories:
-            prediction_category
-            for variable_name in prediction_category.category_field_names():
-                value = getattr(prediction_category, variable_name)
-                prediction_counter[variable_name] += 1 if value else 0
-        return prediction_counter
+        return cluster_unit_entity.predicted_category[experiment_entity.id].get_aggregate_runs_prediction_counter()
+
 
     @staticmethod
     def calculate_and_store_token_statistics(
@@ -383,24 +386,41 @@ class ExperimentService:
         logger.info(f"  Tokens from retries: {experiment_entity.token_statistics.tokens_from_retries}")
 
     @staticmethod
-    def parse_classification_prompt(cluster_unit_entity: ClusterUnitEntity, prompt_entity: PromptEntity):
+    def parse_classification_prompt(cluster_unit_entity: ClusterUnitEntity, prompt_entity: PromptEntity, label_template_entity: LabelTemplateEntity):
         if not prompt_entity.category == PromptCategory.Classify_cluster_units:
             raise Exception("The prompt is of the wrong type!!!")
+        prompt = prompt_entity.prompt
+
+        # prompt += label_template_entity.create_llm_prompt_explanation_with_response_format()
 
         formatted_prompt = ExperimentService.parse_prompt_cluster_unit_entity(
             cluster_unit_entity=cluster_unit_entity,
-            prompt=prompt_entity.prompt,
+            prompt=prompt,
+            label_template_entity=label_template_entity
             )
 
         return formatted_prompt
     
     @staticmethod
-    def parse_prompt_cluster_unit_entity(cluster_unit_entity: ClusterUnitEntity, prompt: str):
+    def parse_prompt_cluster_unit_entity(cluster_unit_entity: ClusterUnitEntity, prompt: str, label_template_entity: LabelTemplateEntity):
+        """creates all the variables that could be in the prompt. Then subsequenty they are added into the prompt, if they are given with {{variable_name}}"""
+        label_template_one_shot_example = json.dumps(label_template_entity.create_one_shot_llm_prompt(), indent=4)
+        label_template_variable_expected_output = label_template_entity.create_prompt_variable_expected_output()
+        label_template_variable_descriptions= label_template_entity.create_prompt_variable_description()
+        label_template_description = label_template_entity.create_prompt_template_description()
+        label_template_name = label_template_entity.create_prompt_template_name()
+        # prompt += label_template_entity.create_llm_prompt_explanation_with_response_format()
+
         formatted_prompt = LlmHelper.custom_formatting(
             prompt=prompt,
             conversation_thread=ExperimentService.parse_conversation_thread(cluster_unit_entity.thread_path_text, cluster_unit_entity.thread_path_author),
             final_reddit_author=cluster_unit_entity.author,
-            final_reddit_message=cluster_unit_entity.text)
+            final_reddit_message=cluster_unit_entity.text,
+            label_template_name=label_template_name,
+            label_template_description=label_template_description,
+            label_template_variable_descriptions=label_template_variable_descriptions,
+            label_template_variable_expected_output=label_template_variable_expected_output,
+            label_template_one_shot_example=label_template_one_shot_example)
 
         return formatted_prompt
     
@@ -494,7 +514,7 @@ class ExperimentService:
                                      sample_entity: SampleEntity,
                                      user_threshold: Optional[float] = None) -> List[PredictionMetric]:
         total_prediction_metrics: PredictionMetric = []
-        for prediction_result_variable_name in experiment_entity.aggregate_result.field_names():
+        for prediction_result_variable_name in experiment_entity.aggregate_result.labels:
             
             prediction_metric = ExperimentService.calculate_single_prediction_metric(experiment_entity=experiment_entity,
                                                                                      prediction_result_variable_name=prediction_result_variable_name,
@@ -541,7 +561,7 @@ class ExperimentService:
                                            user_threshold: Optional[float] = None) -> PredictionMetric:
         """calculates everything that is needed for the prediction metric to be created and returns that"""
         formatted_user_threshold = ExperimentService.get_user_threshold(experiment_entity=experiment_entity, user_threshold=user_threshold)
-        prediction_result: PredictionResult = getattr(experiment_entity.aggregate_result, prediction_result_variable_name)
+        prediction_result: PredictionResult = experiment_entity.aggregate_result.labels.get(prediction_result_variable_name)
         total_times_predicted = ExperimentService.calculate_total_times_predicted(prediction_result)
         total_sample_runs = sample_entity.sample_size * experiment_entity.runs_per_unit
         
@@ -621,6 +641,7 @@ if __name__ == "__main__":
         scraper_cluster_id=PyObjectId(ObjectId()),
         prompt_id=PyObjectId(ObjectId()),
         sample_id=PyObjectId(ObjectId()),
+        label_template_id=PyObjectId(ObjectId),
         model="gpt-4o-mini",  # Use a smaller model for testing
         runs_per_unit=2,  # Only 2 runs for testing
         aggregate_result=None

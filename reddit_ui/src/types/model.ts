@@ -140,3 +140,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     description: 'Fast and efficient Gemini model'
   }
 ];
+
+
+  export const ReasoningEffort = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'auto'] as const;
+  export type ReasoningEffortType = typeof ReasoningEffort[number];

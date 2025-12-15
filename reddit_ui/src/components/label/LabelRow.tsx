@@ -6,7 +6,6 @@ import { ReasoningIcon } from '../ui/ReasoningIcon';
 import { Button } from '../ui';
 import { clusterApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
-import { ClusterUnitEntityCategory } from '@/types/cluster-unit';
 
 export interface LabelResult {
   count: number; // How many runs matched (0-3)
@@ -15,16 +14,18 @@ export interface LabelResult {
 }
 
 interface LabelRowProps {
-  labelName: keyof ClusterUnitEntityCategory;
+  labelName: string;
+  labelTemplateId: string;
   groundTruth: boolean | null; // true = ✓, false = ✗, null = -
   results: (LabelResult | null)[]; // null means no data (—)
   cluster_unit_id: string;
-  handleClusterUnitGroundTruthUpdate?: (clusterUnitEntityId: string, category: keyof ClusterUnitEntityCategory, newValue: boolean) => void;
+  handleClusterUnitGroundTruthUpdate?: (clusterUnitEntityId: string, category: string, newValue: boolean) => void;
   className?: string;
 }
 
 export const LabelRow: React.FC<LabelRowProps> = ({
   labelName,
+  labelTemplateId,
   groundTruth,
   results,
   cluster_unit_id,
@@ -38,10 +39,10 @@ export const LabelRow: React.FC<LabelRowProps> = ({
     results.map(() => false)
   );
 
-  // Update newGroundTruth when groundTruth or cluster_unit_id changes
+  // Update newGroundTruth when groundTruth or cluster_unit_id or labelTemplateId changes
   useEffect(() => {
     setNewGroundTruth(groundTruth);
-  }, [groundTruth, cluster_unit_id]);
+  }, [groundTruth, cluster_unit_id, labelTemplateId]);
 
   const toggleOpen = (index: number) => {
     setOpenStates(prev => prev.map((state, i) => i === index ? !state : state));
@@ -50,7 +51,7 @@ export const LabelRow: React.FC<LabelRowProps> = ({
   const updateGroundTruth = () => {
     const newBool = !newGroundTruth
     setNewGroundTruth(newBool);
-    clusterApi.updateClusterUnitGroundTruth(authFetch, cluster_unit_id, labelName, newBool);
+    clusterApi.updateClusterUnitGroundTruth(authFetch, cluster_unit_id, labelTemplateId, labelName, newBool);
 
     // Update the cached data in the parent component
     if (handleClusterUnitGroundTruthUpdate) {

@@ -42,6 +42,7 @@ export function useAuthFetch() {
       const access_token = sessionStorage.getItem("access_token");
       if (!access_token) {
         router.push("/login");
+        throw new Error("No access token available");
       }
 
       const requestInit: RequestInit = {

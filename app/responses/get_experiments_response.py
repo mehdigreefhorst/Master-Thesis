@@ -674,7 +674,7 @@ class GetExperimentsResponse(BaseModel):
     overall_accuracy: float
     overall_kappa: float
     prediction_metrics: List[PredictionMetric]
-    reasoning_effort: Literal[None, "low", "medium", "high", "auto"]
+    reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh", "auto"]
     token_statistics: Optional[ExperimentTokenStatistics] = None
     experiment_cost: Optional[ExperimentCost] = None
     status: StatusType

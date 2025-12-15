@@ -85,12 +85,16 @@ class RedditScraperAPI:
         response.raise_for_status()
         response_data = response.json()
         full_submission_post =  response_data[0] # this is the post of the permalink that is connected to it, it is exactly the same as the post
+        with open("data/comments_result_full_submission_post.json", "w") as f:
+            f.write(json.dumps(full_submission_post, indent=4))
         full_post = RedditResponse.model_validate(full_submission_post).get_posts()[0]
         comments_data = response_data[1]
         print(f"Fetching comments for permalink: {permalink}")
         print(comments_data.keys())
         with open("data/comments_result.json", "w") as f:
             f.write(json.dumps(comments_data, indent=4))
+        
+        
         
          # Parse comments and handle 'more' recursively
         comments = self._process_comments_recursively(comments_data, permalink)
@@ -249,9 +253,9 @@ class RedditScraperAPI:
         )
    
 
-    def get_post_comments(self, reddit_post: RedditPost) -> Tuple[RedditPost, List[RedditComment]]:
+    def get_post_comments(self, permalink: str) -> Tuple[RedditPost, List[RedditComment]]:
         """retrieves the post and comments. The retrieved post is more extensive then the reddit_post as parameter"""
-        full_post, comments = self.search_post_comments(reddit_post.permalink)
+        full_post, comments = self.search_post_comments(permalink)
         return full_post, comments
 
 
@@ -291,10 +295,11 @@ class RedditAPIManager:
         return 
                 
     
-    def scrape_comments_of_post(self, reddit_post: RedditPost):
+    def scrape_comments_of_post(self, permalink: str):
+        """permalink of a reddit post"""
         # TODO: here we would like a try and except block because it might fail because of limits
         
-        full_post, comments = self.scraper.get_post_comments(reddit_post)
+        full_post, comments = self.scraper.get_post_comments(permalink)
 
         return full_post, comments
 

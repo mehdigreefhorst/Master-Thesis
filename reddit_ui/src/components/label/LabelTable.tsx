@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { LabelRow, LabelResult } from './LabelRow';
-import { ClusterUnitEntityCategory } from '@/types/cluster-unit';
 
 export interface ModelColumn {
   name: string;
@@ -11,7 +10,7 @@ export interface ModelColumn {
 }
 
 export interface LabelData {
-  labelName: keyof ClusterUnitEntityCategory;
+  labelName: string;
   groundTruth: boolean | null;
   results: (LabelResult | null)[];
 }
@@ -24,11 +23,11 @@ export interface PerformanceStats {
 
 interface LabelTableProps {
   models: ModelColumn[];
-  labels: LabelData[];
-  stats?: PerformanceStats[];
+  labels: LabelData[] | null;
+  stats?: PerformanceStats[] | null;
   cluster_unit_id: string;
-  handleClusterUnitGroundTruthUpdate?: (clusterUnitEntityId: string, category: keyof ClusterUnitEntityCategory, newValue: boolean) => void;
-  
+  labelTemplateId: string;
+  handleClusterUnitGroundTruthUpdate?: (clusterUnitEntityId: string, category: string, newValue: boolean) => void;
   className?: string;
 }
 
@@ -37,6 +36,7 @@ export const LabelTable: React.FC<LabelTableProps> = ({
   labels,
   stats,
   cluster_unit_id,
+  labelTemplateId,
   handleClusterUnitGroundTruthUpdate,
   className = ''
 }) => {
@@ -49,7 +49,7 @@ export const LabelTable: React.FC<LabelTableProps> = ({
   // console.log("cluster_unit_id = ")
   // console.log(cluster_unit_id)
   return (
-    <div className={`overflow-hidden ${className}`}>
+    <div className={`${className}`}>
       <table className="w-full table-fixed border-separate border-spacing-0 bg-white rounded-lg shadow-(--shadow-sm)">
         <thead>
           <tr>
@@ -73,16 +73,17 @@ export const LabelTable: React.FC<LabelTableProps> = ({
           </tr>
         </thead>
         <tbody>
-          {labels.map((label, index) => (
+          {labels && (labels.map((label, index) => (
             <LabelRow
               key={index}
               labelName={label.labelName}
+              labelTemplateId={labelTemplateId}
               groundTruth={label.groundTruth}
               results={label.results}
               cluster_unit_id={cluster_unit_id}
               handleClusterUnitGroundTruthUpdate={handleClusterUnitGroundTruthUpdate}
             />
-          ))}
+          )))}
           {stats && (
             <tr className="bg-gray-50">
               <td

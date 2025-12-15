@@ -86,8 +86,9 @@ class ScraperService(BaseModel):
             # skip the posts that are already scraped
             if reddit_post.id in reddit_post_ids:
                 continue
-            full_reddit_post, reddit_comments = reddit_scraper_manager.scrape_comments_of_post(reddit_post)
+            full_reddit_post, reddit_comments = reddit_scraper_manager.scrape_comments_of_post(reddit_post.permalink)
             post_entity = PostService().create_reddit_post_entity(full_reddit_post, reddit_comments)
+            
             PostService().insert_into_db(post_entity)
             next_keyword.found_post_ids.append(post_entity.id)
             get_scraper_repository().append_postid_to_subreddit_keyword_search(scraper_entity.id, next_subreddit.subreddit, next_keyword.keyword, post_entity.id)

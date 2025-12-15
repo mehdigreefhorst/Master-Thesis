@@ -4,15 +4,13 @@
 
 import { useAuthFetch } from "@/utils/fetch";
 import type { KeywordSearches, ScraperClusterEntity, ScraperEntity } from "@/types/scraper-cluster";
-import { ScraperClusterTable } from "@/components/scraper";
-import { ClusterUnitEntity, ClusterUnitEntityCategory } from "@/types/cluster-unit";
+import { ClusterUnitEntity, LabelTemplateLLMProjection } from "@/types/cluster-unit";
 import { SampleEntity } from "@/types/sample";
 import { UserProfile } from "@/types/user";
 import { ModelInfo } from "@/types/model";
 import { PromptEntity } from "@/types/prompt";
-import { ExperimentData } from "@/components/experiments/ExperimentCard";
 import { MediaStrategySkipType } from "@/types/cluster-prep";
-import { CreateLabelTemplateRequest, LabelTemplate } from "@/types/label-template";
+import { CreateLabelTemplateRequest, LabelTemplateEntity } from "@/types/label-template";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || 'http://localhost:5001';
 
@@ -26,6 +24,11 @@ class ApiError extends Error {
     this.name = 'ApiError';
   }
 }
+
+interface messageError{
+    error?: string
+    message?: string
+  }
 
 /**
  * Get JWT token from localStorage
@@ -98,14 +101,16 @@ export const clusterApi = {
   },
   async updateClusterUnitGroundTruth(
     authFetch: ReturnType<typeof useAuthFetch>,
-    cluster_entity_id: string,
-    groundTruthCategory: keyof ClusterUnitEntityCategory,
+    cluster_unit_entity_id: string,
+    labelTemplateId: string,
+    groundTruthCategory: string,
     groundTruth: boolean
   ){
     return authFetch(`/clustering/update_ground_truth`,
       {method: "PUT",
         body: {
-          "cluster_entity_id": cluster_entity_id,
+          "cluster_unit_entity_id": cluster_unit_entity_id,
+          "label_template_id": labelTemplateId,
           "ground_truth_category": groundTruthCategory,
           "ground_truth": groundTruth}})
   },
@@ -414,19 +419,29 @@ export const experimentApi = {
     });
   },
 
+  
+
   async parseRawPrompt(
     authFetch: ReturnType<typeof useAuthFetch>,
     clusterUnitId: string,
+    labelTemplateId: string,
     prompt: string,
   ): Promise<string> {
     const data =  await authFetch('/experiment/parse_raw_prompt', {
       method: 'POST',
       body: {
         cluster_unit_id: clusterUnitId,
+        label_template_id: labelTemplateId,
         prompt: prompt,
       }
     });
-    return await data.json()
+    const response = await data.json()
+    if (response?.error) {
+      throw response.error
+    } else if (response?.message) {
+      throw response.message
+    }
+    return response
 
     
   },
@@ -467,6 +482,7 @@ export const experimentApi = {
     model: string,
     runs_per_unit: number,
     thresholdRunsPerUnits:number,
+    labelTemplateId: string,
     reasoning_effort: string | null,
   ){
     console.log("model = ", model)
@@ -478,6 +494,7 @@ export const experimentApi = {
         model: model,
         runs_per_unit: runs_per_unit,
         threshold_runs_true: thresholdRunsPerUnits,
+        label_template_id: labelTemplateId,
         reasoning_effort: reasoning_effort
       }
     })
@@ -651,16 +668,15 @@ export const modelsApi = {
 export const labelTemplateApi = {
   async getAllLabelTemplates(
     authFetch: ReturnType<typeof useAuthFetch>
-  ): Promise<LabelTemplate[]> {
+  ): Promise<LabelTemplateEntity[]> {
     const data = await authFetch('/label_template');
     const labelTemplateResponse= await data.json();
     return labelTemplateResponse?.label_template_entities
   },
-
   async getLabelTemplateById(
     authFetch: ReturnType<typeof useAuthFetch>,
     labelTemplateId?: string
-  ): Promise<LabelTemplate> {
+  ): Promise<LabelTemplateEntity> {
     
     const data = await authFetch(`/label_template${labelTemplateId && `?label_template_id=${labelTemplateId}`}`);
     const labelTemplateResponse= await data.json();
@@ -671,12 +687,45 @@ export const labelTemplateApi = {
   async createLabelTemplate(
     authFetch: ReturnType<typeof useAuthFetch>,
     labelTemplate: CreateLabelTemplateRequest
-  ): Promise<LabelTemplate> {
+  ): Promise<LabelTemplateEntity> {
     const data = await authFetch('/label_template', {
       method: 'POST',
       body: labelTemplate
     });
     return await data.json();
+  },
+
+  async AddLabelTemplateToSampleEntity(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    labelTemplateId: string,
+    sampleEntityId: string,
+    action: "add" | "remove"
+  ): Promise<SampleEntity> { //the response is the newly updated sample entity
+    const data = await authFetch('/label_template/add_to_sample', {
+      method: 'PUT',
+      body: {
+        label_template_id: labelTemplateId,
+        sample_entity_id: sampleEntityId,
+        action: action
+      }
+    });
+    return await data.json();
+  },
+  async UpdateOneShotExample(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    labelTemplateId: string,
+    groundTruthOneShotExample: Record<string, LabelTemplateLLMProjection>
+  ){
+
+    const data = await authFetch('/label_template/update_one_shot_example', {
+      method: "PUT",
+      body: {
+        label_template_id: labelTemplateId,
+        ground_truth_one_shot_example: groundTruthOneShotExample
+      },
+    });
+    return await data.json()
+
   }
 }
 

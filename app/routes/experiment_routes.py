@@ -2,19 +2,21 @@
 
 import asyncio
 from typing import List
-from flask import Blueprint, jsonify
+from flask import Blueprint, Response, jsonify
 from flask_jwt_extended import get_jwt_identity, jwt_required
 import random
 
-from app.database import get_cluster_unit_repository, get_experiment_repository, get_openrouter_data_repository, get_prompt_repository, get_sample_repository, get_scraper_cluster_repository, get_user_repository
+from app.database import get_cluster_repository, get_cluster_unit_repository, get_experiment_repository, get_label_template_repository, get_openrouter_data_repository, get_prompt_repository, get_sample_repository, get_scraper_cluster_repository, get_user_repository
 from app.database.entities.experiment_entity import ExperimentEntity
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.database.entities.scraper_cluster_entity import StageStatus
 from app.requests.cluster_prep_requests import ScraperClusterId
-from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, ExperimentId, GetExperiments, GetSample, GetSampleUnits, ParsePrompt, ParseRawPrompt, UpdateExperimentThreshold, UpdateSample
+from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, ExperimentId, GetExperiments, GetSample, GetSampleUnits, ParsePrompt, ParseRawPrompt, TestPrediction, UpdateExperimentThreshold, UpdateSample
 from app.responses.get_experiments_response import GetExperimentsResponse
+from app.services.cluster_prep_service import ClusterPrepService
 from app.services.experiment_service import ExperimentService
+from app.services.label_template_service import LabelTemplateService
 from app.utils.api_validation import validate_request_body, validate_query_params
 from app.utils.llm_helper import LlmHelper
 from app.utils.logging_config import get_logger
@@ -50,8 +52,26 @@ def get_experiment_instances(query: GetExperiments) -> List[GetExperimentsRespon
     filter = {"scraper_cluster_id": query.scraper_cluster_id}
     if query.experiment_ids:
         filter.update({"_id": {"$in": query.experiment_ids}})
-        
+
+    # Debug logging
+    logger.info(f"Filter being used: {filter}")
+    logger.info(f"scraper_cluster_id: {query.scraper_cluster_id}")
+    logger.info(f"experiment_ids: {query.experiment_ids}")
+
     experiment_entities = get_experiment_repository().find(filter)
+    logger.info(f"Found {len(experiment_entities)} experiments")
+
+    if not experiment_entities:
+        # Try querying with just scraper_cluster_id to see if that works
+        test_filter = {"scraper_cluster_id": query.scraper_cluster_id}
+        test_results = get_experiment_repository().find(test_filter)
+        logger.error(f"DEBUG: Found {len(test_results)} experiments with just scraper_cluster_id filter")
+        if test_results:
+            logger.error(f"DEBUG: First experiment ID: {test_results[0].id}")
+            logger.error(f"DEBUG: Queried experiment_ids: {query.experiment_ids}")
+        return jsonify(message=f"nothing found! Tried with filter: {filter}"), 400
+    
+    print("experiment_entities= ", experiment_entities)
 
     if not scraper_cluster_entity.sample_id:
         return jsonify(f"Scraper cluster entity: {scraper_cluster_entity.id} is missing a sample entity id")
@@ -139,11 +159,16 @@ def create_experiment(body: CreateExperiment):
     logger.info("body.model = ", body.model)
     model_pricing = get_openrouter_data_repository().find_pricing_of_model(model_id=body.model)
 
+    label_template_entity = get_label_template_repository().find_by_id(body.label_template_id)
+    if not label_template_entity:
+        return jsonify(message=f"label_template_entity not found for id = {body.label_template_id}"), 400
+
     experiment_entity = ExperimentEntity(user_id=user_id,
                                          scraper_cluster_id=scraper_cluster_entity.id,
                                          prompt_id=prompt_entity.id,
                                          sample_id=sample_entity.id,
-                                         label_template_id= body.label_template_id,
+                                         label_template_id= label_template_entity.id,
+                                         label_template_labels=label_template_entity.get_labels(),
                                          model= body.model,
                                          model_pricing=model_pricing,
                                          runs_per_unit=body.runs_per_unit,
@@ -170,6 +195,7 @@ def create_experiment(body: CreateExperiment):
 
         total_cluster_unit_predicted_categories = asyncio.run(ExperimentService.predict_categories_cluster_units(
             experiment_entity=experiment_entity,
+            label_template_entity=label_template_entity,
             cluster_unit_entities=cluster_unit_entities,
             prompt_entity=prompt_entity))
         
@@ -206,6 +232,9 @@ def continue_experiment(query: ExperimentId):
     if not sample_entity.sample_cluster_unit_ids:
         return jsonify(message=f"No cluster units have been assigned in the sample for us to do an experiment with | sample_id: {experiment_entity.sample_id}"), 400
     
+    label_template_entity = get_label_template_repository().find_by_id(experiment_entity.label_template_id)
+    if not label_template_entity:
+        return jsonify(message=f"label_template_entity not found for id = {experiment_entity.label_template_id}"), 400
     prompt_entity = get_prompt_repository().find_by_id(experiment_entity.prompt_id)
 
     if not prompt_entity:
@@ -235,6 +264,7 @@ def continue_experiment(query: ExperimentId):
 
         total_cluster_unit_predicted_categories = asyncio.run(ExperimentService.predict_categories_cluster_units(
             experiment_entity=experiment_entity,
+            label_template_entity=label_template_entity,
             cluster_unit_entities=cluster_unit_entities,
             prompt_entity=prompt_entity))
         get_experiment_repository().update(experiment_entity.id, {"status": StatusType.Completed})
@@ -273,7 +303,11 @@ def parse_prompt(body: ParsePrompt):
     if not cluster_unit_entity:
         return jsonify(message=f"cluster unit entity is not found id: {body.cluster_unit_id}"), 400
     
-    parsed_prompt = ExperimentService.parse_classification_prompt(cluster_unit_entity, prompt_entity)
+    label_template_entity = get_label_template_repository().find_by_id(body.label_template_id)
+    if not label_template_entity:
+        return jsonify(message=f"label_template_entity not found for id = {body.label_template_id}"), 400
+    
+    parsed_prompt = ExperimentService.parse_classification_prompt(cluster_unit_entity, prompt_entity, label_template_entity)
 
     return jsonify(parsed_prompt), 200
 
@@ -293,7 +327,18 @@ def parse_raw_prompt(body: ParseRawPrompt):
     if not cluster_unit_entity:
         return jsonify(message=f"cluster unit entity is not found id: {body.cluster_unit_id}"), 400
     
-    parsed_prompt = ExperimentService.parse_prompt_cluster_unit_entity(cluster_unit_entity=cluster_unit_entity, prompt=body.prompt)
+    label_template_entity = get_label_template_repository().find_by_id(body.label_template_id)
+    if not label_template_entity:
+        return jsonify(message=f"label_template_entity not found for id = {body.label_template_id}"), 400
+    
+    label_template_entity.ground_truth_field = label_template_entity._create_ground_truth_field()
+    label_template_entity.labels_llm_prompt_response_format = label_template_entity.create_labels_llm_prompt_response_format_field()
+
+    print("label_template_entity = ", label_template_entity.model_dump_json(indent=4))
+
+
+
+    parsed_prompt = ExperimentService.parse_prompt_cluster_unit_entity(cluster_unit_entity=cluster_unit_entity, prompt=body.prompt, label_template_entity=label_template_entity)
 
     return jsonify(parsed_prompt), 200
 
@@ -347,14 +392,16 @@ def create_sample(body: CreateSample) -> SampleEntity:
     if not scraper_cluster_entity.cluster_entity_id:
         return jsonify(error="no cluster_entity_id available for the scraper_cluster_entity"), 401
 
-    selected_cluster_units = get_cluster_unit_repository().find_many_by_ids(body.picked_posts_cluster_unit_ids)
-    selected_cluster_unit_post_ids = [cluster_unit.post_id for cluster_unit in selected_cluster_units]
-    cluster_unit_ids_with_corresponding_post_id = get_cluster_unit_repository().find_ids({"post_id": {"$in": selected_cluster_unit_post_ids}, "cluster_entity_id": scraper_cluster_entity.cluster_entity_id})
-    if len(cluster_unit_ids_with_corresponding_post_id) < body.sample_size:
-        return jsonify(error=f"Not enough cluster units. Found {len(cluster_unit_ids_with_corresponding_post_id)} but need {body.sample_size}"), 400
+    cluster_entity = get_cluster_repository().find_by_id(scraper_cluster_entity.cluster_entity_id)
+    if not cluster_entity:
+        return jsonify(message=f"There is no cluster entity found, id = {scraper_cluster_entity.cluster_entity_id}"), 400
     
-    sample_cluster_unit_ids = random.sample(cluster_unit_ids_with_corresponding_post_id, body.sample_size)
-    # randomly select body.sample_size cluster units from here. 
+    sample_cluster_unit_ids = ClusterPrepService().get_cluster_unit_ids_for_sample(picked_posts_cluster_unit_ids=body.picked_posts_cluster_unit_ids,
+                                                                sample_size=body.sample_size,
+                                                                cluster_entity=cluster_entity)
+    if isinstance(sample_cluster_unit_ids, Response):
+        return sample_cluster_unit_ids
+
     
 
     sample_entity = SampleEntity(user_id=user_id,
@@ -403,12 +450,20 @@ def get_sample_units(query: GetSampleUnits):
         get_sample_repository().update(sample_enity.id, {"sample_labeled_status": StatusType.Ongoing})
 
     logger.info(f"len(sample_enity.sample_cluster_unit_ids) = {len(sample_enity.sample_cluster_unit_ids)}")
-    
-    
+    if not sample_enity.label_template_ids:
+        return jsonify(message="add label_template_ids for sample first"), 400
+    label_template_entities = get_label_template_repository().find_many_by_ids(sample_enity.label_template_ids)
+    # for label_template_entity in label_template_entities:
+    #     label_template_entity._create_ground_truth_field()
+    #     get_label_template_repository().update(label_template_entity.id, label_template_entity)
     cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_enity.sample_cluster_unit_ids)
     logger.info(f"len(cluster_unit_entities = ), {len(cluster_unit_entities)}")
+    [print(cluster_unit_entity.model_dump_json(indent=4)) for cluster_unit_entity in cluster_unit_entities]
 
-    returnable_cluster_units = [cluster_unit_entity.model_dump() for cluster_unit_entity in cluster_unit_entities]
+
+    
+
+    returnable_cluster_units = LabelTemplateService.convert_sample_cluster_units_return_format(cluster_unit_entities, label_template_entities)
     logger.info(f"len(returnable_cluster_units) = {len(returnable_cluster_units)}")
 
     found_cluster_unit_ids = [cluster_unit_id.id for cluster_unit_id in cluster_unit_entities]
@@ -483,3 +538,40 @@ def complete_sample_labeled_status(query: UpdateSample):
     get_sample_repository().update(sample_entity.id, {"sample_labeled_status": StatusType.Completed})
 
     return jsonify(message="OK"), 200
+
+
+@experiment_bp.route("/test/prediction", methods=["POST"])
+@validate_request_body(TestPrediction)
+@jwt_required()
+async def test_prediction(body: TestPrediction):
+    print("body = ", body)
+    print("body.experiment_id = ",body.experiment_id)
+    experiment_entity = get_experiment_repository().find_by_id(body.experiment_id)
+
+    if not experiment_entity:
+        return jsonify(message=f"No experiment entity found for experiment id : {body.experiment_id}"), 404
+    print(experiment_entity.model_dump())
+    prompt_entity = get_prompt_repository().find_by_id(experiment_entity.prompt_id)
+    label_template_entity = get_label_template_repository().find_by_id(body.label_template_id)
+
+    if not body.cluster_unit_ids:
+        # only find other cluster units, if we do not have one provided in the request
+        sample_entity = get_sample_repository().find_by_id(experiment_entity.sample_id)
+        if not sample_entity:
+            return jsonify(f"experiment entity: {experiment_entity.id} with sample_id: {experiment_entity.sample_id} is not findable")        
+        
+        # we just take the first body.nr_to_predict sample units from the sample entity, as it is stored sample.sample_cluster_unit_ids
+        cluster_unit_entities_remain = get_cluster_unit_repository().find_many_by_ids(sample_entity.sample_cluster_unit_ids[:body.nr_to_predict])
+    else:
+        
+        cluster_unit_entities_remain = get_cluster_unit_repository().find_many_by_ids(body.cluster_unit_ids)
+
+    max_concurrent = 100
+    predicted_categories = ExperimentService.create_predicted_categories(
+                experiment_entity=experiment_entity,
+                label_template_entity=label_template_entity,
+                prompt_entity=prompt_entity,
+                cluster_unit_enities=cluster_unit_entities_remain, 
+                max_concurrent=max_concurrent)
+
+    return jsonify(predicted_categories=predicted_categories)

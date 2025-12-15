@@ -4,12 +4,14 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 # from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from app.database import get_scraper_cluster_repository, get_scraper_repository, get_user_repository
+from app.database import get_post_repository, get_scraper_cluster_repository, get_scraper_repository, get_user_repository
 from app.database.entities.scraper_cluster_entity import ScraperClusterEntity
+from app.database.entities.user_entity import UserRole
 from app.requests.scraping_commands import ScraperClusterId, ScrapingId
 from app.requests.scraper_requests import CreateScraperRequest, GetScraper, ScraperUpdate
 from app.responses.get_keyword_searches import GetKeywordSearches
 from app.responses.reddit_post_comments_response import RedditResponse
+from app.services.post_service import PostService
 from app.services.scraper_service import ScraperService
 
 from app.utils.api_validation import validate_request_body, validate_query_params
@@ -206,3 +208,20 @@ def get_keyword_searches(query: ScraperClusterId) -> GetKeywordSearches:
     return jsonify(ScraperService.get_all_post_ids_for_keyword_searches(scraper_entity).model_dump()), 200
 
 
+@scraper_bp.route("/renew_all_post_entities", methods=["PUT"])
+@jwt_required()
+def renew_all_post_entities():
+    """Took 3 hours to renew 1600 posts as we currently have in db"""
+    """renews the post entities :TODO make a check that calls this function automatically, and only for the ones that need to be renewed. Such as by looking at date. Since in the future there could be 100.000s of posts in the DB"""
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    if not (current_user.role == UserRole.Admin):
+        return jsonify(error="user must be an ADMIN!"), 400
+    
+    # for some reason it takes 35 seconds to load all of the documents :TODO fix this to make it quicker
+    all_post_entities = get_post_repository().find({})
+
+    updated_count = PostService().renew_posts_entities(all_post_entities)
+    return jsonify(message=f"Successfully updated {updated_count} posts!")

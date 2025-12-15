@@ -7,8 +7,10 @@ import { useAuthFetch } from '@/utils/fetch';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { Modal } from '@/components/ui/Modal';
 import type { SampleEntity } from '@/types/sample';
 import type { StatusType } from '@/types/scraper-cluster';
+import { MultiLabelTemplateSelector } from '../experiment-create/MultiLabelTemplateSelector';
 
 interface SampleViewProps {
   scraperClusterId?: string | null;
@@ -26,6 +28,8 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
   const [clusterUnitsUsed, setClusterUnitsUsed] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
+
 
   // Fetch sample data when scraperClusterId changes
   useEffect(() => {
@@ -70,7 +74,11 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
 
   // Determine if sample can be labeled
   const canLabel = useMemo(() => {
-    return sample && (sample.sample_labeled_status === 'initialized' || sample.sample_labeled_status === 'ongoing');
+    return sample && (sample.sample_labeled_status === 'initialized' || sample.sample_labeled_status === 'ongoing') && sample.label_template_ids.length > 0;
+  }, [sample]);
+
+  const sampleCompleted = useMemo(() => {
+    return sample && sample.sample_labeled_status === "completed"
   }, [sample]);
 
   const handleViewSample = () => {
@@ -81,8 +89,15 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
 
   const handleLabelSample = () => {
     if (sample && scraperClusterId) {
-      router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&sample_id=${sample.id}`);
+      // Pass all selected label template IDs as comma-separated string
+      const labelTemplateIds = sample.label_template_ids.join(',');
+      router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&sample_id=${sample.id}&label_template_ids=${labelTemplateIds}`);
     }
+  };
+
+  // Handle sample updates when label templates are added/removed
+  const handleSampleUpdate = (updatedSample: SampleEntity) => {
+    setSample(updatedSample);
   };
 
   // Don't render anything if no scraperClusterId
@@ -137,78 +152,121 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
 
   // Sample data display
   return (
-    <Card className="p-6 mb-6">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-4 mb-4">
-            <h3 className="text-xl font-bold text-gray-800">Sample Information</h3>
-            <StatusBadge status={sample.sample_labeled_status as StatusType} />
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {/* Sample ID */}
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Sample ID</p>
-              <p className="font-mono text-sm font-semibold text-gray-800 truncate" title={sample.id}>
-                {sample.id}
-              </p>
+    <>
+      <Card className="p-6 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-4 mb-4">
+              <h3 className="text-xl font-bold text-gray-800">Sample Information</h3>
+              <StatusBadge status={sample.sample_labeled_status as StatusType} />
             </div>
 
-            {/* Sample Size */}
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Sample Size</p>
-              <p className="font-semibold text-gray-800">
-                {clusterUnitsUsed} units
-              </p>
-              <p className="text-xs text-gray-500">
-                combination of posts & comments
-              </p>
-            </div>
-
-            {/* Posts Used */}
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Posts Sampled From</p>
-              <p className="font-semibold text-gray-800">
-                {sample.picked_post_cluster_unit_ids.length} posts
-              </p>
-              {totalPostsAvailable > 0 && (
-                <p className="text-xs text-gray-500">
-                  of {totalPostsAvailable} available
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {/* Sample ID */}
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Sample ID</p>
+                <p className="font-mono text-sm font-semibold text-gray-800 truncate" title={sample.id}>
+                  {sample.id}
                 </p>
-              )}
-            </div>
+              </div>
 
-            {/* Labeling Status */}
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Labeling Status</p>
-              <p className="font-semibold text-gray-800 capitalize">
-                {sample.sample_labeled_status}
-              </p>
+              {/* Sample Size */}
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Sample Size</p>
+                <p className="font-semibold text-gray-800">
+                  {clusterUnitsUsed} units
+                </p>
+                <p className="text-xs text-gray-500">
+                  combination of posts & comments
+                </p>
+              </div>
+
+              {/* Posts Used */}
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Posts Sampled From</p>
+                <p className="font-semibold text-gray-800">
+                  {sample.picked_post_cluster_unit_ids.length} posts
+                </p>
+                {totalPostsAvailable > 0 && (
+                  <p className="text-xs text-gray-500">
+                    of {totalPostsAvailable} available
+                  </p>
+                )}
+              </div>
+
+              {/* Labeling Status */}
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Labeling Status</p>
+                <p className="font-semibold text-gray-800 capitalize">
+                  {sample.sample_labeled_status}
+                </p>
+              </div>
+
+              {/* Label Templates */}
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Label Templates</p>
+                <button
+                  onClick={() => setIsLabelModalOpen(true)}
+                  className="w-full px-3 py-2 text-left border-2 border-gray-300 rounded-lg
+                           bg-white hover:border-blue-500 hover:bg-blue-50 transition-all duration-200
+                           cursor-pointer flex items-center justify-between"
+                >
+                  <span className="text-sm font-semibold text-gray-800">
+                    {sample.label_template_ids.length} selected
+                  </span>
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 ml-6">
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={handleViewSample}
-          >
-            View Sample
-          </Button>
-
-          {canLabel && (
+          {/* Action Buttons */}
+          <div className="flex gap-3 ml-6">
             <Button
-              variant="primary"
+              variant="secondary"
               size="md"
-              onClick={handleLabelSample}
+              onClick={handleViewSample}
             >
-              Label Sample
+              View Sample
             </Button>
-          )}
+
+            {/* {!sampleCompleted &&  */}
+              <Button
+                variant="primary"
+                size="md"
+                onClick={handleLabelSample}
+                // disabled={!canLabel}
+              >
+                {canLabel ? "Label Sample" : "label sample not ready"}
+              </Button>
+            {/* } */}
+          </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+
+      {/* Label Template Modal */}
+      <Modal
+        isOpen={isLabelModalOpen}
+        onClose={() => setIsLabelModalOpen(false)}
+        showCloseButton={true}
+        blurBackground
+        maxWidth="max-w-2xl"
+      >
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Manage Label Templates
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Select which label templates to associate with this sample
+          </p>
+          <MultiLabelTemplateSelector
+            sampleEntity={sample}
+            onSampleUpdate={handleSampleUpdate}
+          />
+        </div>
+      </Modal>
+    </>
   );
 });

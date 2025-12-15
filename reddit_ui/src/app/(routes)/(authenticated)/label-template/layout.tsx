@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { labelTemplateApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
-import type { LabelTemplate } from '@/types/label-template';
+import type { LabelTemplateEntity } from '@/types/label-template';
 
 export default function LabelTemplateLayout({
   children,
@@ -16,11 +16,11 @@ export default function LabelTemplateLayout({
   const pathname = usePathname();
   const authFetch = useAuthFetch();
 
-  const [labelTemplates, setLabelTemplates] = useState<LabelTemplate[]>([]);
+  const [labelTemplates, setLabelTemplates] = useState<LabelTemplateEntity[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Fetch all category infos
+  // Fetch all category infos - refetch when pathname changes (e.g., after creating a new template)
   useEffect(() => {
     const fetchLabelTemplates = async () => {
       try {
@@ -35,7 +35,7 @@ export default function LabelTemplateLayout({
     };
 
     fetchLabelTemplates();
-  }, [authFetch]);
+  }, [authFetch, pathname]);
 
   const isCreatePage = pathname.includes('/create');
 
@@ -86,7 +86,7 @@ export default function LabelTemplateLayout({
                       }
                     `}
                   >
-                    <div className="font-semibold truncate">{info.category_name}</div>
+                    <div className="font-semibold truncate">{info.label_template_name}</div>
                     <div className="text-xs text-gray-500 truncate mt-1">
                       {info.labels.length} labels
                     </div>

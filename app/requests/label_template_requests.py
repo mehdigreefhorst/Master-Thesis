@@ -1,12 +1,13 @@
 
-from typing import List, Optional
+from typing import List, Literal, Optional
 from pydantic import BaseModel
 
+from app.database.entities.base_entity import PyObjectId
 from app.database.entities.label_template import LLMLabelField
 
 class CreateLabelTemplateRequest(BaseModel):
-    category_name: str
-    category_description: str
+    label_template_name: str
+    label_template_description: str
     is_public: bool= True
     labels: List[LLMLabelField]
     llm_prediction_fields_per_label: List[LLMLabelField]
@@ -16,3 +17,8 @@ class CreateLabelTemplateRequest(BaseModel):
 class GetLabelTemplateRequest(BaseModel):
     label_template_id: Optional[str] = None
     
+
+class AddLabelTemplateToSampleRequest(BaseModel):
+    sample_entity_id: PyObjectId
+    label_template_id: PyObjectId
+    action: Literal["add", "remove"]

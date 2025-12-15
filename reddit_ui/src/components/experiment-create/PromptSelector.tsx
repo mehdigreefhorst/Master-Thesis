@@ -1,4 +1,5 @@
 import React from 'react';
+import { InfoTooltip } from '@/components/ui';
 
 interface PromptEntity {
   id: string;
@@ -23,10 +24,12 @@ export const PromptSelector: React.FC<PromptSelectorProps> = ({
   isLoading = false,
   className = '',
 }) => {
+  
   return (
     <div className={className}>
-      <label htmlFor="promptSelector" className="block text-sm font-bold text-[var(--foreground)] mb-2">
+      <label htmlFor="promptSelector" className="flex items-center gap-2 text-sm font-bold text-[var(--foreground)] mb-2">
         Load Prompt
+        <InfoTooltip text="Select a saved prompt template to use for this experiment. The prompt defines how the AI model will analyze each cluster unit." />
       </label>
       <select
         id="promptSelector"

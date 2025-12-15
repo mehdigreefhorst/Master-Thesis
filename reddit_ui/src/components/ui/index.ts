@@ -8,3 +8,5 @@ export { StatusBadge } from './StatusBadge';
 export { Textarea } from './Textarea';
 export { KeywordTag } from './KeywordTag';
 export { Input } from './Input';
+export { InfoTooltip } from './InfoTooltip';
+export { ConfirmationDialog } from './ConfirmationDialog';

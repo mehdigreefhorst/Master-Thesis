@@ -15,6 +15,7 @@ class SizeMediaUrl(BaseModel):
     u: Optional[str] = None  # Standard URL (present for images)
     gif: Optional[str] = None  # GIF URL (present for giphy/animated images)
     mp4: Optional[str] = None  # MP4 URL (present for giphy/animated images) 
+    
 
 
 
@@ -25,11 +26,12 @@ class MediaMetaData(BaseModel):
     id: MediaMetaDataId #  Reddit's MediaMetaDataId for retrieval
     status: str
     e: str
-    m: str
-    p: List[SizeMediaUrl] # All the version of the media, there can be many, each being a smaller version of the the orginal (s)
-    s: SizeMediaUrl # This is the largest version of the SizeMediaUrl. The original version of the media, in highest fidelty . 
+    m: Optional[str] = None
+    p: Optional[List[SizeMediaUrl]] = None # All the version of the media, there can be many, each being a smaller version of the the orginal (s)
+    s: Optional[SizeMediaUrl] = None # This is the largest version of the SizeMediaUrl. The original version of the media, in highest fidelty . 
     t: Optional[str] = None  # An optional type parameter of the media. An example is  "giphy"
     ext: Optional[str] = None # Optionallink to the orginal media, if media originated from external source
+    hlsUrl: Optional[str] = None # Possible video url
 
 
 class BaseRedditMessage(BaseModel):

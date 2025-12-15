@@ -5,6 +5,8 @@ from typing import Dict, Optional
 from app.database import get_user_repository
 from app.database.entities.base_entity import PyObjectId
 from app.database.entities.cluster_unit_entity import PredictionCategoryTokens, TokenUsageAttempt
+from app.database.entities.experiment_entity import ExperimentEntity
+from app.database.entities.label_template import LabelTemplateEntity
 from app.database.entities.user_entity import UserEntity
 from app.utils.llm_helper import LlmHelper
 from app.utils.rate_limiters import call_with_retry
@@ -45,7 +47,7 @@ class LLMService:
             return {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "error": str(e)}
 
     @staticmethod
-    def response_to_prediction_tokens(response, all_attempts: list[TokenUsageAttempt] = None) -> PredictionCategoryTokens:
+    def response_to_prediction_tokens_before_template(response, all_attempts: list[TokenUsageAttempt] = None) -> PredictionCategoryTokens:
         """
         Parse response into prediction. This may fail if format is incorrect.
         Token tracking happens BEFORE this is called, so tokens are never lost.
@@ -73,6 +75,40 @@ class LLMService:
 
         prediction_category_tokens = PredictionCategoryTokens(
             **labels,
+            tokens_used=token_usage,
+            all_attempts=all_attempts,
+            total_tokens_all_attempts=total_tokens_all_attempts
+        )
+        return prediction_category_tokens
+    
+
+    @staticmethod
+    def response_to_prediction_tokens(response, experiment_entity: ExperimentEntity, label_template_entity: LabelTemplateEntity, all_attempts: list[TokenUsageAttempt] = None) -> PredictionCategoryTokens:
+        """
+        Parse response into prediction. This may fail if format is incorrect.
+        Token tracking happens BEFORE this is called, so tokens are never lost.
+
+        Args:
+            response: The LLM response object
+            all_attempts: List of all token usage attempts (including retries) for this prediction
+        """
+        if all_attempts is None:
+            all_attempts = []
+
+        # Extract tokens from this successful response
+        token_usage: Dict[str, str] = LLMService.extract_tokens_from_response(response)
+
+        # Parse the response content (this is what might fail)
+        response_dict = json.loads(response.choices[0].message.content)
+        
+        label_prediction = label_template_entity.from_prediction(llm_response_dict=response_dict, experiment_id=experiment_entity.id)
+
+
+        # Calculate total tokens across all attempts
+        total_tokens_all_attempts = LLMService._aggregate_token_usage(all_attempts)
+
+        prediction_category_tokens = PredictionCategoryTokens(
+            label_prediction=label_prediction,
             tokens_used=token_usage,
             all_attempts=all_attempts,
             total_tokens_all_attempts=total_tokens_all_attempts

@@ -11,6 +11,7 @@ export interface SampleEntity {
   sample_cluster_unit_ids: string[];
   sample_size: number;
   sample_labeled_status: StatusType;
+  label_template_ids: string[];
 }
 
 export interface GetSampleResponse {

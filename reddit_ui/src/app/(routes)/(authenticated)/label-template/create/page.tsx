@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
@@ -13,7 +13,9 @@ import type { LLMLabelField, CreateLabelTemplateRequest } from '@/types/label-te
 
 export default function CreateLabelTemplatePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const authFetch = useAuthFetch();
+  const copyFromId = searchParams.get('copyFrom');
 
   // Form state
   const [categoryName, setCategoryName] = useState('');
@@ -25,6 +27,7 @@ export default function CreateLabelTemplatePage() {
 
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showNavigationModal, setShowNavigationModal] = useState(false);
@@ -32,6 +35,33 @@ export default function CreateLabelTemplatePage() {
 
   // Track if user has started editing
   const [hasStartedEditing, setHasStartedEditing] = useState(false);
+
+  // Load template data if copying from existing template
+  useEffect(() => {
+    if (!copyFromId) return;
+
+    const loadTemplateData = async () => {
+      try {
+        setIsLoadingTemplate(true);
+        setError(null);
+        const template = await labelTemplateApi.getLabelTemplateById(authFetch, copyFromId);
+
+        // Preload all fields
+        setCategoryName(template.label_template_name + ' copy');
+        setCategoryDescription(template.label_template_description);
+        setIsPublic(template.is_public);
+        setMultiLabelPossible(template.multi_label_possible);
+        setLabels(template.labels);
+        setPerLabelFields(template.llm_prediction_fields_per_label || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load template data');
+      } finally {
+        setIsLoadingTemplate(false);
+      }
+    };
+
+    loadTemplateData();
+  }, [copyFromId, authFetch]);
 
   // Track changes
   useEffect(() => {
@@ -180,8 +210,8 @@ export default function CreateLabelTemplatePage() {
       setError(null);
 
       const request: CreateLabelTemplateRequest = {
-        category_name: categoryName,
-        category_description: categoryDescription,
+        label_template_name: categoryName,
+        label_template_description: categoryDescription,
         is_public: isPublic,
         labels: labels,
         llm_prediction_fields_per_label: perLabelFields,
@@ -189,7 +219,7 @@ export default function CreateLabelTemplatePage() {
       };
 
       await labelTemplateApi.createLabelTemplate(authFetch, request);
-      setSuccess('Category info created successfully!');
+      setSuccess(copyFromId ? 'Label template copied successfully!' : 'Category info created successfully!');
       setHasStartedEditing(false);
 
       // Redirect after 1.5 seconds
@@ -203,15 +233,34 @@ export default function CreateLabelTemplatePage() {
     }
   };
 
+  // Show loading state while template is being loaded
+  if (isLoadingTemplate) {
+    return (
+      <div className="p-8">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading template data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-8">
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Create Category Info</h1>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {copyFromId ? 'Copy Label Template' : 'Create Category Info'}
+            </h1>
             <p className="mt-2 text-gray-600">
-              Define labels and classification categories for your cluster units
+              {copyFromId
+                ? 'Edit and save as a new label template'
+                : 'Define labels and classification categories for your cluster units'
+              }
             </p>
           </div>
           <div className="flex gap-3">
@@ -227,7 +276,10 @@ export default function CreateLabelTemplatePage() {
               onClick={handleSubmit}
               disabled={isSubmitting || labels.length === 0}
             >
-              {isSubmitting ? 'Creating...' : 'Create Category'}
+              {isSubmitting
+                ? (copyFromId ? 'Saving Copy...' : 'Creating...')
+                : (copyFromId ? 'Save as New Template' : 'Create Category')
+              }
             </Button>
           </div>
         </div>
