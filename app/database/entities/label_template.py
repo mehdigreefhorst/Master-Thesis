@@ -115,7 +115,6 @@ class LabelTemplateEntity(BaseEntity):
     multi_label_possible: bool # whether LLM should pick a single or may pick multiple
     ground_truth_field: Optional[LabelTemplateTruthProjection] = None #Optional[Dict[labelName, ProjectionLabelField]] = None
     labels_llm_prompt_response_format: Optional[Dict] = None # output format of how we would like the LLM to respond the data in
-    cluster_unit_id_one_shot_example: Optional[PyObjectId] = None # The cluster_unit_id that is used for one shot example. This also has all the text for per label data filled in.
     ground_truth_one_shot_example: Optional[Dict[labelName, ProjectionLabelField]] = None # key is label_value.label name of a LabelTemplateLLMProjection
 
     @model_validator(mode="after")
