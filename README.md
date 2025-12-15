@@ -83,3 +83,7 @@ permalink: /r/tressless/comments/mx6ncc/the_theory_that_explains_everything_plea
 The issue with this post entity is that it is 19mb and max supported is 16mb. This can happen because of two main reasons, the post is too large. or there are too many comments. Since I am adding the prior comment thread in the post entity, therefore I duplicate the complete post in every message. It will quickly and exponentially exlpore in size. But I already create the prior author thread when building the cluster units from the post entity. So I do not need the prior comment thread. It bloats up the total post entity exponentially. We must fix this.
 After removing the thread path text for each post entity's comments
 We went from 19mb -> became 0.589 mb
+
+
+
+### We make sure that we adhere to the terms of service of reddit, we update the documents when needed in reddit on an interval. We built a function that allows us to update the post entities in /scraper/renew_post_enities
