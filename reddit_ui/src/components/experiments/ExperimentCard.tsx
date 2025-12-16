@@ -59,7 +59,7 @@ export interface ExperimentData {
 
 interface ExperimentCardProps {
   experiment: ExperimentData;
-  onView?: (experiment_id: string) => void;
+  onView?: (experiment_id: string, label_template_id: string) => void;
   onClone?: (experiment_id: string) => void;
   onContinue?: (experiment_id: string) => void;
   onTest?: (experiment_id: string) => void;
@@ -184,7 +184,7 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
               <Button
                 variant="invisible"
                 className="mt-0! py-1! px-2! text-xs"
-                onClick={() => onView?.(experiment.id)}
+                onClick={() => onView?.(experiment.id, experiment.labelTemplateId)}
               >
                 View
               </Button>

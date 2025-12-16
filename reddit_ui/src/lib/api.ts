@@ -8,7 +8,7 @@ import { ClusterUnitEntity, LabelTemplateLLMProjection } from "@/types/cluster-u
 import { SampleEntity } from "@/types/sample";
 import { UserProfile } from "@/types/user";
 import { ModelInfo } from "@/types/model";
-import { PromptEntity } from "@/types/prompt";
+import { PromptEntity, testPredictionsOutput } from "@/types/prompt";
 import { MediaStrategySkipType } from "@/types/cluster-prep";
 import { CreateLabelTemplateRequest, LabelTemplateEntity } from "@/types/label-template";
 
@@ -586,20 +586,12 @@ export const experimentApi = {
     })
     return await data.json()
   },
-
   async testPrediction(
     authFetch: ReturnType<typeof useAuthFetch>,
     experimentId: string,
     clusterUnitIds?: string[],
     nrToPredict: number = 1
-  ): Promise<{
-    predicted_categories?: any;
-    error?: string;
-    system_prompt?: string;
-    parsed_prompt?: string;
-    output_llm?: string;
-    success: boolean;
-  }> {
+  ): Promise<testPredictionsOutput> {
     const data = await authFetch('/experiment/test/prediction', {
       method: 'POST',
       body: {

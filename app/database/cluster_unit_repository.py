@@ -115,6 +115,60 @@ class ClusterUnitRepository(BaseRepository[ClusterUnitEntity]):
         logger.info(f"inserted a total of {inserted_count} predictions. During {experiment_id} experiment")
         return 
     
+    def set_none_ground_truths_to_false(self, cluster_unit_ids: List[PyObjectId], label_template_id: PyObjectId):
+        """
+        Set all ground truth values that are None to False for multiple cluster units.
+
+        Args:
+            cluster_unit_ids: List of cluster unit IDs to update
+            label_template_id: The label template ID to update ground truths for
+
+        Returns:
+            Number of cluster units updated
+        """
+        if not cluster_unit_ids:
+            logger.warning("No cluster unit IDs provided to set_none_ground_truths_to_false")
+            return 0
+
+        logger.info(
+            f"Setting None ground truths to False for {len(cluster_unit_ids)} cluster units "
+            f"with label_template_id={label_template_id}"
+        )
+
+        updated_count = 0
+
+        # Process each cluster unit
+        for cluster_unit_id in cluster_unit_ids:
+            # Get the current document to find None values
+            doc = self.collection.find_one(
+                {"_id": cluster_unit_id},
+                {f"ground_truth.{label_template_id}.values": 1}
+            )
+
+            if not doc or "ground_truth" not in doc or str(label_template_id) not in doc["ground_truth"]:
+                # No ground truth exists for this label template, skip
+                continue
+
+            # Find all None values and build update operations
+            update_ops = {}
+            values = doc["ground_truth"][str(label_template_id)].get("values", {})
+
+            for category, category_data in values.items():
+                if isinstance(category_data, dict) and category_data.get("value") is None:
+                    update_path = f"ground_truth.{label_template_id}.values.{category}.value"
+                    update_ops[update_path] = False
+
+            # If there are updates to make, execute them
+            if update_ops:
+                self.collection.update_one(
+                    {"_id": cluster_unit_id},
+                    {"$set": update_ops}
+                )
+                updated_count += 1
+
+        logger.info(f"Updated {updated_count} cluster units (set None ground truths to False)")
+        return updated_count
+
     def delete_many_by_cluster_enity_id(self, cluster_entity_id: PyObjectId):
         """Delete all cluster units associated with a specific cluster entity"""
 

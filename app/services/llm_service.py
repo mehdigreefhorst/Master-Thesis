@@ -22,7 +22,7 @@ class LLMService:
     """service that handles how the LLM is called. With focus towards payment and billing"""
 
     @staticmethod
-    async def send_to_model(open_router_api_key: str, system_prompt: str, prompt: str, model: str, reasoning_effort: Optional[str]):
+    async def send_to_model(open_router_api_key: str, system_prompt: str, prompt: str, model: str, reasoning_effort: Optional[str], max_retry_attempts: Optional[int] = 5):
          # :TODO add a elif for user wanting to pay for the usage, then we use our own API key
         llm_logger.info(
             f"Sending request to model with retry support",
@@ -31,16 +31,20 @@ class LLMService:
                     'model': model,
                     'reasoning_effort': reasoning_effort,
                     'has_system_prompt': bool(system_prompt),
-                    'has_user_prompt': bool(prompt)
+                    'has_user_prompt': bool(prompt),
+                    'max_retry_attempts': max_retry_attempts
                 }
             }
         )
-        response = await call_with_retry(LlmHelper().async_send_to_openrouter,
-                                         system_prompt=system_prompt,
+        response = await call_with_retry(
+            LlmHelper().async_send_to_openrouter,
+            system_prompt=system_prompt,
             prompt=prompt,
             model=model,
             open_router_api_key=open_router_api_key,
-            reasoning_effort=reasoning_effort)
+            reasoning_effort=reasoning_effort,
+            max_tries=max_retry_attempts  # Pass dynamic max_tries
+        )
 
         llm_logger.info("Model request completed successfully")
         return response
@@ -134,7 +138,32 @@ class LLMService:
         )
         return prediction_category_tokens
     
+    @staticmethod
+    def get_output_message_from_llm_response(response):
+        return response.choices[0].message.content
+    
+    @staticmethod
+    def get_between_json(text: str):
+        """gets the text that is between the ```json {} ```"""
+        pattern_start = "```json"
+        json_start = text.find(pattern_start)  + len(pattern_start) 
+        if text.find(pattern_start) == -1:
+          return text
+        pattern_end = "```"
+        json_end = text.find(pattern_end, json_start)
+        return text[json_start: json_end]
+    
+    @staticmethod
+    def load_response_output_message_as_dict(response):
+        """there are several ways LLM's commonly make mistakes in generating json output. """
+        response_output_message = LLMService().get_output_message_from_llm_response(response)
+        if "```json" in response_output_message:
+            response_output_message = LLMService().get_between_json(response_output_message)
 
+        response_dict = json.loads(response_output_message)
+        return response_dict
+        
+  
     @staticmethod
     def response_to_prediction_tokens(response, experiment_entity: ExperimentEntity, label_template_entity: LabelTemplateEntity, all_attempts: list[TokenUsageAttempt] = None) -> PredictionCategoryTokens:
         """
@@ -153,7 +182,9 @@ class LLMService:
 
         # Parse the response content (this is what might fail)
         try:
-            response_dict = json.loads(response.choices[0].message.content)
+            
+            response_dict = LLMService().load_response_output_message_as_dict(response)
+            
             llm_logger.debug(
                 "Parsed LLM response for experiment",
                 extra={
@@ -177,7 +208,7 @@ class LLMService:
             )
             raise
 
-        label_prediction = label_template_entity.from_prediction(llm_response_dict=response_dict, experiment_id=experiment_entity.id)
+        labels_prediction = label_template_entity.from_prediction(llm_response_dict=response_dict, experiment_id=experiment_entity.id)
 
 
         # Calculate total tokens across all attempts
@@ -195,7 +226,7 @@ class LLMService:
         )
 
         prediction_category_tokens = PredictionCategoryTokens(
-            label_prediction=label_prediction,
+            labels_prediction=labels_prediction,
             tokens_used=token_usage,
             all_attempts=all_attempts,
             total_tokens_all_attempts=total_tokens_all_attempts

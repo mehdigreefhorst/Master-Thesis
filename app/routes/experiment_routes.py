@@ -456,10 +456,6 @@ def get_sample_units(query: GetSampleUnits):
     #     get_label_template_repository().update(label_template_entity.id, label_template_entity)
     cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_enity.sample_cluster_unit_ids)
     logger.info(f"len(cluster_unit_entities = ), {len(cluster_unit_entities)}")
-    [print(cluster_unit_entity.model_dump_json(indent=4)) for cluster_unit_entity in cluster_unit_entities]
-
-
-    
 
     returnable_cluster_units = LabelTemplateService.convert_sample_cluster_units_return_format(cluster_unit_entities, label_template_entities)
     logger.info(f"len(returnable_cluster_units) = {len(returnable_cluster_units)}")
@@ -530,8 +526,15 @@ def complete_sample_labeled_status(query: UpdateSample):
     sample_entity = get_sample_repository().find_by_id(scraper_cluster_entity.sample_id)
 
     if not sample_entity:
-        return jsonify(f"Scraper cluster entity: {scraper_cluster_entity.id} with sample_id: {scraper_cluster_entity.sample_id} is not findable")        
+        return jsonify(f"Scraper cluster entity: {scraper_cluster_entity.id} with sample_id: {scraper_cluster_entity.sample_id} is not findable")
 
+    # Set all None ground truth values to False for all cluster units in the sample
+    if sample_entity.cluster_unit_ids and sample_entity.label_template_id:
+        updated_count = get_cluster_unit_repository().set_none_ground_truths_to_false(
+            cluster_unit_ids=sample_entity.cluster_unit_ids,
+            label_template_id=sample_entity.label_template_id
+        )
+        logger.info(f"Set None ground truths to False for {updated_count} cluster units in sample {sample_entity.id}")
 
     get_sample_repository().update(sample_entity.id, {"sample_labeled_status": StatusType.Completed})
 
@@ -565,16 +568,15 @@ async def test_prediction(body: TestPrediction) -> TestPredictionsOutputFormat:
         cluster_unit_entities_remain = get_cluster_unit_repository().find_many_by_ids(body.cluster_unit_ids)
 
     max_concurrent = 100
-    predicted_categories = 
-    
     test_predictions = await ExperimentService.test_predictions(
         experiment_entity=experiment_entity,
                 label_template_entity=label_template_entity,
                 prompt_entity=prompt_entity,
                 cluster_unit_enities=cluster_unit_entities_remain, 
-                max_concurrent=max_concurrent
     )
-    
-    
 
-    return jsonify(predicted_categories=predicted_categories)
+
+    
+    
+    
+    return jsonify(test_predictions.model_dump())

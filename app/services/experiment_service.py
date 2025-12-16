@@ -79,8 +79,9 @@ class ExperimentService:
         prompt_entity: PromptEntity,
         cluster_unit_enities: List[ClusterUnitEntity],
         max_concurrent=1000,
-        max_retries=3,) -> List[PredictionCategoryTokens] | TestPredictionsOutputFormat:
-        return_test_predictions_format: bool = False
+        max_retries=3,
+        return_test_predictions_format: bool = False) -> List[PredictionCategoryTokens] | TestPredictionsOutputFormat:
+        
          # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(max_concurrent)
         open_router_api_key = LLMService.get_user_open_router_api_key(user_id=experiment_entity.user_id)
@@ -109,10 +110,12 @@ class ExperimentService:
                             prompt_entity=prompt_entity,
                             single_prediction_format=single_prediction_format,
                             attempt_number=attempt_number,
-                            all_attempts=all_attempts  # Pass the list to accumulate attempts
+                            all_attempts=all_attempts,  # Pass the list to accumulate attempts
+                            max_retry_attempts= 1 if return_test_predictions_format else 5 # Retry limit for rate limiter
                         )
                         logger.debug(f"Completed prediction for unit {cluster_unit_entity.id}, run {run_index}")
-                        single_prediction_format.parsed_categories = result
+                        single_prediction_format.insert_parsed_categories(result)
+                        single_prediction_format.set_success("success")
                         return single_prediction_format
                     except Exception as e:
                         is_last_attempt = attempt == max_retries - 1
@@ -126,13 +129,15 @@ class ExperimentService:
                             error_message = f"Failed prediction for unit {cluster_unit_entity.id}, run {run_index} " +\
                                             f"(attempt {attempt_number}/{max_retries}): {e}"
 
-                        logger.warning(error_message)
+                        logger.warning(error_message, exc_info=True)
 
-                        single_prediction_format.error.append(error_message)
+                        single_prediction_format.insert_error(error_message)
+
 
                         # If this is the last attempt, give up
                         if is_last_attempt:
-                            return None
+                            single_prediction_format.set_success("fail")
+                            return single_prediction_format
 
                         # linear backoff: 20s, 40s, 60s, etc.
                         wait_time = 20 * attempt
@@ -152,21 +157,22 @@ class ExperimentService:
             *tasks,
             return_exceptions=True
         )
-
+        predictions_output_format = TestPredictionsOutputFormat(predictions=list_predictions_output_format)
         # Filter out None results and count failures
-        successful_predictions = [p for p in list_predictions_output_format if p.parsed_categories is not None and not isinstance(p.parsed_categories, Exception)]
-        failed_count = len(list_predictions_output_format) - len(successful_predictions)
+        successful_predictions, failed_count = predictions_output_format.get_count_successful_failure_predictions()
 
         if failed_count > 0:
-            logger.warning(f"Completed with {len(successful_predictions)} successful predictions, "
+            logger.warning(f"Completed with {successful_predictions} successful predictions, "
                          f"{failed_count} failed after retries")
         else:
             logger.info(f"Finished with {len(tasks)} prediction tasks, all successful")
-        predictions_output_format = TestPredictionsOutputFormat(predictions=list_predictions_output_format)
+        
         if return_test_predictions_format:
+            return predictions_output_format
+        else:
             return predictions_output_format.get_predictions()
         
-        return predictions_output_format
+        
     
 
     @staticmethod
@@ -212,6 +218,7 @@ class ExperimentService:
         single_prediction_format: SinglePredictionOutputFormat,
         attempt_number: int = 1,
         all_attempts: list = None,
+        max_retry_attempts: Optional[int] = 5,
     ) -> PredictionCategoryTokens:
         """
         Make a single prediction run for a cluster unit.
@@ -230,18 +237,23 @@ class ExperimentService:
             all_attempts = []
 
         parsed_prompt = ExperimentService.parse_classification_prompt(cluster_unit_entity, prompt_entity, label_template_entity)
-
+        single_prediction_format.insert_input_prompt(parsed_prompt)
+        single_prediction_format.insert_system_prompt(prompt_entity.system_prompt)
         # Make the LLM call
         response = await LLMService.send_to_model(
             open_router_api_key=open_router_api_key,
             system_prompt=prompt_entity.system_prompt,
             prompt=parsed_prompt,
             model=experiment_entity.model,
-            reasoning_effort=experiment_entity.reasoning_effort
+            reasoning_effort=experiment_entity.reasoning_effort,
+            max_retry_attempts=max_retry_attempts
         )
+        model_output_message = LLMService().get_output_message_from_llm_response(response)
+        single_prediction_format.insert_model_output_message(model_output_message)
 
         # CRITICAL: Extract tokens IMMEDIATELY, before any parsing that might fail
         tokens_used = LLMService.extract_tokens_from_response(response)
+        single_prediction_format.insert_model_tokens(tokens_used)
 
         # Try to parse the prediction (this is what might fail)
         try:
@@ -290,11 +302,12 @@ class ExperimentService:
             # Then we increase the counter of aggregate results with 1. This allows us to track how many runs have predicted that label.
             
             for prediction_category_name, count_value in prediction_counter_single_unit.items():
-                prediction_category_prediction_result: PredictionResult = experiment_entity.aggregate_result.labels.get(prediction_category_name)
+                prediction_category_prediction_result: PredictionResult = experiment_entity.get_label_aggregate_result(prediction_category_name)
                 count_key = str(count_value)  # Convert to string for MongoDB compatibility
                 prediction_category_prediction_result.prevelance_distribution[count_key] = prediction_category_prediction_result.prevelance_distribution.get(count_key, 0) + 1
 
                 # Now we add the ground truth to the prediction result as a counter
+                print("prediction_category_name = ", prediction_category_name)
                 ground_truth_value: bool = cluster_unit_entity.get_value_of_ground_truth_variable(label_template_id=label_template_entity.id, variable_name=prediction_category_name)
                 prediction_category_prediction_result.individual_prediction_truth_label_list.append(PrevelanceUnitDistribution(runs_predicted_true=count_key,
                                                                                                                                ground_truth=ground_truth_value))
@@ -470,9 +483,14 @@ class ExperimentService:
 
         for index, experiment in enumerate(sorted_experiment_entities):
             print("experiment status = ", experiment.status)
-            prediction_metrics = ExperimentService.calculate_prediction_metrics(experiment, sample_entity, user_threshold)
-            overall_accuracy = ExperimentService.calculate_overal_accuracy(prediction_metrics)
-            overall_kappa = ExperimentService.calculate_overall_consistency(prediction_metrics)
+            if experiment.status != StatusType.Completed:
+                prediction_metrics = None
+                overall_accuracy = None
+                overall_kappa = None
+            else:
+                prediction_metrics = ExperimentService.calculate_prediction_metrics(experiment, sample_entity, user_threshold)
+                overall_accuracy = ExperimentService.calculate_overal_accuracy(prediction_metrics)
+                overall_kappa = ExperimentService.calculate_overall_consistency(prediction_metrics)
             #:TODO Fix that I keep track of what version of prompt I am using
             experiment_response = GetExperimentsResponse(id=experiment.id,
                                                          name=f"{experiment.model} V{index}",
@@ -626,7 +644,8 @@ class ExperimentService:
         label_template_entity: LabelTemplateEntity,
         prompt_entity: PromptEntity,
         cluster_unit_enities: List[ClusterUnitEntity]
-        ) -> List[PredictionCategoryTokens]:
+        ) -> TestPredictionsOutputFormat:
+        experiment_entity.runs_per_unit = 1
         return await ExperimentService.create_predicted_categories(
                 experiment_entity=experiment_entity,
                 label_template_entity=label_template_entity,

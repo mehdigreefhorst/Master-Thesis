@@ -55,6 +55,8 @@ export function ViewerContent({
   // Support both single label_template_id (old) and multiple label_template_ids (new)
   const labelTemplateIdParam = searchParams.get("label_template_id"); // Legacy single ID
   const labelTemplateIdsParam = searchParams.get("label_template_ids"); // New multiple IDs
+  const experimentIdParam = searchParams.get("experiment_id"); // New multiple IDs
+
 
   const labelTemplateIds = useMemo(() => {
     if (labelTemplateIdsParam) {
@@ -181,29 +183,21 @@ export function ViewerContent({
         ).length
         
         
-        if (matchingCount > 0) {
-          let reasons: string[] = []
-          predictions.map((pred, index) => {
-            if (pred.labels_prediction.values[labelKey.label]){
-              let per_label_fields: string = `Run ${index + 1}: `
+        let reasons: string[] = []
+        predictions.map((pred, index) => {
+          if (pred.labels_prediction.values[labelKey.label]){
+            let per_label_fields: string = `Run ${index + 1}: `
 
-              pred.labels_prediction.values[labelKey.label].per_label_details.forEach((per_label) => {
-                per_label_fields += `${per_label.label} = ${per_label.value}`
-              })
-              reasons.push(per_label_fields)
-            }
-          })
-          return {
-            count: matchingCount,
-            total: predictions.length,
-            reasons: reasons
+            pred.labels_prediction.values[labelKey.label].per_label_details.forEach((per_label) => {
+              per_label_fields += `${per_label.label} = ${per_label.value}`
+            })
+            reasons.push(per_label_fields)
           }
-            
-        }else {
-          return {
+        })
+        return {
           count: matchingCount,
           total: predictions.length,
-        };
+          reasons: reasons
         }
         
       });

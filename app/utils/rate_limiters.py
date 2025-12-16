@@ -177,26 +177,58 @@ class OpenRouterRateLimiter:
 
 
 import backoff
+import re
 
-class RateLimitError(Exception):
-    def __init__(self, retry_after: Optional[float] = None):
-        self.retry_after = retry_after
+async def call_with_retry(api_func, *args, max_tries: int = 5, **kwargs):
+    """
+    Call API function with retry only on rate limit errors (429).
 
-@backoff.on_exception(
-    backoff.expo,
-    RateLimitError,
-    max_tries=5,
-    max_time=300
-)
-async def call_with_retry(api_func, *args, **kwargs):
-    try:
-        response = await api_func(*args, **kwargs)
-        return response
-    except Exception as e:
-        if hasattr(e, 'response'):
-            if e.response.status_code == 429:  # Too Many Requests
-                retry_after = e.response.headers.get('Retry-After', 10)
-                logger.warning(f"Hit rate limit, retry after {retry_after}s")
-                await asyncio.sleep(float(retry_after))
-                raise RateLimitError(retry_after)
-        raise
+    Args:
+        api_func: Async function to call
+        max_tries: Max retry attempts (None = unlimited for test mode, 5 = default production)
+        **kwargs: Arguments for api_func
+
+    Returns:
+        Response from api_func (original exception propagates if not rate limit)
+    """
+
+    def should_give_up(e):
+        """Only retry on 429 rate limit errors, give up on everything else"""
+        error_message = str(e)
+        is_rate_limit = "429" in error_message or "rate limit" in error_message.lower()
+        return not is_rate_limit  # Give up if NOT a rate limit error
+
+    async def _on_backoff(details):
+        """Called before each retry - extract reset time and wait"""
+        e = details['exception']
+        error_message = str(e)
+
+        # Extract X-RateLimit-Reset from error (Unix timestamp in milliseconds)
+        reset_match = re.search(r"'X-RateLimit-Reset':\s*'?(\d+)'?", error_message)
+
+        if reset_match:
+            reset_timestamp_ms = int(reset_match.group(1))
+            reset_timestamp_s = reset_timestamp_ms / 1000
+            current_time = time.time()
+            retry_after = max(1, reset_timestamp_s - current_time + 1)
+
+            reset_time_str = time.strftime('%H:%M:%S', time.localtime(reset_timestamp_s))
+            logger.warning(f"Rate limit hit. Waiting {retry_after:.1f}s until reset at {reset_time_str}")
+            await asyncio.sleep(retry_after)
+        else:
+            logger.warning(f"Rate limit hit (attempt {details['tries']}). Using exponential backoff.")
+
+    # Build backoff decorator with dynamic max_tries
+    # Production: limited retries
+    decorator = backoff.on_exception(
+        backoff.expo,
+        Exception,  # Catch all exceptions
+        giveup=should_give_up,  # But only retry rate limits
+        on_backoff=_on_backoff,
+        max_tries=max_tries,
+        max_time=300
+    )
+
+    # Apply decorator and call
+    decorated_func = decorator(lambda: api_func(*args, **kwargs))
+    return await decorated_func()

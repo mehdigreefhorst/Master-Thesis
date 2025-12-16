@@ -32,11 +32,11 @@ export const Modal: React.FC<ModalProps> = ({
       />
 
       {/* Modal Content */}
-      <div className={`relative bg-white rounded-2xl shadow-2xl p-8 ${maxWidth} w-full mx-4 animate-[slideInDown_300ms_ease-out]`}>
+      <div className={`relative bg-white rounded-2xl shadow-2xl p-8 ${maxWidth} w-full mx-4 max-h-[90vh] overflow-y-auto animate-[slideInDown_300ms_ease-out]`}>
         {showCloseButton && onClose && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors z-10"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

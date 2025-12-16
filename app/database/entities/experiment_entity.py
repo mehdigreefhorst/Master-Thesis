@@ -38,6 +38,13 @@ class AggregateResult(BaseModel):
     def field_names(cls) -> list[str]:
         return list(cls.model_fields.keys())
     
+    def get_label_prediction_result(self, label_name: str) -> PredictionResult:
+        if self.labels.get(label_name) is None:
+            self.labels[label_name] = PredictionResult()
+        
+        return self.labels.get(label_name)
+        
+    
 
 class TokenUsage(BaseModel):
     prompt_tokens: int = 0
@@ -85,6 +92,12 @@ class ExperimentEntity(BaseEntity):
     #         self.aggregate_result = AggregateResult()
     #     for label in self.label_template_labels:
     #         self.aggregate_result.labels[label] = PredictionResult()
+
+    def get_label_aggregate_result(self, label_name: str) -> PredictionResult:
+        if self.aggregate_result is None:
+            self.aggregate_result = AggregateResult(labels=dict())
+        
+        return self.aggregate_result.get_label_prediction_result(label_name)
 
 
     def calculate_and_set_total_cost(self) -> float:

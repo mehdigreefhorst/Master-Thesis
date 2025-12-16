@@ -39,7 +39,7 @@ export function useAuthFetch() {
         additionalParameters?: RequestInit;
       } = {}
     ): Promise<Response> => {
-      const access_token = sessionStorage.getItem("access_token");
+      const access_token = localStorage.getItem("access_token");
       if (!access_token) {
         router.push("/login");
         throw new Error("No access token available");
@@ -181,7 +181,7 @@ export function convertKeysToCamelCase(obj: object | object[]): object | object[
 
 
 async function refresh(): Promise<boolean> {
-  const refreshToken = sessionStorage.getItem("refresh_token");
+  const refreshToken = localStorage.getItem("refresh_token");
   if (!refreshToken) {
     return false;
   }
@@ -192,8 +192,8 @@ async function refresh(): Promise<boolean> {
   const response = await unauthFetch("/auth/refresh", {method: "POST", additionalParameters: {"headers": headers}});
   if (response.status == 200) {
     const response_body: LoginResponse = await response.json();
-    sessionStorage.setItem("access_token", response_body.access_token);
-    sessionStorage.setItem("refresh_token", response_body.refresh_token);
+    localStorage.setItem("access_token", response_body.access_token);
+    localStorage.setItem("refresh_token", response_body.refresh_token);
     return true;
   } else {
     return false;

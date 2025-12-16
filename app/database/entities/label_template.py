@@ -338,7 +338,7 @@ class LabelTemplateEntity(BaseEntity):
             label_value_per_label_field = ProjectionLabelField(label=label.label, value=value_label, type=label.type, per_label_details=per_label_value_fields)
             label_prediction_instance.values[label.label] =  label_value_per_label_field
         
-        return label_prediction_instance.model_dump_json(indent=4)
+        return label_prediction_instance
 
     def is_ground_truth_value_part_of_label(self, label_name: str, label_value):
         """check if the ground truth to add is of the correct """

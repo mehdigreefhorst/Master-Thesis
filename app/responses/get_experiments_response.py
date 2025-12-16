@@ -1,6 +1,6 @@
 
 
-from typing import List, Dict, Literal, Optional
+from typing import List, Dict, Literal, Optional, Tuple
 from pydantic import BaseModel, Field
 from datetime import datetime
 import math
@@ -672,9 +672,9 @@ class GetExperimentsResponse(BaseModel):
     runs_per_unit: int
     threshold_runs_true: Optional[int]
     total_samples: int
-    overall_accuracy: float
-    overall_kappa: float
-    prediction_metrics: List[PredictionMetric]
+    overall_accuracy: Optional[float] = None
+    overall_kappa: Optional[float] = None
+    prediction_metrics: Optional[List[PredictionMetric]] = None
     reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh", "auto"]
     token_statistics: Optional[ExperimentTokenStatistics] = None
     experiment_cost: Optional[ExperimentCost] = None
@@ -688,9 +688,55 @@ class SinglePredictionOutputFormat(BaseModel):
     error: Optional[List[str]] = None
     success: Optional[bool] = None
     parsed_categories: Optional[PredictionCategoryTokens] = None
+    tokens_used: Optional[Dict] = None
+
+    def insert_error(self, error_message: str):
+        if self.error is None:
+            self.error = list()
+
+        self.error.append(error_message)
+    
+    def insert_parsed_categories(self, parsed_categories: PredictionCategoryTokens):
+        self.parsed_categories = parsed_categories
+    
+
+    def insert_system_prompt(self, system_prompt: str):
+        self.system_prompt = system_prompt
+    
+    def insert_input_prompt(self, input_prompt: str):
+        self.input_prompt = input_prompt
+    
+    def insert_model_output_message(self, model_output_message: str):
+        self.model_output_message = model_output_message
+    
+    def insert_model_tokens(self, tokens_used):
+        self.tokens_used = tokens_used
+
+    def set_success(self, success_or_fail: Literal["fail", "success"]):
+        if success_or_fail == "fail":
+            self.success = False
+        
+        if success_or_fail == "success":
+            self.success = True
 
 class TestPredictionsOutputFormat(BaseModel):
     predictions: List[SinglePredictionOutputFormat]
 
     def get_predictions(self) -> PredictionCategoryTokens:
         return [prediction.parsed_categories for prediction in self.predictions]
+    
+    def get_count_successful_failure_predictions(self) -> Tuple[int, int]:
+        """returns success_count, failed_count of predictions"""
+        success_count = 0
+        failed_count = 0
+        for prediction in self.predictions:
+            if prediction.parsed_categories and prediction.error is None:
+                success_count += 1
+            else:
+                failed_count += 1
+            
+        return success_count, failed_count
+
+    
+    
+            

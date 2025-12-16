@@ -673,7 +673,7 @@ def log_llm_call(operation_name: str = "llm_call"):
                         }
                     }
                 )
-                raise
+                raise e
 
         @wraps(func)
         def sync_wrapper(*args, **kwargs):

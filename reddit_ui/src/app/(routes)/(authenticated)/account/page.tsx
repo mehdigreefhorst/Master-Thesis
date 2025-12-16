@@ -75,8 +75,8 @@ export default function AccountPage() {
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem('access_token');
-    sessionStorage.removeItem('refresh_token');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     router.push('/login');
   };
 

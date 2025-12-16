@@ -15,6 +15,7 @@ import {
   ActionBar,
   StatusMessages,
 } from '@/components/experiment-create';
+import { TestPredictionModal } from '@/components/experiments/TestPredictionModal';
 import { ModelInfo, ReasoningEffort, ReasoningEffortType } from '@/types/model';
 import { Button, InfoTooltip, Modal } from '@/components/ui';
 import { PromptEntity } from '@/types/prompt';
@@ -70,10 +71,7 @@ export default function CreateExperimentPage() {
 
   // Test prediction modal state
   const [showTestModal, setShowTestModal] = useState(false);
-  const [testResult, setTestResult] = useState<any>(null);
-  const [isTestRunning, setIsTestRunning] = useState(false);
   const [createdExperimentId, setCreatedExperimentId] = useState<string | null>(null);
-  const [nrToPredict, setNrToPredict] = useState<number>(1);
 
 
   // Fetch sample units on mount
@@ -288,31 +286,6 @@ export default function CreateExperimentPage() {
       });
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleRunTest = async () => {
-    if (!createdExperimentId || !selectedLabelTemplateId) return;
-
-    setIsTestRunning(true);
-    setTestResult(null);
-
-    try {
-      const result = await experimentApi.testPrediction(
-        authFetch,
-        createdExperimentId,
-        undefined,
-        nrToPredict
-      );
-      setTestResult(result);
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : 'Test failed',
-        variant: "destructive"
-      });
-    } finally {
-      setIsTestRunning(false);
     }
   };
 
@@ -584,119 +557,15 @@ export default function CreateExperimentPage() {
       </div>
 
       {/* Test Prediction Modal */}
-      <Modal
-        isOpen={showTestModal}
-        onClose={handleProceedToFullExperiment}
-        showCloseButton={true}
-        maxWidth="max-w-4xl"
-      >
-        <div className="space-y-6">
-          <h2 className="text-2xl font-semibold">Test Prediction</h2>
-
-          {/* Number of Units Selector - Always visible */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <label htmlFor="nrToPredict" className="block text-sm font-bold text-gray-900 mb-2">
-              Number of units to predict
-            </label>
-            <input
-              id="nrToPredict"
-              type="number"
-              min="1"
-              value={nrToPredict}
-              onChange={(e) => setNrToPredict(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-32 px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:border-blue-500"
-              disabled={isTestRunning}
-            />
-          </div>
-
-          {/* Run Test Button - Always visible when not running */}
-          {!isTestRunning && (
-            <div className="flex gap-4">
-              <Button onClick={handleRunTest} variant="primary" size="lg">
-                {testResult ? 'Rerun Test Sample' : 'Run Test Sample'}
-              </Button>
-              <Button onClick={handleProceedToFullExperiment} variant="secondary" size="lg">
-                Continue to Full Experiments
-              </Button>
-            </div>
-          )}
-
-          {isTestRunning && (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-gray-600">Running test prediction...</p>
-            </div>
-          )}
-
-          {testResult && (
-            <div className="space-y-4">
-              {/* System Prompt */}
-              {testResult.system_prompt && (
-                <div>
-                  <h3 className="font-semibold text-sm text-gray-700 mb-2">System Message</h3>
-                  <pre className="bg-gray-50 p-4 rounded-lg text-xs overflow-x-auto border border-gray-200">
-                    {testResult.system_prompt}
-                  </pre>
-                </div>
-              )}
-
-              {/* Parsed Prompt */}
-              {testResult.parsed_prompt && (
-                <div>
-                  <h3 className="font-semibold text-sm text-gray-700 mb-2">User Prompt</h3>
-                  <pre className="bg-gray-50 p-4 rounded-lg text-xs overflow-x-auto border border-gray-200">
-                    {testResult.parsed_prompt}
-                  </pre>
-                </div>
-              )}
-
-              {/* LLM Output */}
-              {testResult.output_llm && (
-                <div>
-                  <h3 className="font-semibold text-sm text-gray-700 mb-2">LLM Response</h3>
-                  <pre className="bg-gray-50 p-4 rounded-lg text-xs overflow-x-auto border border-gray-200">
-                    {testResult.output_llm}
-                  </pre>
-                </div>
-              )}
-
-              {/* Parse Status */}
-              <div className={`p-4 rounded-lg ${testResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-                <div className="flex items-center gap-2">
-                  {testResult.success ? (
-                    <>
-                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span className="font-semibold text-green-900">Output is parsable</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                      <span className="font-semibold text-red-900">Parsing failed</span>
-                    </>
-                  )}
-                </div>
-                {testResult.error && (
-                  <p className="text-sm text-red-700 mt-2">{testResult.error}</p>
-                )}
-              </div>
-
-              {/* Predicted Categories */}
-              {testResult.predicted_categories && (
-                <div>
-                  <h3 className="font-semibold text-sm text-gray-700 mb-2">Predicted Categories</h3>
-                  <pre className="bg-gray-50 p-4 rounded-lg text-xs overflow-x-auto border border-gray-200">
-                    {JSON.stringify(testResult.predicted_categories, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </Modal>
+      {createdExperimentId && (
+        <TestPredictionModal
+          isOpen={showTestModal}
+          onClose={handleProceedToFullExperiment}
+          experimentId={createdExperimentId}
+          autoRun={false}
+          onProceed={handleProceedToFullExperiment}
+        />
+      )}
 
       {/* Save Prompt Modal */}
       {showSaveModal && (

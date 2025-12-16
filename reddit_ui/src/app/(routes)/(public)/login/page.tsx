@@ -18,8 +18,8 @@ export default function Login() {
 
   useEffect(() => {
     // If the user is already logged-in, proceed immediately.
-    const access_token = sessionStorage.getItem("access_token");
-    const refresh_token = sessionStorage.getItem("refresh_token");
+    const access_token = localStorage.getItem("access_token");
+    const refresh_token = localStorage.getItem("refresh_token");
 
     if ((access_token && getExpiry(access_token) > new Date()) ||
       (refresh_token && getExpiry(refresh_token) > new Date())) {
@@ -41,8 +41,8 @@ export default function Login() {
       }
 
       const response_body: LoginResponse = await res.json()
-      sessionStorage.setItem("access_token", response_body.access_token)
-      sessionStorage.setItem("refresh_token", response_body.refresh_token)
+      localStorage.setItem("access_token", response_body.access_token)
+      localStorage.setItem("refresh_token", response_body.refresh_token)
 
       router.push('/overview');
 

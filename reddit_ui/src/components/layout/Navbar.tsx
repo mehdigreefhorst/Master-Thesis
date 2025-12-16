@@ -13,8 +13,8 @@ export const Navbar = () => {
   useEffect(() => {
     // Check authentication status
     const checkAuth = () => {
-      const access_token = sessionStorage.getItem("access_token");
-      const refresh_token = sessionStorage.getItem("refresh_token");
+      const access_token = localStorage.getItem("access_token");
+      const refresh_token = localStorage.getItem("refresh_token");
 
       const isAuth = (access_token && getExpiry(access_token) > new Date()) ||
                      (refresh_token && getExpiry(refresh_token) > new Date());

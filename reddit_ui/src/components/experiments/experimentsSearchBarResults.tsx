@@ -54,9 +54,9 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
     }
   };
 
-  const handleView = (experiment_id: string) => {
+  const handleView = (experiment_id: string, label_template_id: string) => {
       if (scraperClusterId) {
-        router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&experiment_id=${experiment_id}`);
+        router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&experiment_id=${experiment_id}&label_template_id=${label_template_id}`);
       }
     };
 
@@ -469,7 +469,6 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
             isOpen={showTestModal}
             onClose={() => setShowTestModal(false)}
             experimentId={testExperimentId}
-            autoRun={true}
           />
         )}
     </>

@@ -80,7 +80,7 @@ class LlmHelper:
         ):
 
         if "free" in model:
-            requests_per_minute: Optional[int] = 20
+            requests_per_minute: Optional[int] = 18  # Slightly conservative to avoid hitting exact limit
         # Get or create rate limiter for this API key
         # This returns the SAME rate limiter instance for all coroutines using this API key
         if not skip_rate_limit:
@@ -93,9 +93,7 @@ class LlmHelper:
             # Wait for our turn (all coroutines coordinate here)
             # Note: Aggregate logging happens inside rate_limiter.acquire()
             await rate_limiter.acquire()
-        # Now make the actual API call
         try:
-            # Now make the actual API call
             llm = AsyncOpenAI(
                 base_url="https://openrouter.ai/api/v1",
                 api_key=open_router_api_key)
@@ -103,19 +101,21 @@ class LlmHelper:
               {'role': 'system', 'content': system_prompt},
               {'role': 'user', 'content': prompt} ]
 
-            logger.info(f"messages = {messages}")
-            
             kwargs = {
                     'model': model,
                     'messages': messages
                 }
             if reasoning_effort and reasoning_effort != "none":
                     kwargs['reasoning_effort'] = reasoning_effort
+            
+            with open("test.json", "a") as f:
+                f.write(json.dumps(kwargs))
             response =  await llm.chat.completions.create(**kwargs)
             return response
         except Exception as e:
-            logger.error(f"Error calling OpenRouter: {e}")
-            raise e
+            error_message = f"Error calling OpenRouter: {e}"
+            logger.error(error_message)
+            raise Exception(error_message)
     
     @staticmethod
     def get_llm_usage(response) -> Dict[str, str]:
