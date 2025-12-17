@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 from typing import Dict, Optional
 from openai import OpenAI, AsyncOpenAI
 
@@ -81,8 +82,8 @@ class LlmHelper:
 
         if "free" in model:
             requests_per_minute: Optional[int] = 18  # Slightly conservative to avoid hitting exact limit
-        # Get or create rate limiter for this API key
-        # This returns the SAME rate limiter instance for all coroutines using this API key
+        # Track rate limiter wait time
+        rate_limiter_wait_ms = 0.0
         if not skip_rate_limit:
             config = RateLimitConfig(
                 requests_per_minute=requests_per_minute,  # Adjust based on your OpenRouter plan
@@ -90,9 +91,9 @@ class LlmHelper:
             )
             rate_limiter = RateLimiterRegistry.get_limiter(open_router_api_key, config)
 
-            # Wait for our turn (all coroutines coordinate here)
-            # Note: Aggregate logging happens inside rate_limiter.acquire()
-            await rate_limiter.acquire()
+            # Wait for our turn and capture wait time
+            rate_limiter_wait_ms = (await rate_limiter.acquire()) * 1000  # Convert to ms
+
         try:
             llm = AsyncOpenAI(
                 base_url="https://openrouter.ai/api/v1",
@@ -107,10 +108,19 @@ class LlmHelper:
                 }
             if reasoning_effort and reasoning_effort != "none":
                     kwargs['reasoning_effort'] = reasoning_effort
-            
+
             with open("test.json", "a") as f:
                 f.write(json.dumps(kwargs))
-            response =  await llm.chat.completions.create(**kwargs)
+
+            # Time the actual OpenRouter API call
+            openrouter_start = time.time()
+            response = await llm.chat.completions.create(**kwargs)
+            openrouter_duration_ms = (time.time() - openrouter_start) * 1000
+
+            # Attach timing metadata to response for the decorator to access
+            response._rate_limiter_wait_ms = rate_limiter_wait_ms
+            response._openrouter_duration_ms = openrouter_duration_ms
+
             return response
         except Exception as e:
             error_message = f"Error calling OpenRouter: {e}"

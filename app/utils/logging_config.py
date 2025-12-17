@@ -136,6 +136,18 @@ class HumanReadableFormatter(logging.Formatter):
 
         formatted = " ".join(parts)
 
+        # Add timing breakdown if available (for LLM calls)
+        if hasattr(record, 'extra_fields'):
+            extra = record.extra_fields
+            if 'rate_limiter_wait_ms' in extra or 'openrouter_duration_ms' in extra:
+                timing_parts = []
+                if extra.get('rate_limiter_wait_ms'):
+                    timing_parts.append(f"rate_limit={extra['rate_limiter_wait_ms']:.2f}ms")
+                if extra.get('openrouter_duration_ms'):
+                    timing_parts.append(f"openrouter={extra['openrouter_duration_ms']:.2f}ms")
+                if timing_parts:
+                    formatted += f" [{', '.join(timing_parts)}]"
+
         # Add exception traceback if present
         if record.exc_info:
             formatted += "\n" + self.formatException(record.exc_info)
@@ -592,6 +604,10 @@ def log_llm_call(operation_name: str = "llm_call"):
                 response_content = None
                 token_usage = {}
 
+                # Extract timing metadata if available
+                rate_limiter_wait_ms = getattr(response, '_rate_limiter_wait_ms', 0)
+                openrouter_duration_ms = getattr(response, '_openrouter_duration_ms', None)
+
                 try:
                     if hasattr(response, 'choices') and len(response.choices) > 0:
                         response_content = response.choices[0].message.content
@@ -621,7 +637,9 @@ def log_llm_call(operation_name: str = "llm_call"):
                     'model': model,
                     'reasoning_effort': reasoning_effort,
                     'success': True,
-                    'duration_ms': duration_ms,
+                    'total_duration_ms': duration_ms,
+                    'rate_limiter_wait_ms': rate_limiter_wait_ms,
+                    'openrouter_duration_ms': openrouter_duration_ms,
                     'token_usage': token_usage,
                     'response_length': len(response_content) if response_content else 0,
                     'response_preview': response_preview,
@@ -720,6 +738,10 @@ def log_llm_call(operation_name: str = "llm_call"):
                 response_content = None
                 token_usage = {}
 
+                # Extract timing metadata if available
+                rate_limiter_wait_ms = getattr(response, '_rate_limiter_wait_ms', 0)
+                openrouter_duration_ms = getattr(response, '_openrouter_duration_ms', None)
+
                 try:
                     if hasattr(response, 'choices') and len(response.choices) > 0:
                         response_content = response.choices[0].message.content
@@ -747,7 +769,9 @@ def log_llm_call(operation_name: str = "llm_call"):
                     'model': model,
                     'reasoning_effort': reasoning_effort,
                     'success': True,
-                    'duration_ms': duration_ms,
+                    'total_duration_ms': duration_ms,
+                    'rate_limiter_wait_ms': rate_limiter_wait_ms,
+                    'openrouter_duration_ms': openrouter_duration_ms,
                     'token_usage': token_usage,
                     'response_length': len(response_content) if response_content else 0,
                     'response_preview': response_preview,
