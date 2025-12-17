@@ -187,9 +187,10 @@ export function ViewerContent({
         predictions.map((pred, index) => {
           if (pred.labels_prediction.values[labelKey.label]){
             let per_label_fields: string = `Run ${index + 1}: `
+            const labelPredictionValue = pred.labels_prediction.values[labelKey.label].value
 
             pred.labels_prediction.values[labelKey.label].per_label_details.forEach((per_label) => {
-              per_label_fields += `${per_label.label} = ${per_label.value}`
+              per_label_fields += `${labelPredictionValue} -> ${per_label.label} = ${per_label.value}`
             })
             reasons.push(per_label_fields)
           }
