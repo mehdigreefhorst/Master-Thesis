@@ -270,9 +270,6 @@ class ExperimentService:
 
         # Try to parse the prediction (this is what might fail)
         try:
-            if cluster_unit_entity.id == "6939e36c216f00e87c0096e4" and attempt_number == 1:
-                raise Exception("run fail cluster unit entity fail test")
-
             prediction_category_tokens = LLMService.response_to_prediction_tokens(response=response, experiment_entity=experiment_entity, label_template_entity=label_template_entity, all_attempts_token_usage=all_attempts_token_usage)
 
             # Record this successful attempt
