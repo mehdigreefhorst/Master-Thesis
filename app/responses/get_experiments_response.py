@@ -6,8 +6,9 @@ from datetime import datetime
 import math
 
 
-from app.database.entities.cluster_unit_entity import ClusterUnitEntity, PredictionCategoryTokens
-from app.database.entities.experiment_entity import ExperimentCost, ExperimentTokenStatistics, PrevalenceDistribution
+from app.database.entities.base_entity import PyObjectId
+from app.database.entities.cluster_unit_entity import ClusterUnitEntity, ClusterUnitEntityPredictedCategory, PredictionCategoryTokens, TokenUsageAttempt
+from app.database.entities.experiment_entity import ExperimentCost, ExperimentEntity, ExperimentTokenStatistics, PrevalenceDistribution, TokenUsage
 from app.utils.types import StatusType
 
 
@@ -688,6 +689,7 @@ class SinglePredictionOutputFormat(BaseModel):
     error: Optional[List[str]] = None
     success: Optional[bool] = None
     parsed_categories: Optional[PredictionCategoryTokens] = None
+    all_attempts_token_usage: Optional[List[TokenUsageAttempt]] = None
     tokens_used: Optional[Dict] = None
 
     def insert_error(self, error_message: str):
@@ -740,6 +742,44 @@ class GroupedPredictionOutputFormat(BaseModel):
                 return False
         # Nothing triggered a fail so we send true!
         return True
+    
+    def get_parsed_categories(self) -> List[PredictionCategoryTokens]:
+        if not self.all_predictions_successfull():
+            return None
+        return [prediction.parsed_categories for prediction in self.predictions]
+        
+
+    def create_set_predicted_category(self, experiment_entity: ExperimentEntity) -> ClusterUnitEntityPredictedCategory:
+        if not self.all_predictions_successfull():
+            return None
+        
+        cluster_unit_predicted_category = ClusterUnitEntityPredictedCategory(
+                experiment_id=experiment_entity.id,
+                predicted_categories=self.get_parsed_categories()
+                )
+        
+        if self.cluster_unit_entity.predicted_category is None:
+            self.cluster_unit_entity.predicted_category = {}
+                
+        self.cluster_unit_entity.predicted_category[experiment_entity.id] = cluster_unit_predicted_category
+
+        return cluster_unit_predicted_category
+    
+    def get_total_tokens_used(self):
+        """gets the tokens from """
+        total_token_usage = TokenUsage()
+        for prediction in self.predictions:
+            for attempt_token_usage in prediction.all_attempts_token_usage:
+                total_token_usage.add_token_usage_attempt(attempt_token_usage)
+        
+        return total_token_usage
+                    
+                    
+            
+        
+        
+
+        
 
 
 ClusterUnitEntityId = str
@@ -784,6 +824,16 @@ class PredictionsGroupedOutputFormat(BaseModel):
         """returns nested list of single prediction output format -> grouped per cluster unit entity"""
         return [[prediction.model_dump() for prediction in grouped_prediction.predictions] 
                 for grouped_prediction in self.cluster_unit_predictions_map.values()]
+    
+
+    def get_wasted_tokens(self):
+        total_wasted_tokens = TokenUsage()
+        for cluster_unit_id, cluster_unit_predictions_map in self.cluster_unit_predictions_map.items():
+            if not cluster_unit_predictions_map.all_predictions_successfull():
+                token_usage = cluster_unit_predictions_map.get_total_tokens_used()
+                total_wasted_tokens.add_other_token_usage(token_usage)
+
+        return total_wasted_tokens
             
         
 

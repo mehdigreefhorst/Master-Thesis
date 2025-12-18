@@ -133,7 +133,7 @@ class LLMService:
         prediction_category_tokens = PredictionCategoryTokens(
             **labels,
             tokens_used=token_usage,
-            all_attempts=all_attempts,
+            all_attempts_token_usage=all_attempts,
             total_tokens_all_attempts=total_tokens_all_attempts
         )
         return prediction_category_tokens
@@ -165,7 +165,7 @@ class LLMService:
         
   
     @staticmethod
-    def response_to_prediction_tokens(response, experiment_entity: ExperimentEntity, label_template_entity: LabelTemplateEntity, all_attempts: list[TokenUsageAttempt] = None) -> PredictionCategoryTokens:
+    def response_to_prediction_tokens(response, experiment_entity: ExperimentEntity, label_template_entity: LabelTemplateEntity, all_attempts_token_usage: list[TokenUsageAttempt] = None) -> PredictionCategoryTokens:
         """
         Parse response into prediction. This may fail if format is incorrect.
         Token tracking happens BEFORE this is called, so tokens are never lost.
@@ -174,8 +174,8 @@ class LLMService:
             response: The LLM response object
             all_attempts: List of all token usage attempts (including retries) for this prediction
         """
-        if all_attempts is None:
-            all_attempts = []
+        if all_attempts_token_usage is None:
+            all_attempts_token_usage = []
 
         # Extract tokens from this successful response
         token_usage: Dict[str, str] = LLMService.extract_tokens_from_response(response)
@@ -191,7 +191,7 @@ class LLMService:
                     'extra_fields': {
                         'experiment_id': str(experiment_entity.id),
                         'response_keys': list(response_dict.keys()),
-                        'num_attempts': len(all_attempts)
+                        'num_attempts': len(all_attempts_token_usage)
                     }
                 }
             )
@@ -212,7 +212,7 @@ class LLMService:
 
 
         # Calculate total tokens across all attempts
-        total_tokens_all_attempts = LLMService._aggregate_token_usage(all_attempts)
+        total_tokens_all_attempts = LLMService._aggregate_token_usage(all_attempts_token_usage)
 
         llm_logger.info(
             "Created prediction tokens with template",
@@ -220,7 +220,7 @@ class LLMService:
                 'extra_fields': {
                     'experiment_id': str(experiment_entity.id),
                     'total_tokens': total_tokens_all_attempts.get('total_tokens', 0),
-                    'num_attempts': len(all_attempts)
+                    'num_attempts': len(all_attempts_token_usage)
                 }
             }
         )
@@ -228,7 +228,7 @@ class LLMService:
         prediction_category_tokens = PredictionCategoryTokens(
             labels_prediction=labels_prediction,
             tokens_used=token_usage,
-            all_attempts=all_attempts,
+            all_attempts_token_usage=all_attempts_token_usage,
             total_tokens_all_attempts=total_tokens_all_attempts
         )
         return prediction_category_tokens

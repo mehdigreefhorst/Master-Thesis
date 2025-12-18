@@ -265,13 +265,12 @@ def continue_experiment(query: ExperimentId):
             label_template_entity=label_template_entity,
             cluster_unit_entities=cluster_unit_entities,
             prompt_entity=prompt_entity))
-        get_experiment_repository().update(experiment_entity.id, {"status": StatusType.Completed})
 
         
     except Exception as e:
         experiment_entity.status = StatusType.Error
         get_experiment_repository().update(experiment_entity.id, experiment_entity)
-        raise Exception("The fuck!")
+        raise 
         return jsonify(error=f"Error = {e}")
     return jsonify(f"succesfully predicted a total of {total_cluster_unit_predicted_categories} categories for units")
 

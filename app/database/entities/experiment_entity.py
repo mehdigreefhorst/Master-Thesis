@@ -6,6 +6,7 @@ import re
 
 from pydantic import BaseModel, Field, field_validator
 from app.database.entities.base_entity import BaseEntity, PyObjectId
+from app.database.entities.cluster_unit_entity import TokenUsageAttempt
 from app.database.entities.openrouter_data_entity import Pricing
 from app.utils.types import StatusType
 
@@ -52,6 +53,20 @@ class TokenUsage(BaseModel):
     internal_reasoning_tokens: int = 0
     total_tokens: int = 0
 
+    def add_token_usage_attempt(self, token_usage_attempt: TokenUsageAttempt):
+        self.prompt_tokens += token_usage_attempt.tokens_used.get("prompt_tokens", 0)
+        self.completion_tokens += token_usage_attempt.tokens_used.get("completion_tokens", 0)
+        self.total_tokens += token_usage_attempt.tokens_used.get("total_tokens", 0)
+        
+        reasoning_tokens = token_usage_attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
+        self.internal_reasoning_tokens += reasoning_tokens
+
+    def add_other_token_usage(self, token_usage: "TokenUsage"):
+        self.prompt_tokens += token_usage.prompt_tokens
+        self.completion_tokens += token_usage.completion_tokens
+        self.internal_reasoning_tokens += token_usage.internal_reasoning_tokens
+        self.total_tokens += token_usage.total_tokens
+
 
 class ExperimentTokenStatistics(BaseModel):
     """Aggregate token usage statistics for the entire experiment"""
@@ -60,7 +75,9 @@ class ExperimentTokenStatistics(BaseModel):
     total_tokens_used: TokenUsage = Field(default_factory=TokenUsage)  # e.g., {"prompt_tokens": 1000, "completion_tokens": 500, "total_tokens": 1500}
     tokens_wasted_on_failures: TokenUsage = Field(default_factory=TokenUsage)  # Tokens from failed attempts
     tokens_from_retries: TokenUsage = Field(default_factory=TokenUsage)  # Tokens from retry attempts (even if they succeeded)
-
+    
+    
+    
 
 class ExperimentCost(BaseModel):
     """cost in dollar spend on experiment"""

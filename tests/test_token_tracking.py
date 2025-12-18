@@ -109,7 +109,7 @@ Classify this message according to the categories defined in the system prompt."
             cluster_unit_entity=cluster_unit_entity,
             prompt_entity=prompt_entity,
             attempt_number=1,
-            all_attempts=[]
+            all_attempts_token_usage=[]
         )
 
         print("\n✓ Test completed successfully!")

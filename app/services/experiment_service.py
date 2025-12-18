@@ -50,6 +50,8 @@ class ExperimentService:
         logger.info(f"Starting prediction for {len(cluster_unit_entities_remain)} units, "
                    f"{experiment_entity.runs_per_unit} runs each")
         
+        logger.info(f"We skip {len(cluster_unit_entities_done)} cluster units because they are already completed earlier")
+        
         # If there are cluster units left to be predicted, we do that here. And then we add updated cluster units to the cluster_unit_entities_done list
         if cluster_unit_entities_remain:
             predictions_grouped_output_format_object = await ExperimentService.create_predicted_categories(
@@ -59,19 +61,24 @@ class ExperimentService:
                 cluster_unit_enities=cluster_unit_entities_remain, 
                 max_concurrent=max_concurrent)
 
-            cluster_unit_entities_remain = ExperimentService.update_add_to_db_cluster_unit_predictions(
-                grouped_predictions_object=predictions_grouped_output_format_object,
-                cluster_units_enitities_as_predicted=cluster_unit_entities_remain,
+            cluster_unit_entities_successfully_done = ExperimentService.update_add_to_db_cluster_unit_predictions(
+                predictions_grouped_output_format_object=predictions_grouped_output_format_object,
                 experiment_entity=experiment_entity)
         
-            cluster_unit_entities_done.extend(cluster_unit_entities_remain)
+            cluster_unit_entities_done.extend(cluster_unit_entities_successfully_done)
         
         ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities_done, experiment_entity, label_template_entity=label_template_entity)
 
         # Calculate and store aggregate token statistics
         ExperimentService.calculate_and_store_token_statistics(cluster_unit_entities_done, experiment_entity)
-
-        experiment_entity.status = StatusType.Completed
+        # If there were any cluster unit entities remaining & there was at least a single failure of prediction. We set experiment status to error
+        success_count, failed_count = predictions_grouped_output_format_object.get_count_successful_failure_predictions()
+        if len(cluster_unit_entities_remain) > 0 and failed_count > 0:
+            logger.error(f"THere is an error we have {failed_count} predictions")
+            ExperimentService.calculate_and_store_wasted_token_statistics(predictions_grouped_output_format_object=predictions_grouped_output_format_object, experiment_entity=experiment_entity)
+            experiment_entity.status = StatusType.Error
+        else:
+            experiment_entity.status = StatusType.Completed
         get_experiment_repository().update(experiment_entity.id, experiment_entity)
     
 
@@ -97,7 +104,7 @@ class ExperimentService:
             The rate limiter (in LlmHelper) ensures we don't exceed API limits.
             Includes retry logic with exponential backoff and comprehensive token tracking.
             """
-            all_attempts = []  # Track all attempts for token accounting
+            all_attempts_token_usage: List[TokenUsageAttempt] = []  # Track all attempts for token accounting
             single_prediction_format = SinglePredictionOutputFormat()
 
             async with semaphore:  # Limit concurrent connections
@@ -113,7 +120,7 @@ class ExperimentService:
                             prompt_entity=prompt_entity,
                             single_prediction_format=single_prediction_format,
                             attempt_number=attempt_number,
-                            all_attempts=all_attempts,  # Pass the list to accumulate attempts
+                            all_attempts_token_usage=all_attempts_token_usage,  # Pass the list to accumulate attempts
                             max_retry_attempts=max_retry_attempts_rate_limter, # Retry limit for rate limiter
                             run_index=run_index,
 
@@ -148,6 +155,8 @@ class ExperimentService:
                         wait_time = 20 * attempt
                         logger.info(f"Retrying in {wait_time}s...")
                         await asyncio.sleep(wait_time)
+                    finally:
+                        single_prediction_format.all_attempts_token_usage = all_attempts_token_usage
 
         # Create all tasks
         tasks = []
@@ -184,33 +193,29 @@ class ExperimentService:
     @staticmethod
     def update_add_to_db_cluster_unit_predictions(
         predictions_grouped_output_format_object: PredictionsGroupedOutputFormat,
-        cluster_units_enitities_as_predicted: List[ClusterUnitEntity],
         experiment_entity: ExperimentEntity) -> List[ClusterUnitEntity]:
         """updates the predictions, by adding them to a cluster unit map which is a dictionary. Then it sends off 
         the predictions to the mongo db database. Also it returns the updates cluster unit enitites """
         # turn the 1D list of predictions in into a nested list, where each nest is a single cluster unit
+        completed_cluster_unit_entities: List[ClusterUnitEntity] = list()
         
         cluster_unit_map_predictions: Dict[PyObjectId, ClusterUnitEntityPredictedCategory] = dict() # {ClusterUnitEntity.id : List}
-        logger.info(f"Preparing {len(grouped_predicted_categories)} grouped prediction categories for database")
+        success_count, failure_count = predictions_grouped_output_format_object.get_count_successful_failure_predictions()
+        logger.info(f"Preparing {success_count} grouped prediction categories for database and skipping {failure_count} because of failure")
         # Fill the cluster unit map predictions. Which is the cluster unit id as key with the predictions as value
-        for index, predictions_cluster_unit in enumerate(grouped_predicted_categories):
-            cluster_unit_entity = cluster_units_enitities_as_predicted[index]
-            print("predictions_cluster_unit = \n", predictions_cluster_unit)
-            # :TODO check if all the runs of a cluster unit were succesful, if not we must not add to cluster_unit_map_prediction
+        for cluster_unit_entity_id, grouped_prediction_output_format in predictions_grouped_output_format_object.cluster_unit_predictions_map.items():
+            # IF not successful, we should skip
+            if grouped_prediction_output_format.all_predictions_successfull():
+                
+                cluster_unit_predicted_category = grouped_prediction_output_format.create_set_predicted_category(experiment_entity=experiment_entity)
+                cluster_unit_map_predictions[cluster_unit_entity_id] = cluster_unit_predicted_category
+                completed_cluster_unit_entities.append(grouped_prediction_output_format.cluster_unit_entity)
 
-            cluster_unit_predicted_category = ClusterUnitEntityPredictedCategory(
-            experiment_id=experiment_entity.id,
-            predicted_categories=predictions_cluster_unit
-            )
-            cluster_unit_map_predictions[cluster_unit_entity.id] = cluster_unit_predicted_category
-
-            if cluster_unit_entity.predicted_category is None:
-                cluster_unit_entity.predicted_category = {}
-            cluster_unit_entity.predicted_category[experiment_entity.id] = cluster_unit_predicted_category
-        
+        if success_count == 0:
+            return completed_cluster_unit_entities
         get_cluster_unit_repository().insert_many_predicted_categories(experiment_id=experiment_entity.id,
                                                                        predictions_map=cluster_unit_map_predictions)
-        return cluster_units_enitities_as_predicted
+        return completed_cluster_unit_entities
 
   
 
@@ -223,7 +228,7 @@ class ExperimentService:
         prompt_entity: PromptEntity,
         single_prediction_format: SinglePredictionOutputFormat,
         attempt_number: int = 1,
-        all_attempts: list = None,
+        all_attempts_token_usage: list = None,
         max_retry_attempts: Optional[int] = 5,
         run_index: int = 1
     ) -> PredictionCategoryTokens:
@@ -240,8 +245,8 @@ class ExperimentService:
         if not prompt_entity.category == PromptCategory.Classify_cluster_units:
             raise Exception("The prompt is of the wrong type!!!")
 
-        if all_attempts is None:
-            all_attempts = []
+        if all_attempts_token_usage is None:
+            all_attempts_token_usage = []
 
         parsed_prompt = ExperimentService.parse_classification_prompt(cluster_unit_entity, prompt_entity, label_template_entity)
         single_prediction_format.insert_input_prompt(parsed_prompt)
@@ -265,12 +270,13 @@ class ExperimentService:
 
         # Try to parse the prediction (this is what might fail)
         try:
-            if cluster_unit_entity.id == "6939e36c216f00e87c0096e4":
+            if cluster_unit_entity.id == "6939e36c216f00e87c0096e4" and attempt_number == 1:
                 raise Exception("run fail cluster unit entity fail test")
-            prediction_category_tokens = LLMService.response_to_prediction_tokens(response=response, experiment_entity=experiment_entity, label_template_entity=label_template_entity, all_attempts=all_attempts)
+
+            prediction_category_tokens = LLMService.response_to_prediction_tokens(response=response, experiment_entity=experiment_entity, label_template_entity=label_template_entity, all_attempts_token_usage=all_attempts_token_usage)
 
             # Record this successful attempt
-            all_attempts.append(TokenUsageAttempt(
+            all_attempts_token_usage.append(TokenUsageAttempt(
                 tokens_used=tokens_used,
                 attempt_number=attempt_number,
                 success=True,
@@ -278,14 +284,14 @@ class ExperimentService:
             ))
 
             # Update the prediction with all attempts
-            prediction_category_tokens.all_attempts = all_attempts.copy()
-            prediction_category_tokens.total_tokens_all_attempts = LLMService._aggregate_token_usage(all_attempts)
+            prediction_category_tokens.all_attempts_token_usage = all_attempts_token_usage.copy()
+            prediction_category_tokens.total_tokens_all_attempts = LLMService._aggregate_token_usage(all_attempts_token_usage)
 
             return prediction_category_tokens
 
         except Exception as e:
             # Parsing failed, but we STILL track the tokens
-            all_attempts.append(TokenUsageAttempt(
+            all_attempts_token_usage.append(TokenUsageAttempt(
                 tokens_used=tokens_used,
                 attempt_number=attempt_number,
                 success=False,
@@ -333,6 +339,17 @@ class ExperimentService:
         return cluster_unit_entity.predicted_category[experiment_entity.id].get_aggregate_runs_prediction_counter()
 
 
+
+    @staticmethod
+    def calculate_and_store_wasted_token_statistics(
+        predictions_grouped_output_format_object: PredictionsGroupedOutputFormat,
+        experiment_entity: ExperimentEntity
+    ) -> None:
+        """calculates the wasted tokens. Assumes that all cluster_unit_entities provided failed"""
+        current_round_wasted_tokens = predictions_grouped_output_format_object.get_wasted_tokens()
+        experiment_entity.token_statistics.tokens_wasted_on_failures.add_other_token_usage(current_round_wasted_tokens)
+
+
     @staticmethod
     def calculate_and_store_token_statistics(
         cluster_unit_entities: List[ClusterUnitEntity],
@@ -373,33 +390,48 @@ class ExperimentService:
                 total_successful_predictions += 1
 
                 # Process all attempts for this prediction
-                for attempt in prediction.all_attempts:
-                    # Add to total tokens
+                for attempt in prediction.all_attempts_token_usage:
+                    experiment_entity.token_statistics.total_tokens_used.add_token_usage_attempt(attempt)
 
-                    experiment_entity.token_statistics.total_tokens_used.prompt_tokens += attempt.tokens_used.get("prompt_tokens", 0)
-                    experiment_entity.token_statistics.total_tokens_used.completion_tokens += attempt.tokens_used.get("completion_tokens", 0)
-                    experiment_entity.token_statistics.total_tokens_used.total_tokens += attempt.tokens_used.get("total_tokens", 0)
-                    
-                    reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
-                    experiment_entity.token_statistics.total_tokens_used.total_tokens += reasoning_tokens
-                    # Track failed attempts
                     if not attempt.success:
                         total_failed_attempts += 1
-                        experiment_entity.token_statistics.total_failed_attempts.prompt_tokens += attempt.tokens_used.get("prompt_tokens", 0)
-                        experiment_entity.token_statistics.total_failed_attempts.completion_tokens += attempt.tokens_used.get("completion_tokens", 0)
-                        experiment_entity.token_statistics.total_failed_attempts.total_tokens += attempt.tokens_used.get("total_tokens", 0)
-                        
-                        reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
-                        experiment_entity.token_statistics.total_failed_attempts.total_tokens += reasoning_tokens
+                        experiment_entity.token_statistics.tokens_wasted_on_failures.add_token_usage_attempt(attempt)
+                    
 
-                    # Track retry attempts (attempt_number > 1)
-                    if attempt.attempt_number > 1: # len(prediction.all_attempts) > 1 # TODO needed because an attempt can also have a second number without there being a first one (retry because of our own rate limiter)
-                        experiment_entity.token_statistics.tokens_from_retries.prompt_tokens += attempt.tokens_used.get("prompt_tokens", 0)
-                        experiment_entity.token_statistics.tokens_from_retries.completion_tokens += attempt.tokens_used.get("completion_tokens", 0)
-                        experiment_entity.token_statistics.tokens_from_retries.total_tokens += attempt.tokens_used.get("total_tokens", 0)
+                    if attempt.attempt_number > 1:
+                        experiment_entity.token_statistics.tokens_from_retries.add_token_usage_attempt(attempt)
                         
-                        reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
-                        experiment_entity.token_statistics.tokens_from_retries.total_tokens += reasoning_tokens
+                        
+
+                # # Process all attempts for this prediction
+                # for attempt in prediction.all_attempts_token_usage:
+                #     # Add to total tokens
+                    
+
+                #     experiment_entity.token_statistics.total_tokens_used.prompt_tokens += attempt.tokens_used.get("prompt_tokens", 0)
+                #     experiment_entity.token_statistics.total_tokens_used.completion_tokens += attempt.tokens_used.get("completion_tokens", 0)
+                #     experiment_entity.token_statistics.total_tokens_used.total_tokens += attempt.tokens_used.get("total_tokens", 0)
+                    
+                #     reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
+                #     experiment_entity.token_statistics.total_tokens_used.total_tokens += reasoning_tokens
+                #     # Track failed attempts
+                #     if not attempt.success:
+                #         total_failed_attempts += 1
+                #         experiment_entity.token_statistics.total_failed_attempts.prompt_tokens += attempt.tokens_used.get("prompt_tokens", 0)
+                #         experiment_entity.token_statistics.total_failed_attempts.completion_tokens += attempt.tokens_used.get("completion_tokens", 0)
+                #         experiment_entity.token_statistics.total_failed_attempts.total_tokens += attempt.tokens_used.get("total_tokens", 0)
+                        
+                #         reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
+                #         experiment_entity.token_statistics.total_failed_attempts.total_tokens += reasoning_tokens
+
+                #     # Track retry attempts (attempt_number > 1)
+                #     if attempt.attempt_number > 1: # len(prediction.all_attempts) > 1 # TODO needed because an attempt can also have a second number without there being a first one (retry because of our own rate limiter)
+                #         experiment_entity.token_statistics.tokens_from_retries.prompt_tokens += attempt.tokens_used.get("prompt_tokens", 0)
+                #         experiment_entity.token_statistics.tokens_from_retries.completion_tokens += attempt.tokens_used.get("completion_tokens", 0)
+                #         experiment_entity.token_statistics.tokens_from_retries.total_tokens += attempt.tokens_used.get("total_tokens", 0)
+                        
+                #         reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
+                #         experiment_entity.token_statistics.tokens_from_retries.total_tokens += reasoning_tokens
         
         # Calculate the cost of the model
         if experiment_entity.model_pricing is not None:

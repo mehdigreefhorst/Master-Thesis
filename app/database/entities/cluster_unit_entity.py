@@ -48,7 +48,7 @@ class PredictionCategoryTokens(BaseModel):
     """A successful prediction with its token usage"""
     labels_prediction: LabelTemplateLLMProjection
     tokens_used: Dict  # Tokens from the successful attempt
-    all_attempts: List[TokenUsageAttempt] = Field(default_factory=list)  # All attempts including failures
+    all_attempts_token_usage: List[TokenUsageAttempt] = Field(default_factory=list)  # All attempts including failures
     total_tokens_all_attempts: Dict = Field(default_factory=dict)  # Aggregate of all attempts
 
 
