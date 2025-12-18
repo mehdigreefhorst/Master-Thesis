@@ -122,9 +122,12 @@ export const TestPredictionModal: React.FC<TestPredictionModalProps> = ({
             {/* Horizontally Scrollable Predictions Container */}
             <div className="overflow-x-auto pb-4">
               <div className="flex gap-4 min-w-max">
-                {testResult.predictions.map((prediction, index) => (
+                {testResult.predictions.map((grouped_prediction, grouped_index) => (
+                  grouped_prediction.map((prediction, index) => (
+
+                  
                   <div
-                    key={index}
+                    key={`${grouped_index}, ${index}`}
                     className="flex-shrink-0 w-[600px] border-2 rounded-lg p-6 space-y-4"
                     style={{
                       borderColor: prediction.success ? '#10b981' : '#ef4444',
@@ -133,7 +136,7 @@ export const TestPredictionModal: React.FC<TestPredictionModalProps> = ({
                   >
                     {/* Prediction Header */}
                     <div className="flex items-center justify-between pb-3 border-b border-gray-300">
-                      <h4 className="font-bold text-gray-900">Prediction #{index + 1}</h4>
+                      <h4 className="font-bold text-gray-900">Prediction #{grouped_index + 1}.{index +1}</h4>
                       <div className="flex items-center gap-2">
                         {prediction.success ? (
                           <>
@@ -254,7 +257,7 @@ export const TestPredictionModal: React.FC<TestPredictionModalProps> = ({
                       </div>
                     )}
                   </div>
-                ))}
+                ))))}
               </div>
             </div>
           </div>

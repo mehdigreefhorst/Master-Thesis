@@ -1,5 +1,7 @@
 # Experiment_service
 import sys
+
+from app.database.entities.base_entity import PyObjectId
 sys.path.append("../..")
 
 import asyncio
@@ -16,7 +18,7 @@ from app.database.entities.label_template import LabelTemplateEntity
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.database.entities.user_entity import UserEntity
-from app.responses.get_experiments_response import ConfusionMatrix, GetExperimentsResponse, PredictionMetric, SinglePredictionOutputFormat, TestPredictionsOutputFormat
+from app.responses.get_experiments_response import ConfusionMatrix, GetExperimentsResponse, PredictionMetric, SinglePredictionOutputFormat, PredictionsGroupedOutputFormat
 from app.services.llm_service import LLMService
 from app.utils.llm_helper import LlmHelper
 from app.utils.types import StatusType
@@ -50,16 +52,17 @@ class ExperimentService:
         
         # If there are cluster units left to be predicted, we do that here. And then we add updated cluster units to the cluster_unit_entities_done list
         if cluster_unit_entities_remain:
-            predicted_categories = await ExperimentService.create_predicted_categories(
+            predictions_grouped_output_format_object = await ExperimentService.create_predicted_categories(
                 experiment_entity=experiment_entity,
                 label_template_entity=label_template_entity,
                 prompt_entity=prompt_entity,
                 cluster_unit_enities=cluster_unit_entities_remain, 
                 max_concurrent=max_concurrent)
 
-            cluster_unit_entities_remain = ExperimentService.update_add_to_db_cluster_unit_predictions(predicted_categories=predicted_categories,
-                                                                        cluster_units_enitities_as_predicted=cluster_unit_entities_remain,
-                                                                        experiment_entity=experiment_entity)
+            cluster_unit_entities_remain = ExperimentService.update_add_to_db_cluster_unit_predictions(
+                grouped_predictions_object=predictions_grouped_output_format_object,
+                cluster_units_enitities_as_predicted=cluster_unit_entities_remain,
+                experiment_entity=experiment_entity)
         
             cluster_unit_entities_done.extend(cluster_unit_entities_remain)
         
@@ -80,7 +83,7 @@ class ExperimentService:
         cluster_unit_enities: List[ClusterUnitEntity],
         max_concurrent=1000,
         max_retries=3,
-        return_test_predictions_format: bool = False) -> List[PredictionCategoryTokens] | TestPredictionsOutputFormat:
+        max_retry_attempts_rate_limter: int = 5) -> PredictionsGroupedOutputFormat:
         
          # Create semaphore for concurrency control
         semaphore = asyncio.Semaphore(max_concurrent)
@@ -111,7 +114,9 @@ class ExperimentService:
                             single_prediction_format=single_prediction_format,
                             attempt_number=attempt_number,
                             all_attempts=all_attempts,  # Pass the list to accumulate attempts
-                            max_retry_attempts= 1 if return_test_predictions_format else 5 # Retry limit for rate limiter
+                            max_retry_attempts=max_retry_attempts_rate_limter, # Retry limit for rate limiter
+                            run_index=run_index,
+
                         )
                         logger.debug(f"Completed prediction for unit {cluster_unit_entity.id}, run {run_index}")
                         single_prediction_format.insert_parsed_categories(result)
@@ -157,7 +162,11 @@ class ExperimentService:
             *tasks,
             return_exceptions=True
         )
-        predictions_output_format = TestPredictionsOutputFormat(predictions=list_predictions_output_format)
+
+        predictions_output_format = PredictionsGroupedOutputFormat.parse_from_predicted_units(
+            list_predictions_output_format=list_predictions_output_format,
+            cluster_unit_enities=cluster_unit_enities,
+            runs_per_unit=experiment_entity.runs_per_unit)
         # Filter out None results and count failures
         successful_predictions, failed_count = predictions_output_format.get_count_successful_failure_predictions()
 
@@ -167,31 +176,28 @@ class ExperimentService:
         else:
             logger.info(f"Finished with {len(tasks)} prediction tasks, all successful")
         
-        if return_test_predictions_format:
-            return predictions_output_format
-        else:
-            return predictions_output_format.get_predictions()
-        
+        return predictions_output_format
+
         
     
 
     @staticmethod
     def update_add_to_db_cluster_unit_predictions(
-        predicted_categories: List[PredictionCategoryTokens],
+        predictions_grouped_output_format_object: PredictionsGroupedOutputFormat,
         cluster_units_enitities_as_predicted: List[ClusterUnitEntity],
         experiment_entity: ExperimentEntity) -> List[ClusterUnitEntity]:
         """updates the predictions, by adding them to a cluster unit map which is a dictionary. Then it sends off 
         the predictions to the mongo db database. Also it returns the updates cluster unit enitites """
         # turn the 1D list of predictions in into a nested list, where each nest is a single cluster unit
-        predictions_per_unit = experiment_entity.runs_per_unit
-        grouped_predicted_categories = [predicted_categories[i:predictions_per_unit+i] 
-                                        for i in range(0, len(cluster_units_enitities_as_predicted)* predictions_per_unit, predictions_per_unit)]
+        
         cluster_unit_map_predictions: Dict[PyObjectId, ClusterUnitEntityPredictedCategory] = dict() # {ClusterUnitEntity.id : List}
         logger.info(f"Preparing {len(grouped_predicted_categories)} grouped prediction categories for database")
         # Fill the cluster unit map predictions. Which is the cluster unit id as key with the predictions as value
         for index, predictions_cluster_unit in enumerate(grouped_predicted_categories):
             cluster_unit_entity = cluster_units_enitities_as_predicted[index]
             print("predictions_cluster_unit = \n", predictions_cluster_unit)
+            # :TODO check if all the runs of a cluster unit were succesful, if not we must not add to cluster_unit_map_prediction
+
             cluster_unit_predicted_category = ClusterUnitEntityPredictedCategory(
             experiment_id=experiment_entity.id,
             predicted_categories=predictions_cluster_unit
@@ -219,6 +225,7 @@ class ExperimentService:
         attempt_number: int = 1,
         all_attempts: list = None,
         max_retry_attempts: Optional[int] = 5,
+        run_index: int = 1
     ) -> PredictionCategoryTokens:
         """
         Make a single prediction run for a cluster unit.
@@ -254,9 +261,12 @@ class ExperimentService:
         # CRITICAL: Extract tokens IMMEDIATELY, before any parsing that might fail
         tokens_used = LLMService.extract_tokens_from_response(response)
         single_prediction_format.insert_model_tokens(tokens_used)
+        
 
         # Try to parse the prediction (this is what might fail)
         try:
+            if cluster_unit_entity.id == "6939e36c216f00e87c0096e4":
+                raise Exception("run fail cluster unit entity fail test")
             prediction_category_tokens = LLMService.response_to_prediction_tokens(response=response, experiment_entity=experiment_entity, label_template_entity=label_template_entity, all_attempts=all_attempts)
 
             # Record this successful attempt
@@ -644,14 +654,15 @@ class ExperimentService:
         label_template_entity: LabelTemplateEntity,
         prompt_entity: PromptEntity,
         cluster_unit_enities: List[ClusterUnitEntity]
-        ) -> TestPredictionsOutputFormat:
+        ) -> List[List[SinglePredictionOutputFormat]]:
         experiment_entity.runs_per_unit = 1
-        return await ExperimentService.create_predicted_categories(
+        predictions_output_format = await ExperimentService.create_predicted_categories(
                 experiment_entity=experiment_entity,
                 label_template_entity=label_template_entity,
                 prompt_entity=prompt_entity,
                 cluster_unit_enities=cluster_unit_enities, 
                 max_concurrent=20,
                 max_retries=1,
-                return_test_predictions_format=True)
+                max_retry_attempts_rate_limter=1)
+        return predictions_output_format.get_single_predictions_output_format()
         

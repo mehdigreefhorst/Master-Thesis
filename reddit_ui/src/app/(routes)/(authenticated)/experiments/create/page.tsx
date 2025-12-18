@@ -294,6 +294,15 @@ export default function CreateExperimentPage() {
     router.push(`/experiments?scraper_cluster_id=${scraperClusterId}`);
   };
 
+  const handleTestCloseExperiment = () => {
+    setShowTestModal(false);
+    if (!createdExperimentId) {
+      return 
+    }
+    experimentApi.deleteExperiment(authFetch, createdExperimentId)
+
+  }
+
   const handleCreateExperiment = async () => {
     if (!selectedPromptId) {
       return toast({
@@ -560,7 +569,7 @@ export default function CreateExperimentPage() {
       {createdExperimentId && (
         <TestPredictionModal
           isOpen={showTestModal}
-          onClose={handleProceedToFullExperiment}
+          onClose={handleTestCloseExperiment}
           experimentId={createdExperimentId}
           autoRun={false}
           onProceed={handleProceedToFullExperiment}

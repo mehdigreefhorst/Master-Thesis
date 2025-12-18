@@ -6,7 +6,7 @@ from datetime import datetime
 import math
 
 
-from app.database.entities.cluster_unit_entity import PredictionCategoryTokens
+from app.database.entities.cluster_unit_entity import ClusterUnitEntity, PredictionCategoryTokens
 from app.database.entities.experiment_entity import ExperimentCost, ExperimentTokenStatistics, PrevalenceDistribution
 from app.utils.types import StatusType
 
@@ -719,23 +719,73 @@ class SinglePredictionOutputFormat(BaseModel):
         if success_or_fail == "success":
             self.success = True
 
-class TestPredictionsOutputFormat(BaseModel):
+
+    def prediction_done_succesfully(self):
+        """:TODO this could also validate whether the label template projection is in correct format. but it currently
+        just sends whether the self.success is true"""
+        return self.success
+    
+    
+
+
+class GroupedPredictionOutputFormat(BaseModel):
+    cluster_unit_entity: ClusterUnitEntity
     predictions: List[SinglePredictionOutputFormat]
 
-    def get_predictions(self) -> PredictionCategoryTokens:
-        return [prediction.parsed_categories for prediction in self.predictions]
+    def all_predictions_successfull(self):
+        for prediction in self.predictions:
+            if prediction.parsed_categories is None:
+                return False
+            elif not prediction.prediction_done_succesfully():
+                return False
+        # Nothing triggered a fail so we send true!
+        return True
+
+
+ClusterUnitEntityId = str
+
+class PredictionsGroupedOutputFormat(BaseModel):
+    cluster_unit_predictions_map: Dict[ClusterUnitEntityId, GroupedPredictionOutputFormat]
+
     
     def get_count_successful_failure_predictions(self) -> Tuple[int, int]:
         """returns success_count, failed_count of predictions"""
         success_count = 0
         failed_count = 0
-        for prediction in self.predictions:
-            if prediction.parsed_categories and prediction.error is None:
+        for cluster_unit_id,  cluster_unit_predictions_map in  self.cluster_unit_predictions_map.items():
+            if cluster_unit_predictions_map.all_predictions_successfull():
                 success_count += 1
             else:
                 failed_count += 1
             
         return success_count, failed_count
+    
+    
+    @classmethod
+    def parse_from_predicted_units(cls, 
+                                   list_predictions_output_format: List[SinglePredictionOutputFormat],
+                                    cluster_unit_enities: List[ClusterUnitEntity],
+                                    runs_per_unit: int) ->"PredictionsGroupedOutputFormat":
+        
+        cluster_unit_predictions_map: Dict[ClusterUnitEntityId, GroupedPredictionOutputFormat] = dict()
+        grouped_predicted_categories = [list_predictions_output_format[i:runs_per_unit+i] 
+                                        for i in range(0, len(cluster_unit_enities)* runs_per_unit, runs_per_unit)]
+        
+        zipped_units_grouped_predictions = zip(cluster_unit_enities, grouped_predicted_categories)
+        for cluster_unit_entity, grouped_predictions in zipped_units_grouped_predictions:
+            cluster_unit_predictions_map[cluster_unit_entity.id] = GroupedPredictionOutputFormat(
+                cluster_unit_entity=cluster_unit_entity,
+                predictions=grouped_predictions)
+
+        return cls(cluster_unit_predictions_map=cluster_unit_predictions_map)
+    
+
+    def get_single_predictions_output_format(self) -> List[List[SinglePredictionOutputFormat]]:
+        """returns nested list of single prediction output format -> grouped per cluster unit entity"""
+        return [[prediction.model_dump() for prediction in grouped_prediction.predictions] 
+                for grouped_prediction in self.cluster_unit_predictions_map.values()]
+            
+        
 
     
     

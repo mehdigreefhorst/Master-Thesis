@@ -22,5 +22,5 @@ export interface singlePredictionTestOutput {
   }
 
 export interface testPredictionsOutput {
-  predictions: singlePredictionTestOutput[]
+  predictions: singlePredictionTestOutput[][] // they are grouped per cluster unit
 }

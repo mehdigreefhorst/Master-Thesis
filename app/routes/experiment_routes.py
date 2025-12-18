@@ -13,7 +13,7 @@ from app.database.entities.sample_entity import SampleEntity
 from app.database.entities.scraper_cluster_entity import StageStatus
 from app.requests.cluster_prep_requests import ScraperClusterId
 from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, ExperimentId, GetExperiments, GetSample, GetSampleUnits, ParsePrompt, ParseRawPrompt, TestPrediction, UpdateExperimentThreshold, UpdateSample
-from app.responses.get_experiments_response import GetExperimentsResponse, TestPredictionsOutputFormat
+from app.responses.get_experiments_response import GetExperimentsResponse, PredictionsGroupedOutputFormat
 from app.services.cluster_prep_service import ClusterPrepService
 from app.services.experiment_service import ExperimentService
 from app.services.label_template_service import LabelTemplateService
@@ -275,6 +275,23 @@ def continue_experiment(query: ExperimentId):
         return jsonify(error=f"Error = {e}")
     return jsonify(f"succesfully predicted a total of {total_cluster_unit_predicted_categories} categories for units")
 
+
+@experiment_bp.route("/", methods=["DELETE"])
+@validate_query_params(ExperimentId)
+@jwt_required()
+def delete_experiment(query: ExperimentId):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    
+    experiment_entity = get_experiment_repository().find_by_id(query.experiment_id)
+    if experiment_entity.status == StatusType.Initialized:
+        modified_count = get_experiment_repository().delete(experiment_entity.id).modified_count
+        return jsonify(message=f"Succesfully deleted {modified_count} experiments with id = {experiment_entity.id}")
+
+    else:
+        return jsonify(error=f"experiment_id {experiment_entity.id} wrong statusType, must be Initialized -> NOT {experiment_entity.status}")
 
 @experiment_bp.route("/parse_prompt", methods=["POST"])
 @validate_request_body(ParsePrompt)
@@ -544,7 +561,7 @@ def complete_sample_labeled_status(query: UpdateSample):
 @experiment_bp.route("/test/prediction", methods=["POST"])
 @validate_request_body(TestPrediction)
 @jwt_required()
-async def test_prediction(body: TestPrediction) -> TestPredictionsOutputFormat:
+async def test_prediction(body: TestPrediction) -> PredictionsGroupedOutputFormat:
     print("body = ", body)
     print("body.experiment_id = ",body.experiment_id)
     experiment_entity = get_experiment_repository().find_by_id(body.experiment_id)
@@ -575,8 +592,4 @@ async def test_prediction(body: TestPrediction) -> TestPredictionsOutputFormat:
                 cluster_unit_enities=cluster_unit_entities_remain, 
     )
 
-
-    
-    
-    
-    return jsonify(test_predictions.model_dump())
+    return jsonify(predictions=test_predictions)
