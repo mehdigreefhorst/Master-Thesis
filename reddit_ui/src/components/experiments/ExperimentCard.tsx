@@ -62,6 +62,7 @@ interface ExperimentCardProps {
   onView?: (experiment_id: string, label_template_id: string) => void;
   onClone?: (experiment_id: string) => void;
   onContinue?: (experiment_id: string) => void;
+  onFilterSelect?: (experiment_id: string, label_template_id: string) => void;
   onTest?: (experiment_id: string) => void;
   onThresholdUpdate?: (experiment_id: string) => void;
   className?: string;
@@ -72,6 +73,7 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
   onView,
   onClone,
   onContinue,
+  onFilterSelect,
   onTest,
   onThresholdUpdate,
   className = ''
@@ -187,6 +189,13 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
                 onClick={() => onView?.(experiment.id, experiment.labelTemplateId)}
               >
                 View
+              </Button>
+              <Button
+                variant="invisible"
+                className="mt-0! py-1! px-2! text-xs"
+                onClick={() => onFilterSelect?.(experiment.id, experiment.labelTemplateId)}
+              >
+                Filter
               </Button>
               <Button
                 variant="invisible"

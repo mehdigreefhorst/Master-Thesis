@@ -11,6 +11,7 @@ import { ModelInfo } from "@/types/model";
 import { PromptEntity, testPredictionsOutput } from "@/types/prompt";
 import { MediaStrategySkipType } from "@/types/cluster-prep";
 import { CreateLabelTemplateRequest, LabelTemplateEntity } from "@/types/label-template";
+import { FilteringFields, filteringResponseCount, FilteringRequest, FilteringResponseClusterUnits } from "@/types/filtering";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || 'http://localhost:5001';
 
@@ -763,4 +764,28 @@ export const visualizationApi = {
     const figure_json =  await data.json()
     return await figure_json.figure_list
   },
+}
+
+export const filteringApi = {
+  async getFilteredCount(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    filteringRequest: FilteringRequest
+  ): Promise<filteringResponseCount> {
+    const data = await authFetch("/filtering/count", {
+      method: "POST",
+      body: filteringRequest
+    });
+    return await data.json();
+  },
+
+  async getFilteredClusterUnits(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    filteringRequest: FilteringRequest
+  ): Promise<FilteringResponseClusterUnits> {
+    const data = await authFetch("/filtering/cluster_units", {
+      method: "POST",
+      body: filteringRequest
+    });
+    return await data.json();
+  }
 }

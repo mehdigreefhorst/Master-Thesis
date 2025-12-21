@@ -5,6 +5,7 @@ from flask import current_app, g
 from flask_pymongo import PyMongo
 from flask_pymongo.wrappers import Database
 
+from app.database.filtering_repository import FilteringRepository
 from app.database.label_template_repository import LabelTemplateRepository
 from app.database.cluster_repository import ClusterRepository
 from app.database.cluster_unit_repository import ClusterUnitRepository
@@ -95,3 +96,9 @@ def get_label_template_repository() -> LabelTemplateRepository:
         g.label_template_repository = LabelTemplateRepository(_get_db())
     
     return g.label_template_repository
+
+def get_filtering_repository() -> FilteringRepository:
+    if not hasattr(g, "filtering_repository"):
+        g.filtering_repository = FilteringRepository(_get_db())
+    
+    return g.filtering_repository

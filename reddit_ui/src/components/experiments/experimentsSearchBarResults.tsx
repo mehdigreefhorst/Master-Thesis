@@ -65,6 +65,10 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       // TODO: Open clone experiment dialog
     };
 
+    const handleFilterSelect = (experiment_id: string, label_template_id: string) => {
+      router.push(`/filtering?scraper_cluster_id=${scraperClusterId}&experiment_id=${experiment_id}&label_template_id=${label_template_id}`)
+    }
+
     const handleTest = (experiment_id: string) => {
       setTestExperimentId(experiment_id);
       setShowTestModal(true);
@@ -444,6 +448,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
                   onView={handleView}
                   onClone={handleClone}
                   onContinue={handleExperimentContinue}
+                  onFilterSelect={handleFilterSelect}
                   onTest={handleTest}
                   onThresholdUpdate={handleThresholdUpdate}
                 />

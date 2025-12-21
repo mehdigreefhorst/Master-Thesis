@@ -671,6 +671,7 @@ class GetExperimentsResponse(BaseModel):
     prompt_id: str
     created: datetime
     runs_per_unit: int
+    label_template_id: PyObjectId
     threshold_runs_true: Optional[int]
     total_samples: int
     overall_accuracy: Optional[float] = None

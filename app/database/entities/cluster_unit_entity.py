@@ -83,6 +83,7 @@ class ClusterUnitEntity(BaseEntity):
     usertag: Optional[str]
     upvotes: int
     downvotes: int
+    depth: int = 0
     created_utc: int
     thread_path_text: List[str] | None # the text of posts full prior thread (post -> comment -> reply --> ...) up until the current comment
     thread_path_author: List[str] = [] # the author of posts full prior thread (post -> comment -> reply --> ...) up until the current comment
@@ -122,6 +123,7 @@ class ClusterUnitEntity(BaseEntity):
             usertag= post_entity.user_tag,
             upvotes= post_entity.upvotes,
             downvotes= post_entity.downvotes,
+            depth=0,
             created_utc=post_entity.created_utc,
             thread_path_text=  [], # the text full prior thread (post -> comment -> reply --> ...) up until the current comment
             thread_path_author= [], # the author full prior thread (post -> comment -> reply --> ...) up until the current comment
@@ -149,6 +151,7 @@ class ClusterUnitEntity(BaseEntity):
             usertag= comment_entity.user_tag,
             upvotes= comment_entity.upvotes,
             downvotes= comment_entity.downvotes,
+            depth=comment_entity.depth,
             created_utc= comment_entity.created_utc,
             thread_path_text= reply_to_cluster_unit.thread_path_text + [reply_to_cluster_unit.text], # the full prior thread (post -> comment -> reply --> ...) up until the current comment
             thread_path_author= reply_to_cluster_unit.thread_path_author + [reply_to_cluster_unit.author],

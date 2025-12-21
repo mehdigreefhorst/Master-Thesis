@@ -541,6 +541,7 @@ class ExperimentService:
                                                          overall_kappa=overall_kappa,
                                                          prediction_metrics=prediction_metrics,
                                                          runs_per_unit=experiment.runs_per_unit,
+                                                         label_template_id=experiment.label_template_id,
                                                          threshold_runs_true=experiment.threshold_runs_true,
                                                          reasoning_effort=experiment.reasoning_effort,
                                                          token_statistics=experiment.token_statistics,

@@ -219,17 +219,26 @@ class ClusterPrepService:
 
             cluster_unit_entities[reply_index].total_nested_replies = len(cluster_unit_entities) - reply_index - 1
 
-
+    @staticmethod
+    def find_cluster_units_from_cluster_id_message_type(cluster_entity_id: PyObjectId, reddit_message_type: Literal["post", "comment", "all"] = "all") -> List[ClusterUnitEntity]:
+        if reddit_message_type == "all":
+            cluster_unit_entities = get_cluster_unit_repository().find({"cluster_entity_id": cluster_entity_id})
+        else:
+            cluster_unit_entities = get_cluster_unit_repository().find({"cluster_entity_id": cluster_entity_id,
+                                                                        "type": reddit_message_type})
+        
+        return cluster_unit_entities
     @staticmethod
     def convert_cluster_units_to_bertopic_ready_documents(scraper_cluster_entity: ScraperClusterEntity, reddit_message_type: Literal["post", "comment", "all"] = "all") -> List:#[response]:
         logger.info(f"[convert_cluster_units_to_bertopic_ready_documents] Starting: scraper_cluster_id={scraper_cluster_entity.id}, message_type={reddit_message_type}")
 
-        if reddit_message_type == "all":
-            cluster_unit_entities = get_cluster_unit_repository().find({"cluster_entity_id": scraper_cluster_entity.cluster_entity_id})
-        else:
-            cluster_unit_entities = get_cluster_unit_repository().find({"cluster_entity_id": scraper_cluster_entity.cluster_entity_id,
-                                                                        "type": reddit_message_type})
-            cluster_unit_entities = sorted(cluster_unit_entities, key=lambda x: x.upvotes, reverse=True)
+        cluster_unit_entities = ClusterPrepService.find_cluster_units_from_cluster_id_message_type(
+            cluster_entity_id=scraper_cluster_entity.cluster_entity_id,
+            reddit_message_type=reddit_message_type
+
+        )
+        
+        cluster_unit_entities = sorted(cluster_unit_entities, key=lambda x: x.upvotes, reverse=True)
 
         logger.info(f"[convert_cluster_units_to_bertopic_ready_documents] Retrieved {len(cluster_unit_entities)} cluster units for scraper_cluster_id={scraper_cluster_entity.id}")
 
