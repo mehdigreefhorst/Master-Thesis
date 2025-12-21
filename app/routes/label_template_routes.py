@@ -3,9 +3,8 @@
 from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.database import get_cluster_unit_repository, get_label_template_repository, get_sample_repository, get_user_repository
-from app.requests.cluster_prep_requests import UpdateOneShotExampleRequest
 from app.utils.api_validation import validate_query_params, validate_request_body
-from app.requests.label_template_requests import AddLabelTemplateToSampleRequest, CreateLabelTemplateRequest, GetLabelTemplateRequest
+from app.requests.label_template_requests import AddLabelTemplateToSampleRequest, UpdateCombinedLabels, CreateLabelTemplateRequest, GetLabelTemplateRequest, UpdateOneShotExampleRequest
 from app.database.entities.label_template import LabelTemplateEntity
 from app.utils.logging_config import get_logger
 
@@ -56,6 +55,10 @@ def get_label_template(query: GetLabelTemplateRequest):
 @jwt_required()
 def add_to_sample(body: AddLabelTemplateToSampleRequest):
     user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        logger.warning(f"[update_ground_truth] User not found: user_id={user_id}")
+        return jsonify(error="No such user"), 401
     
     label_template_entity = get_label_template_repository().find_by_id(body.label_template_id)
     if not label_template_entity:
@@ -101,3 +104,32 @@ def update_one_shot_example(body: UpdateOneShotExampleRequest):
     result = get_label_template_repository().update(body.label_template_id, label_template_entity)
     logger.info(f"[one_shot_example] Oneshot example updated successfully, modified_count={result.modified_count}")
     return jsonify(result=result.modified_count)
+
+
+@label_template_bp.route("/update_combined_labels", methods=["PUT"])
+@validate_request_body(UpdateCombinedLabels)
+@jwt_required()
+def update_combined_labels(body: UpdateCombinedLabels):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        logger.warning(f"[update_ground_truth] User not found: user_id={user_id}")
+        return jsonify(error="No such user"), 401
+    
+    label_template_entity = get_label_template_repository().find_by_id(body.label_template_id)
+
+    if not label_template_entity:
+        return jsonify(error=f"label_template_entity does not exist id = {body.label_template_id}")
+    
+    # Check if the combined labels even exist in the label template as labels
+    all_possible_labels = {label: False for combined_labels in body.combined_labels for label in combined_labels}
+    for label in label_template_entity.labels:
+        if label.label in all_possible_labels:
+            all_possible_labels[label.label] = True
+
+    if [label for label, value in all_possible_labels.items() if value]:
+        return jsonify(error="Not all labels of the combined labels even exist in the label_template")
+    
+    label_template_entity.combined_labels = body.combined_labels
+    get_label_template_repository().update(label_template_entity.id, {"combined_labels": body.combined_labels})
+    return jsonify(label_template_entity.model_dump()), 200

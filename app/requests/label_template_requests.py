@@ -1,9 +1,10 @@
 
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 from pydantic import BaseModel
 
 from app.database.entities.base_entity import PyObjectId
-from app.database.entities.label_template import LLMLabelField
+from app.database.entities.label_template import LLMLabelField, labelName, ProjectionLabelField
+
 
 class CreateLabelTemplateRequest(BaseModel):
     label_template_name: str
@@ -22,3 +23,12 @@ class AddLabelTemplateToSampleRequest(BaseModel):
     sample_entity_id: PyObjectId
     label_template_id: PyObjectId
     action: Literal["add", "remove"]
+
+
+class UpdateOneShotExampleRequest(BaseModel):
+    label_template_id: PyObjectId
+    ground_truth_one_shot_example: Dict[labelName, ProjectionLabelField]
+
+class UpdateCombinedLabels(BaseModel):
+    label_template_id: PyObjectId
+    combined_labels: Dict[str, List[labelName]]

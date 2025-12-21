@@ -13,6 +13,7 @@ interface LabelFilterFormProps {
   labelFilterOR: Record<string, LabelTemplateFilter>;
   onFilterANDChange: (filter: Record<string, LabelTemplateFilter>) => void;
   onFilterORChange: (filter: Record<string, LabelTemplateFilter>) => void;
+  disabled?: boolean;
 }
 
 export const LabelFilterForm: React.FC<LabelFilterFormProps> = ({
@@ -20,7 +21,8 @@ export const LabelFilterForm: React.FC<LabelFilterFormProps> = ({
   labelFilterAND,
   labelFilterOR,
   onFilterANDChange,
-  onFilterORChange
+  onFilterORChange,
+  disabled = false
 }) => {
   const authFetch = useAuthFetch();
   const [labelTemplate, setLabelTemplate] = useState<LabelTemplateEntity | null>(null);
@@ -128,22 +130,24 @@ export const LabelFilterForm: React.FC<LabelFilterFormProps> = ({
       {/* AND/OR Mode Toggle */}
       <div className="mb-4 flex gap-2">
         <button
-          onClick={() => setActiveMode("AND")}
+          onClick={() => !disabled && setActiveMode("AND")}
+          disabled={disabled}
           className={`px-4 py-2 rounded-md ${
             activeMode === "AND"
               ? "bg-blue-500 text-white"
               : "bg-gray-200 text-gray-700"
-          }`}
+          } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           AND Filters ({Object.keys(labelFilterAND).length})
         </button>
         <button
-          onClick={() => setActiveMode("OR")}
+          onClick={() => !disabled && setActiveMode("OR")}
+          disabled={disabled}
           className={`px-4 py-2 rounded-md ${
             activeMode === "OR"
               ? "bg-blue-500 text-white"
               : "bg-gray-200 text-gray-700"
-          }`}
+          } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           OR Filters ({Object.keys(labelFilterOR).length})
         </button>
@@ -154,12 +158,13 @@ export const LabelFilterForm: React.FC<LabelFilterFormProps> = ({
         <label className="block text-sm font-medium mb-2">Add Label Filter</label>
         <select
           onChange={(e) => {
-            if (e.target.value) {
+            if (e.target.value && !disabled) {
               addLabelFilter(e.target.value);
               e.target.value = "";
             }
           }}
-          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+          disabled={disabled}
+          className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <option value="">Select a label...</option>
           {labelTemplate.labels
@@ -180,8 +185,9 @@ export const LabelFilterForm: React.FC<LabelFilterFormProps> = ({
             <div className="flex justify-between items-center mb-2">
               <h4 className="font-medium">{labelName}</h4>
               <button
-                onClick={() => removeLabelFilter(labelName)}
-                className="text-red-600 hover:text-red-800 text-sm"
+                onClick={() => !disabled && removeLabelFilter(labelName)}
+                disabled={disabled}
+                className="text-red-600 hover:text-red-800 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Remove
               </button>
@@ -196,10 +202,13 @@ export const LabelFilterForm: React.FC<LabelFilterFormProps> = ({
                   placeholder="Enter comma-separated values"
                   value={filter.allowed_values?.join(", ") ?? ""}
                   onChange={(e) => {
-                    const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
-                    updateLabelFilter(labelName, { allowed_values: values as any });
+                    if (!disabled) {
+                      const values = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
+                      updateLabelFilter(labelName, { allowed_values: values as any });
+                    }
                   }}
-                  className="w-full p-2 border border-gray-300 rounded-md"
+                  disabled={disabled}
+                  className="w-full p-2 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
             )}
@@ -212,10 +221,11 @@ export const LabelFilterForm: React.FC<LabelFilterFormProps> = ({
                   <input
                     type="number"
                     value={filter.min_label_value ?? ''}
-                    onChange={(e) => updateLabelFilter(labelName, {
+                    onChange={(e) => !disabled && updateLabelFilter(labelName, {
                       min_label_value: e.target.value ? Number(e.target.value) : undefined
                     })}
-                    className="w-full p-2 border border-gray-300 rounded-md"
+                    disabled={disabled}
+                    className="w-full p-2 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -223,10 +233,11 @@ export const LabelFilterForm: React.FC<LabelFilterFormProps> = ({
                   <input
                     type="number"
                     value={filter.max_label_value ?? ''}
-                    onChange={(e) => updateLabelFilter(labelName, {
+                    onChange={(e) => !disabled && updateLabelFilter(labelName, {
                       max_label_value: e.target.value ? Number(e.target.value) : undefined
                     })}
-                    className="w-full p-2 border border-gray-300 rounded-md"
+                    disabled={disabled}
+                    className="w-full p-2 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>

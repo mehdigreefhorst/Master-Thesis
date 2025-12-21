@@ -1,3 +1,5 @@
+import { labelName } from "./cluster-unit";
+
 export type LLMLabelFieldType = "string" | "boolean" | "category" | "integer" | "float";
 
 export interface LLMLabelField {
@@ -34,5 +36,6 @@ export interface LabelTemplateEntity extends CreateLabelTemplateRequest {
   created_at: string;
   updated_at: string;
   user_id: string;
-  ground_truth_one_shot_example: OneShotExampleData | null;
+  ground_truth_one_shot_example?: OneShotExampleData | null;
+  combined_labels?: Record<string, labelName[]> | null
 }

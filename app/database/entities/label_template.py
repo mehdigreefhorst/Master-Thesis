@@ -113,6 +113,7 @@ class LabelTemplateEntity(BaseEntity):
     labels: List[LLMLabelField] # List of the possible labels the llm can predict & also part of ground truth
     llm_prediction_fields_per_label: List[LLMLabelField] # extra labels predicted for each of the predicted labels.  such as reason
     multi_label_possible: bool # whether LLM should pick a single or may pick multiple
+    combined_labels: Dict[str, List[labelName]] = None
     ground_truth_field: Optional[LabelTemplateTruthProjection] = None #Optional[Dict[labelName, ProjectionLabelField]] = None
     labels_llm_prompt_response_format: Optional[Dict] = None # output format of how we would like the LLM to respond the data in
     ground_truth_one_shot_example: Optional[Dict[labelName, ProjectionLabelField]] = None # key is label_value.label name of a LabelTemplateLLMProjection

@@ -11,6 +11,7 @@ import { OneShotExampleModal } from '@/components/modals/OneShotExampleModal';
 import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
 import { useToast } from '@/components/ui/use-toast';
 import { LabelTemplateLLMProjection } from '@/types/cluster-unit';
+import { CombinedLabelsSection } from '@/components/label-template/CombinedLabelsSection';
 
 export default function LabelTemplateViewPage() {
   const searchParams = useSearchParams();
@@ -27,6 +28,9 @@ export default function LabelTemplateViewPage() {
   const [oneShotModalOpen, setOneShotModalOpen] = useState(false);
   const [confirmationDialogOpen, setConfirmationDialogOpen] = useState(false);
   const [pendingOneShotData, setPendingOneShotData] = useState<Record<string, LabelTemplateLLMProjection> | null>(null);
+
+  // Combined labels loading state
+  const [isSavingCombinedLabels, setIsSavingCombinedLabels] = useState(false);
 
   useEffect(() => {
     if (!categoryId) {
@@ -89,6 +93,42 @@ export default function LabelTemplateViewPage() {
       setLoading(false);
       setConfirmationDialogOpen(false);
       setPendingOneShotData(null);
+    }
+  };
+
+  // Handler to save combined labels
+  const handleSaveCombinedLabels = async (combinedLabels: Record<string, string[]>) => {
+    if (!labelTemplate) {
+      return;
+    }
+
+    try {
+      setIsSavingCombinedLabels(true);
+
+      // API expects Record<string, string[]> where key is the combined label name
+      await labelTemplateApi.UpdateCombinedLabels(
+        authFetch,
+        labelTemplate.id,
+        combinedLabels
+      );
+
+      // Update local state to reflect the change
+      setLabelTemplate(prev => prev ? { ...prev, combined_labels: combinedLabels } : null);
+
+      toast({
+        title: "Success",
+        description: "Combined labels have been saved successfully",
+        variant: "success",
+      });
+    } catch (error) {
+      console.error('Error saving combined labels:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save combined labels",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingCombinedLabels(false);
     }
   };
 
@@ -300,6 +340,13 @@ export default function LabelTemplateViewPage() {
             ))}
           </div>
         </Card>
+
+        {/* Combined Labels Section */}
+        <CombinedLabelsSection
+          labelTemplate={labelTemplate}
+          onSave={handleSaveCombinedLabels}
+          isLoading={isSavingCombinedLabels}
+        />
 
         {/* Per-Label Fields Section */}
         {labelTemplate.llm_prediction_fields_per_label.length > 0 && (

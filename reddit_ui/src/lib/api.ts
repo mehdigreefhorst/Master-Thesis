@@ -4,14 +4,14 @@
 
 import { useAuthFetch } from "@/utils/fetch";
 import type { KeywordSearches, ScraperClusterEntity, ScraperEntity } from "@/types/scraper-cluster";
-import { ClusterUnitEntity, LabelTemplateLLMProjection } from "@/types/cluster-unit";
+import { ClusterUnitEntity, labelName, LabelTemplateLLMProjection } from "@/types/cluster-unit";
 import { SampleEntity } from "@/types/sample";
 import { UserProfile } from "@/types/user";
 import { ModelInfo } from "@/types/model";
 import { PromptEntity, testPredictionsOutput } from "@/types/prompt";
 import { MediaStrategySkipType } from "@/types/cluster-prep";
 import { CreateLabelTemplateRequest, LabelTemplateEntity } from "@/types/label-template";
-import { FilteringFields, filteringResponseCount, FilteringRequest, FilteringResponseClusterUnits } from "@/types/filtering";
+import { FilteringFields, filteringResponseCount, FilteringRequest, FilteringResponseClusterUnits, FilteringCreateRequest, FilteringEntityId, FilteringEntity } from "@/types/filtering";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || 'http://localhost:5001';
 
@@ -752,6 +752,22 @@ export const labelTemplateApi = {
     });
     return await data.json()
 
+  },
+  async UpdateCombinedLabels(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    labelTemplateId: string,
+    combinedLabels: Record<string,labelName[]>
+  ){
+
+    const data = await authFetch('/label_template/update_combined_labels', {
+      method: "PUT",
+      body: {
+        label_template_id: labelTemplateId,
+        combined_labels: combinedLabels
+      },
+    });
+    return await data.json()
+
   }
 }
 
@@ -785,6 +801,39 @@ export const filteringApi = {
     const data = await authFetch("/filtering/cluster_units", {
       method: "POST",
       body: filteringRequest
+    });
+    return await data.json();
+  },
+  async createFilteringEntity(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    filteringCreateRequest: FilteringCreateRequest
+  ): Promise<FilteringEntityId> {
+    const data = await authFetch("/filtering/create", {
+      method: "POST",
+      body: filteringCreateRequest
+    });
+    return await data.json();
+  },
+  async getFilteringEntities(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    scraper_cluster_id: string
+  ): Promise<FilteringEntity[]> {
+    const data = await authFetch(`/filtering?scraper_cluster_id=${scraper_cluster_id}`)
+    return await data.json();
+  },
+  async getFilteringEntity(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    filteringEntityId: FilteringEntityId
+  ): Promise<FilteringEntity> {
+    const data = await authFetch(`/filtering?filtering_entity_id=${filteringEntityId.filtering_entity_id}`)
+    return await data.json();
+  },
+  async deleteFilteringEntity(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    filteringEntityId: FilteringEntityId
+  ): Promise<string> {
+    const data = await authFetch(`/filtering/delete?filtering_entity_id=${filteringEntityId.filtering_entity_id}`, {
+      method: "DELETE",
     });
     return await data.json();
   }

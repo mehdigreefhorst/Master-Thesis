@@ -33,6 +33,3 @@ class UpdateGroundTruthPerLabelRequest(BaseModel):
 
 
 
-class UpdateOneShotExampleRequest(BaseModel):
-    label_template_id: PyObjectId
-    ground_truth_one_shot_example: Dict[labelName, ProjectionLabelField]

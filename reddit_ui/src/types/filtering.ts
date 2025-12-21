@@ -1,6 +1,7 @@
 import { ClusterUnitEntity } from "./cluster-unit"
 
 
+
 export interface filteringResponseCount {
   after_filtering: number
   before_filtering: number
@@ -45,4 +46,16 @@ export interface FilteringRequest extends FilteringFields {
   limit: number
 }
 
-
+export interface FilteringCreateRequest {
+  filtering_fields: FilteringFields
+  scraper_cluster_id: string
+}
+export interface FilteringEntity extends FilteringFields {
+  id: string;
+  created_at: Date;
+  scraper_cluster_id: string;
+  user_id: string;
+}
+export interface FilteringEntityId {
+  filtering_entity_id: string
+}

@@ -12,7 +12,7 @@ interface OneShotExampleModalProps {
   onClose: () => void;
   onSave: (oneShotExample: Record<string, LabelTemplateLLMProjection>) => void;
   labelTemplate: LabelTemplateEntity;
-  existingData: Record<string, LabelTemplateLLMProjection> | null;
+  existingData: Record<string, LabelTemplateLLMProjection> | null | undefined;
 }
 
 export const OneShotExampleModal: React.FC<OneShotExampleModalProps> = ({

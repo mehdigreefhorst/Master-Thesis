@@ -85,7 +85,7 @@ class FilteringFields(BaseModel):
     input_id: PyObjectId # Either an experiment_id, filtering_id or cluster_entity_id
     input_type: Literal["experiment", "filtering", "cluster"]
     label_template_filter_and: Optional[Dict[LabelName, LabelTemplateFilter]] = None
-    label_template_filter_OR: Optional[Dict[LabelName, LabelTemplateFilter]] = None
+    label_template_filter_or: Optional[Dict[LabelName, LabelTemplateFilter]] = None
     filter_misc: Optional[FilterMisc] = None
 
     def validate_predicted_category_AND(self, label_template_prediction: LabelTemplateLLMProjection):
@@ -105,7 +105,7 @@ class FilteringFields(BaseModel):
         """returns True if any of the filter labels are equal to the projection labels 
 
           OR Gate """
-        for label_name, label_template_filter in self.label_template_filter_OR.items():
+        for label_name, label_template_filter in self.label_template_filter_or.items():
             projection_label_field = label_template_prediction.values.get(label_name)
             if projection_label_field is None:
                 raise Exception(f"Label template prediction is not available but filter expects it")
@@ -122,3 +122,19 @@ class FilteringFields(BaseModel):
 
 class FilteringEntity(FilteringFields, BaseEntity):
     user_id: PyObjectId
+    scraper_cluster_id: PyObjectId
+
+    @classmethod
+    def create_filter_entity_from_body(cls, filtering_fields: FilteringFields, user_id: PyObjectId, scraper_cluster_id: PyObjectId) -> "FilteringEntity":
+        """creates the filtering_entity from the filtering create request entity"""
+        return cls(
+            user_id=user_id,
+            scraper_cluster_id=scraper_cluster_id,
+            label_template_id=filtering_fields.label_template_id,
+            input_id=filtering_fields.input_id, # Either an experiment_id, filtering_id or cluster_entity_id
+            input_type=filtering_fields.input_type, 
+            label_template_filter_and=filtering_fields.label_template_filter_and,
+            label_template_filter_or=filtering_fields.label_template_filter_or, 
+            filter_misc=filtering_fields.filter_misc
+
+        )

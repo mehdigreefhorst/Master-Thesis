@@ -6,7 +6,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 # from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.database import get_cluster_unit_repository, get_label_template_repository, get_sample_repository, get_scraper_repository, get_user_repository, get_scraper_cluster_repository
-from app.requests.cluster_prep_requests import GetClusterUnitsRequest, PrepareClusterRequest, ScraperClusterId, UpdateGroundTruthPerLabelRequest, UpdateGroundTruthRequest, UpdateOneShotExampleRequest
+from app.requests.cluster_prep_requests import GetClusterUnitsRequest, PrepareClusterRequest, ScraperClusterId, UpdateGroundTruthPerLabelRequest, UpdateGroundTruthRequest
 from app.requests.scraping_commands import ScrapingId
 from app.requests.scraper_requests import CreateScraperRequest
 from app.responses.reddit_post_comments_response import RedditResponse

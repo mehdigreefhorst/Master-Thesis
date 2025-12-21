@@ -5,6 +5,7 @@ import { useAuthFetch } from '@/utils/fetch';
 import { experimentApi } from '@/lib/api';
 
 interface InputSelectorProps {
+  title: string;
   inputType: "experiment" | "filtering" | "cluster";
   inputId: string;
   scraperClusterId?: string;
@@ -14,6 +15,7 @@ interface InputSelectorProps {
 }
 
 export const InputSelector: React.FC<InputSelectorProps> = ({
+  title,
   inputType,
   inputId,
   scraperClusterId,
@@ -94,14 +96,12 @@ export const InputSelector: React.FC<InputSelectorProps> = ({
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">
-        Experiment
-      </label>
+      {title}
       <select
         value={inputId}
         onChange={handleInputChange}
         disabled={isLoading}
-        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+        className="w-full px-3 py-2 font-bold text-lg border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
       >
         <option value="">
           {isLoading ? "Loading..." : experiments.length === 0 ? "No experiments found" : "Select an experiment"}
@@ -112,11 +112,7 @@ export const InputSelector: React.FC<InputSelectorProps> = ({
           </option>
         ))}
       </select>
-      {experiments.length > 0 && (
-        <p className="text-xs text-gray-500">
-          {experiments.length} experiment{experiments.length !== 1 ? 's' : ''} available
-        </p>
-      )}
+      
     </div>
   );
 };

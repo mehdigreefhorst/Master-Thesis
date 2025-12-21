@@ -41,7 +41,7 @@ const stageConfig = {
   },
   cluster_filter: {
     name: 'CLUSTER FILTER',
-    route: '/viewer',
+    route: '/filtering',
     description: 'Labeling and filtering samples',
   },
   cluster_enrich: {

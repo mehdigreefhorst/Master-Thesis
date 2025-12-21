@@ -1,14 +1,17 @@
 
 
 from typing import Dict, List, Literal, Optional, Tuple
-from app.database import get_cluster_repository, get_cluster_unit_repository, get_experiment_repository, get_sample_repository
+from app.database import get_cluster_repository, get_cluster_unit_repository, get_experiment_repository, get_filtering_repository, get_sample_repository
 from app.database.entities.base_entity import PyObjectId
 from app.database.entities.cluster_unit_entity import ClusterUnitEntity
 from app.database.entities.experiment_entity import ExperimentEntity
 from app.database.entities.filtering_entity import FilterMisc, FilteringEntity, FilteringFields, LabelName, LabelTemplateFilter
 from app.database.entities.label_template import LabelTemplateEntity
+from app.requests.filtering_requests import FilteringCreateRequest
 from app.services.cluster_prep_service import ClusterPrepService
+from app.utils.logging_config import get_logger
 
+logger = get_logger(__name__)
 
 class FilteringService:
     """service for handling the Filtering Entity, and filtering actions for the UI"""
@@ -127,5 +130,13 @@ class FilteringService:
     
     
     @staticmethod
-    def create_filter_entity_from_query(body: FilteringFields):
-        pass
+    def create_filter_entity_from_body(filtering_fields: FilteringFields, user_id: PyObjectId, scraper_cluster_id: PyObjectId):
+        """creates the filtering_entity from the FilteringFields
+        also inserts entity into database"""
+        filtering_entity = FilteringEntity.create_filter_entity_from_body(filtering_fields=filtering_fields,
+                                                                          user_id=user_id,
+                                                                          scraper_cluster_id=scraper_cluster_id)
+        
+        inserted_id = get_filtering_repository().insert(filtering_entity).inserted_id
+        logger.info(f"Inserted filtering_entity with id: {inserted_id}")
+        return inserted_id
