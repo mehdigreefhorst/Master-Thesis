@@ -53,6 +53,9 @@ def get_experiment_instances(query: GetExperiments) -> List[GetExperimentsRespon
     if query.experiment_ids:
         filter.update({"_id": {"$in": query.experiment_ids}})
 
+    if query.filter_experiment_type:
+        filter["experiment_type"] = query.filter_experiment_type.value
+    logger.info(f"filter = {filter}")
     # Debug logging
     logger.info(f"Filter being used: {filter}")
     logger.info(f"scraper_cluster_id: {query.scraper_cluster_id}")
@@ -140,8 +143,8 @@ def create_experiment(body: CreateExperiment):
     if not prompt_entity.created_by_user_id == user_id and not prompt_entity.public_policy:
         return jsonify(error="The provided prompt is not public and not created by you!"), 400
     
-    if not prompt_entity.category == PromptCategory.Classify_cluster_units:
-        return jsonify(error=f"Selected prompt {prompt_entity.id} is not of category 'Classify_cluster_units', it is {prompt_entity.category}"), 400
+    # if not prompt_entity.category == PromptCategory.Classify_cluster_units:
+    #     return jsonify(error=f"Selected prompt {prompt_entity.id} is not of category 'Classify_cluster_units', it is {prompt_entity.category}"), 400
     
     if body.input_type == "sample":
         
@@ -180,6 +183,7 @@ def create_experiment(body: CreateExperiment):
                                          prompt_id=prompt_entity.id,
                                          input_id=body.input_id,
                                          input_type=body.input_type,
+                                         experiment_type=prompt_entity.category,
                                          label_template_id= label_template_entity.id,
                                          label_template_labels=label_template_entity.get_labels(),
                                          model= body.model,
@@ -227,8 +231,8 @@ def continue_experiment(query: ExperimentId):
     if not prompt_entity.created_by_user_id == user_id and not prompt_entity.public_policy:
         return jsonify(error="The provided prompt is not public and not created by you!"), 400
     
-    if not prompt_entity.category == PromptCategory.Classify_cluster_units:
-        return jsonify(error=f"Selected prompt {prompt_entity.id} is not of category 'Classify_cluster_units', it is {prompt_entity.category}"), 400
+    # if not prompt_entity.category == PromptCategory.Classify_cluster_units:
+    #     return jsonify(error=f"Selected prompt {prompt_entity.id} is not of category 'Classify_cluster_units', it is {prompt_entity.category}"), 400
     
     ## Retrieve correct cluser units for experiment
     try:
@@ -299,8 +303,8 @@ def parse_prompt(body: ParsePrompt):
     if not prompt_entity.created_by_user_id == user_id and not prompt_entity.public_policy:
         return jsonify(error="The provided prompt is not public and not created by you!"), 400
     
-    if not prompt_entity.category == PromptCategory.Classify_cluster_units:
-        return jsonify(error=f"Selected prompt {prompt_entity.id} is not of category 'Classify_cluster_units', it is {prompt_entity.category}"), 400
+    # if not prompt_entity.category == PromptCategory.Classify_cluster_units:
+    #     return jsonify(error=f"Selected prompt {prompt_entity.id} is not of category 'Classify_cluster_units', it is {prompt_entity.category}"), 400
     
     cluster_unit_entity = get_cluster_unit_repository().find_by_id(body.cluster_unit_id)
 
@@ -461,6 +465,14 @@ def get_sample_units(query: GetSampleUnits):
     #     label_template_entity._create_ground_truth_field()
     #     get_label_template_repository().update(label_template_entity.id, label_template_entity)
     cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_enity.sample_cluster_unit_ids)
+    if query.filter_experiment_type:
+        experiment_ids = list({experiment_id for cluster_unit in cluster_unit_entities for experiment_id in cluster_unit.predicted_category.keys()})
+        experiment_entities = get_experiment_repository().find_many_by_ids(experiment_ids)
+        experiment_entities_to_remove = [experiment_entity for experiment_entity in experiment_entities if experiment_entity.experiment_type != query.filter_experiment_type]
+        for experiment_entity in experiment_entities_to_remove:
+            for cluster_unit in cluster_unit_entities:
+                if experiment_entity.id in cluster_unit.predicted_category:
+                    cluster_unit.predicted_category.pop(experiment_entity.id)
     logger.info(f"len(cluster_unit_entities = ), {len(cluster_unit_entities)}")
 
     returnable_cluster_units = LabelTemplateService.convert_sample_cluster_units_return_format(cluster_unit_entities, label_template_entities)
@@ -598,7 +610,7 @@ def get_input_entities(query: GetInputEntities) -> InputEntitiesExperimentsRespo
     if not scraper_cluster_entity:
         return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {query.scraper_cluster_id}"), 400
     
-    filtering_entities = get_filtering_repository().find({"scraper_cluster_entity": scraper_cluster_entity.id})
+    filtering_entities = get_filtering_repository().find({"scraper_cluster_id": scraper_cluster_entity.id})
 
     sample_entity = get_sample_repository().find_by_id(scraper_cluster_entity.sample_id)
     

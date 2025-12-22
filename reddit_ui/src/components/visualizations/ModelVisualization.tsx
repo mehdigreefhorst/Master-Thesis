@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { visualizationApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
+import { useToast } from '@/components/ui/use-toast';
 
 interface ModelSelectData {
   modelId: string;
@@ -28,6 +29,7 @@ const ModelVisualization: React.FC<ModelVisualizationProps> = ({
   className = ""
 }) => {
   const authFetch = useAuthFetch();
+  const { toast } = useToast();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -58,7 +60,13 @@ const ModelVisualization: React.FC<ModelVisualizationProps> = ({
         // Take the first one if fetching directly
         setHtmlContent(htmlList[0] || '');
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load visualization');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load visualization';
+        setError(errorMessage);
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
       } finally {
         setLoading(false);
       }

@@ -17,12 +17,14 @@ import { Modal } from '@/components/ui/Modal';
 import { AsymptoticProgressBar } from '@/components/ui/AsymptoticProgressBar';
 import { MediaStrategySkipType } from '@/types/cluster-prep';
 import { MediaStrategyModal } from '@/components/modals/MediaStrategyModal';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function ScrapingProgressPage() {
   const searchParams = useSearchParams();
   const scraperClusterId = searchParams.get('scraper_cluster_id');
   const router = useRouter()
   const authFetch = useAuthFetch();
+  const { toast } = useToast();
 
   const [scraperData, setScraperData] = useState<ScraperEntity | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,12 +48,28 @@ export default function ScrapingProgressPage() {
       const data: ScraperEntity = await scraperApi.getScraperByScraperClusterId(authFetch, scraperClusterId);
       if (data?.error) {
         setError(data.error)
+        toast({
+          title: "Error",
+          description: data.error,
+          variant: "destructive"
+        });
         return
       }
       setScraperData(data);
       setError(null);
+      toast({
+        title: "Success",
+        description: "Scraper data loaded successfully",
+        variant: "success"
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch scraper data');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to fetch scraper data';
+      setError(errorMsg);
+      toast({
+        title: "Error",
+        description: errorMsg,
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -77,11 +95,22 @@ export default function ScrapingProgressPage() {
     try {
       setIsActionLoading(true);
       await scraperApi.startScraper(authFetch, scraperClusterId);
+      toast({
+        title: "Success",
+        description: "Scraper started successfully",
+        variant: "success"
+      });
       // Small delay to allow backend to update status
       await new Promise(resolve => setTimeout(resolve, 500));
       await fetchScraperData(); // Refresh data
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start scraper');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to start scraper';
+      setError(errorMsg);
+      toast({
+        title: "Error",
+        description: errorMsg,
+        variant: "destructive"
+      });
     } finally {
       setIsActionLoading(false);
     }
@@ -93,11 +122,22 @@ export default function ScrapingProgressPage() {
     try {
       setIsActionLoading(true);
       await scraperApi.pauseScraper(authFetch, scraperClusterId);
+      toast({
+        title: "Success",
+        description: "Scraper paused successfully",
+        variant: "success"
+      });
       // Small delay to allow backend to update status
       await new Promise(resolve => setTimeout(resolve, 500));
       await fetchScraperData(); // Refresh data
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to pause scraper');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to pause scraper';
+      setError(errorMsg);
+      toast({
+        title: "Error",
+        description: errorMsg,
+        variant: "destructive"
+      });
     } finally {
       setIsActionLoading(false);
     }
@@ -120,6 +160,11 @@ export default function ScrapingProgressPage() {
 
       // Start cluster preparation
       await clusterApi.prepareCluster(authFetch, scraperClusterId, mediaStrategySkip);
+      toast({
+        title: "Success",
+        description: "Cluster preparation started successfully",
+        variant: "success"
+      });
 
       // Poll for cluster preparation status
       const checkClusterStatus = async () => {
@@ -130,12 +175,22 @@ export default function ScrapingProgressPage() {
           if (scraperCluster.stages?.cluster_prep === 'completed') {
             setIsPreparingCluster(false);
             setShowPreparationModal(false);
+            toast({
+              title: "Success",
+              description: "Cluster preparation completed successfully",
+              variant: "success"
+            });
             router.push(`/sample?scraper_cluster_id=${scraperClusterId}`);
             return true;
           }
           return false;
         } catch (err) {
           console.error('Error checking cluster status:', err);
+          toast({
+            title: "Error",
+            description: `Error checking cluster status: ${err instanceof Error ? err.message : String(err)}`,
+            variant: "destructive"
+          });
           return false;
         }
       };
@@ -160,7 +215,13 @@ export default function ScrapingProgressPage() {
       }, 120000);
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to prepare the cluster');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to prepare the cluster';
+      setError(errorMsg);
+      toast({
+        title: "Error",
+        description: errorMsg,
+        variant: "destructive"
+      });
       setShowPreparationModal(false);
       setIsPreparingCluster(false);
       setIsActionLoading(false);

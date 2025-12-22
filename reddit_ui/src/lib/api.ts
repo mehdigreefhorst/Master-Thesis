@@ -505,8 +505,13 @@ export const experimentApi = {
 
     return response
   },
-  async getSampleUnits(authFetch: ReturnType<typeof useAuthFetch>, scraperClusterId: string): Promise<ClusterUnitEntity[]> {
-    const data = await authFetch(`/experiment/get_sample_units?scraper_cluster_id=${scraperClusterId}`);
+  async getSampleUnits(authFetch: ReturnType<typeof useAuthFetch>, scraperClusterId: string, filterExperimentType?: 'classify_cluster_units' | 'rewrite_cluster_unit_standalone' | 'summarize_prediction_notes' | null): Promise<ClusterUnitEntity[]> {
+    let experimentParamText = ""
+
+    if (filterExperimentType) {
+      experimentParamText += `&filter_experiment_type=${filterExperimentType}`
+    }
+    const data = await authFetch(`/experiment/get_sample_units?scraper_cluster_id=${scraperClusterId}${experimentParamText}`);
     const response = await data.json()
     if (response?.error){throw new Error(response.error)}
 
@@ -616,7 +621,8 @@ export const experimentApi = {
     authFetch: ReturnType<typeof useAuthFetch>,
     scraperClusterId: string,
     experimentIds?: string[],
-    userThreshold?: number | null
+    userThreshold?: number | null,
+    filterExperimentType?: 'classify_cluster_units' | 'rewrite_cluster_unit_standalone' | 'summarize_prediction_notes' | null
   ) {
     if (experimentIds) {
       console.log("experimentIds = ", experimentIds.toString())
@@ -630,6 +636,10 @@ export const experimentApi = {
     // Add user_threshold parameter if provided
     if (userThreshold !== null && userThreshold !== undefined) {
       experimentParamText += `&user_threshold=${userThreshold}`
+    }
+
+    if (filterExperimentType) {
+      experimentParamText += `&filter_experiment_type=${filterExperimentType}`
     }
 
     console.log("experimentParamText = ", experimentParamText)

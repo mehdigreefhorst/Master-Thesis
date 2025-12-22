@@ -55,6 +55,8 @@ export interface FilteringEntity extends FilteringFields {
   created_at: Date;
   scraper_cluster_id: string;
   user_id: string;
+  input_cluster_unit_ids?: string[] | null
+  output_cluster_unit_ids?: string[] | null
 }
 export interface FilteringEntityId {
   filtering_entity_id: string

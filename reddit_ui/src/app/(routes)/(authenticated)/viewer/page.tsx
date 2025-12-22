@@ -7,11 +7,15 @@ import { clusterApi, experimentApi } from '@/lib/api';
 import type { ClusterUnitEntity } from '@/types/cluster-unit';
 import { useAuthFetch } from '@/utils/fetch';
 import { PromptEntity } from '@/types/prompt';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/use-toast';
+import { produce } from 'immer';
+import { LabelTemplateEntity } from '@/types/label-template';
 
 export default function ViewerPageContent() {
   const searchParams = useSearchParams();
   const authFetch = useAuthFetch();
+  const { toast } = useToast();
+  const [labelTemplateEntity, setLabelTemplateEntity] = useState<LabelTemplateEntity | null>(null);
 
   const [clusterUnits, setClusterUnits] = useState<ClusterUnitEntity[]>([])
   const [prompts, setPrompts] = useState<PromptEntity[]>([]);
@@ -47,6 +51,11 @@ export default function ViewerPageContent() {
         fetchedRef.current = scraperClusterId; // Mark as fetched
       } catch (error) {
         console.error('Error fetching cluster units:', error);
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : 'Failed to fetch cluster units',
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }
@@ -102,7 +111,7 @@ export default function ViewerPageContent() {
       try {
         setIsLoading(true)
         const prompts = await experimentApi.getPrompts(authFetch);
-        const experiments: any = await experimentApi.getExperiments(authFetch, scraperClusterId)
+        const experiments: any = await experimentApi.getExperiments(authFetch, scraperClusterId, undefined, undefined, "classify_cluster_units")
         console.log("experiments = ", experiments)
         // Step 1: Create quick lookup from promptId → promptName
         const promptLookup: Record<string, string> = {};
@@ -128,6 +137,11 @@ export default function ViewerPageContent() {
         setPrompts(prompts);
       } catch (err) {
         console.error('Failed to fetch prompts:', err);
+        toast({
+          title: "Error",
+          description: err instanceof Error ? err.message : 'Failed to fetch prompts and experiments',
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }

@@ -6,6 +6,7 @@ import { useAuthFetch } from "@/utils/fetch";
 import { Button } from "../ui";
 import { PageHeader } from "../layout";
 import { TestPredictionModal } from "./TestPredictionModal";
+import { useToast } from "@/components/ui/use-toast";
 
 
 interface ExperimentsSearchBarResultsProps {
@@ -34,8 +35,9 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
   const [showTestModal, setShowTestModal] = useState(false);
   const [testExperimentId, setTestExperimentId] = useState<string | null>(null);
 
-  const router = useRouter()
+  const router = useRouter();
   const authFetch = useAuthFetch();
+  const { toast } = useToast();
   const thresholdDropdownRef = useRef<HTMLDivElement>(null);
 
 
@@ -86,8 +88,19 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
 
       try {
         await experimentApi.continueExperiment(authFetch, experiment_id);
+        toast({
+          title: "Success",
+          description: "Experiment resumed successfully",
+          variant: "success"
+        });
       } catch (err) {
         console.error('Failed to continue experiment:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Failed to continue experiment';
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
         // Revert the optimistic update on error
         setExperiments(prevExperiments =>
           prevExperiments.map(exp =>
@@ -117,6 +130,11 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
         }
       } catch (err) {
         console.error('Failed to refresh experiment after threshold update:', err);
+        toast({
+          title: "Error",
+          description: err instanceof Error ? err.message : 'Failed to refresh experiment after threshold update',
+          variant: "destructive"
+        });
       }
     }
 
@@ -211,8 +229,13 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
         });
       } catch (err) {
         console.error('Failed to fetch experiments:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch experiments');
-
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch experiments';
+        setError(errorMessage);
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }

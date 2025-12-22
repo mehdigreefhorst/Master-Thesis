@@ -96,18 +96,7 @@ export default function LabelTemplateLayout({
             )}
           </div>
 
-          {/* View Existing Button (shown when on create page) */}
-          {isCreatePage && labelTemplates.length > 0 && (
-            <div className="pt-4 border-t border-gray-200">
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={() => router.push('/label-template')}
-              >
-                ← View Category Info
-              </Button>
-            </div>
-          )}
+          
         </div>
       </div>
 

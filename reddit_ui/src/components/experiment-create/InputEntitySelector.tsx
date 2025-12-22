@@ -67,7 +67,7 @@ export const InputEntitySelector: React.FC<InputEntitySelectorProps> = ({
         const filteringDisplays: InputEntityDisplay[] = (data.filtering_entities || []).map((filtering, index) => ({
           id: filtering.id,
           name: `Filtering ${index + 1}`,
-          cluster_unit_count: 0, // Will be updated if we have the data
+          cluster_unit_count: filtering.output_cluster_unit_ids?.length ?? 0, // Will be updated if we have the data
           created_at: filtering.created_at ? new Date(filtering.created_at).toISOString() : undefined,
           description: `Filtering rule for ${filtering.label_template_id}`,
           type: 'filtering' as const,

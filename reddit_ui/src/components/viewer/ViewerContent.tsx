@@ -105,7 +105,7 @@ export function ViewerContent({
           setIsLoading(true);
           console.log('Fetching sample cluster units for scraper cluster:', scraperClusterId);
   
-          const cluster_unit_entities = await experimentApi.getSampleUnits(authFetch, scraperClusterId);
+          const cluster_unit_entities = await experimentApi.getSampleUnits(authFetch, scraperClusterId, "classify_cluster_units");
           console.log('Sample cluster units response:', cluster_unit_entities);
   
           setClusterUnits(cluster_unit_entities);
@@ -154,13 +154,14 @@ export function ViewerContent({
     //prompts.find((prompt: PromptEntity) => prompt.id === ExperimentId);
     // Build models array
 
-    const modelsData = ExperimentIds.map((ExperimentId) => (
-      {
-      
-      name: promptsNameExperimentIdDict[ExperimentId]["promptName"], // TODO: Get actual prompt name from backend
-      modelId: promptsNameExperimentIdDict[ExperimentId]["modelId"],
-      version: ExperimentId.substring(0, 8), // Show short UUID
-    }));
+    const modelsData = ExperimentIds.map((ExperimentId) => {
+      const experimentData = promptsNameExperimentIdDict[ExperimentId];
+      return {
+        name: experimentData?.promptName || 'Loading...', // Fallback if data not loaded yet
+        modelId: experimentData?.modelId || 'unknown',
+        version: ExperimentId.substring(0, 8), // Show short UUID
+      };
+    });
 
    
 

@@ -250,7 +250,9 @@ export default function LabelTemplateViewPage() {
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                       labelData.value ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                     }`}>
-                      {labelData.value ? 'True' : 'False'}
+
+                      {labelData.value.toString()}
+                      
                     </span>
                   </div>
 
@@ -319,7 +321,7 @@ export default function LabelTemplateViewPage() {
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 mb-2">{label.explanation}</p>
-                {label.possible_values.length > 0 && (
+                {(label.type === "boolean" || label.type === "category") && label.possible_values.length > 0 && (
                   <div className="mt-2">
                     <span className="text-xs font-semibold text-gray-500 uppercase">
                       Possible Values:

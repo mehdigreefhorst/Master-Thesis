@@ -25,7 +25,7 @@ def get_filtering_count(body: FilteringFields):
     if not current_user:
         return jsonify(error="No such user"), 401
     
-    cluster_unit_entities, experiment_entity = FilteringService().get_input_cluster_units(body.input_id, body.input_type)
+    cluster_unit_entities, experiment_entity = FilteringService().get_input_cluster_units(input_id=body.input_id, input_type=body.input_type)
     print("cluster_unit_entities = ", len(cluster_unit_entities))
     print("body= ", body)
     filtered_cluster_unit_entities = FilteringService().filter_cluster_units(cluster_unit_entities=cluster_unit_entities,
@@ -43,7 +43,8 @@ def get_filtering_cluster_units(body: FilteringRequest):
     if not current_user:
         return jsonify(error="No such user"), 401
     
-    cluster_unit_entities, experiment_entity = FilteringService().get_input_cluster_units(body.input_id, body.input_type)
+    cluster_unit_entities, experiment_entity = FilteringService().get_input_cluster_units(input_id=body.input_id, 
+                                                                                          input_type=body.input_type)
         
     filtered_cluster_unit_entities = FilteringService().filter_cluster_units(cluster_unit_entities=cluster_unit_entities,
                                                                              filtering_fields=body,
@@ -66,7 +67,7 @@ def create_filtering_entity(body: FilteringCreateRequest):
                                                                                      scraper_cluster_id=body.scraper_cluster_id)
     
     
-    return jsonify(inserted_filtering_entity_id=inserted_filtering_entity_id), 200
+    return jsonify(filtering_entity_id=inserted_filtering_entity_id), 200
 
 
 @filtering_bp.route("/delete", methods=["DELETE"])

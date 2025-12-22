@@ -10,12 +10,14 @@ import { labelTemplateApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
 import { LabelFieldCard } from '@/components/label-template/LabelFieldCard';
 import type { LLMLabelField, CreateLabelTemplateRequest } from '@/types/label-template';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function CreateLabelTemplatePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const authFetch = useAuthFetch();
   const copyFromId = searchParams.get('copyFrom');
+  const { toast } = useToast();
 
   // Form state
   const [categoryName, setCategoryName] = useState('');
@@ -54,7 +56,13 @@ export default function CreateLabelTemplatePage() {
         setLabels(template.labels);
         setPerLabelFields(template.llm_prediction_fields_per_label || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load template data');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load template data';
+        setError(errorMessage);
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
       } finally {
         setIsLoadingTemplate(false);
       }
@@ -219,15 +227,28 @@ export default function CreateLabelTemplatePage() {
       };
 
       await labelTemplateApi.createLabelTemplate(authFetch, request);
-      setSuccess(copyFromId ? 'Label template copied successfully!' : 'Category info created successfully!');
+      const successMessage = copyFromId ? 'Label template copied successfully!' : 'Category info created successfully!';
+      setSuccess(successMessage);
       setHasStartedEditing(false);
+
+      toast({
+        title: "Success",
+        description: successMessage,
+        variant: "success"
+      });
 
       // Redirect after 1.5 seconds
       setTimeout(() => {
         router.push('/label-template');
       }, 1500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create category info');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create category info';
+      setError(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -254,7 +275,7 @@ export default function CreateLabelTemplatePage() {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
-              {copyFromId ? 'Copy Label Template' : 'Create Category Info'}
+              {copyFromId ? 'Copy Label Template' : 'Create Label Template'}
             </h1>
             <p className="mt-2 text-gray-600">
               {copyFromId

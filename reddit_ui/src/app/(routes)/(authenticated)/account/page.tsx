@@ -8,10 +8,12 @@ import { Button } from '@/components/ui/Button';
 import { useAuthFetch } from '@/utils/fetch';
 import { userApi } from '@/lib/api';
 import { UserProfile } from '@/types/user';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function AccountPage() {
   const router = useRouter();
   const authFetch = useAuthFetch();
+  const { toast } = useToast();
 
   const [userProfile, setUserProfile] = useState<UserProfile>({});
   const [editedProfile, setEditedProfile] = useState<UserProfile>({});
@@ -32,9 +34,20 @@ export default function AccountPage() {
       const profile = await userApi.getUserProfile(authFetch);
       setUserProfile(profile);
       setEditedProfile(profile);
+      toast({
+        title: "Success",
+        description: "User profile loaded successfully",
+        variant: "success"
+      });
     } catch (err) {
-      setError('Failed to load user profile');
+      const errorMsg = 'Failed to load user profile';
+      setError(errorMsg);
       console.error('Error loading user profile:', err);
+      toast({
+        title: "Error",
+        description: `${errorMsg}: ${err instanceof Error ? err.message : String(err)}`,
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -50,12 +63,23 @@ export default function AccountPage() {
       setUserProfile(editedProfile);
       setIsEditing(false);
       setSuccessMessage('Profile updated successfully!');
+      toast({
+        title: "Success",
+        description: "Profile updated successfully!",
+        variant: "success"
+      });
 
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError('Failed to update profile');
+      const errorMsg = 'Failed to update profile';
+      setError(errorMsg);
       console.error('Error updating profile:', err);
+      toast({
+        title: "Error",
+        description: `${errorMsg}: ${err instanceof Error ? err.message : String(err)}`,
+        variant: "destructive"
+      });
     } finally {
       setIsSaving(false);
     }

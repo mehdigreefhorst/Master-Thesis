@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { useAuthFetch } from '@/utils/fetch';
 import type { ScraperClusterEntity, StatusType } from '@/types/scraper-cluster';
 import { scraperApi, scraperClusterApi } from '@/lib/api';
+import { useToast } from '@/components/ui/use-toast';
 
 interface StageData {
   name: string;
@@ -60,6 +61,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const authFetch = useAuthFetch();
+  const { toast } = useToast();
   const scraperClusterId = searchParams.get('scraper_cluster_id');
 
   const [clusterData, setClusterData] = useState<ScraperClusterEntity | null>(null);
@@ -84,11 +86,22 @@ export default function DashboardPage() {
         const scraperCluster = await scraperClusterApi.getScraperClusterById(authFetch, scraperClusterId)
 
         if (!scraperCluster) {
-          setError('Scraper cluster not found');
+          const errorMsg = 'Scraper cluster not found';
+          setError(errorMsg);
+          toast({
+            title: "Error",
+            description: errorMsg,
+            variant: "destructive"
+          });
           return;
         }
 
         setClusterData(scraperCluster);
+        toast({
+          title: "Success",
+          description: "Cluster data loaded successfully",
+          variant: "success"
+        });
 
         // Fetch scraper data if scraper_entity_id exists
         if (scraperCluster.scraper_entity_id) {
@@ -96,14 +109,30 @@ export default function DashboardPage() {
             const scraper = await scraperApi.getScraperByScraperClusterId(authFetch, scraperCluster.id)
             if (scraper) {
               setScraperData(scraper);
+              toast({
+                title: "Success",
+                description: "Scraper data loaded successfully",
+                variant: "success"
+              });
             }
           } catch (scraperErr) {
             console.error('Failed to fetch scraper data:', scraperErr);
+            toast({
+              title: "Error",
+              description: `Failed to fetch scraper data: ${scraperErr instanceof Error ? scraperErr.message : String(scraperErr)}`,
+              variant: "destructive"
+            });
             // Don't fail the entire page if scraper fetch fails
           }
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch cluster data');
+        const errorMsg = err instanceof Error ? err.message : 'Failed to fetch cluster data';
+        setError(errorMsg);
+        toast({
+          title: "Error",
+          description: errorMsg,
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }

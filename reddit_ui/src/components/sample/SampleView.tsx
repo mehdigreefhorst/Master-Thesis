@@ -11,6 +11,7 @@ import { Modal } from '@/components/ui/Modal';
 import type { SampleEntity } from '@/types/sample';
 import type { StatusType } from '@/types/scraper-cluster';
 import { MultiLabelTemplateSelector } from '../experiment-create/MultiLabelTemplateSelector';
+import { useToast } from '@/components/ui/use-toast';
 
 interface SampleViewProps {
   scraperClusterId?: string | null;
@@ -23,6 +24,7 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
 }) => {
   const router = useRouter();
   const authFetch = useAuthFetch();
+  const { toast } = useToast();
   const [sample, setSample] = useState<SampleEntity | null>(null);
   const [totalPostsAvailable, setTotalPostsAvailable] = useState<number>(0);
   const [clusterUnitsUsed, setClusterUnitsUsed] = useState<number>(0);
@@ -61,7 +63,13 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
         setClusterUnitsUsed(sample.sample_size   || 0);
       } catch (err) {
         console.error('Failed to fetch sample:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch sample');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch sample';
+        setError(errorMessage);
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }

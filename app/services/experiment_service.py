@@ -40,8 +40,8 @@ class ExperimentService:
         prompt_entity: PromptEntity, 
         max_concurrent: int=1000):
         """this function orchestrates the prediction of the cluster unit entity and propagates it into the experiement entity"""
-        if not prompt_entity.category == PromptCategory.Classify_cluster_units:
-            raise Exception("The prompt is of the wrong type!!!")
+        # if not prompt_entity.category == PromptCategory.Classify_cluster_units:
+        #     raise Exception("The prompt is of the wrong type!!!")
         # First we filter the cluster units that we have not yet predicted the category for. Might happen if we have predicted a part of clusterunits
         cluster_unit_entities_remain = [cluster_unit_entity for cluster_unit_entity in cluster_unit_entities if not (cluster_unit_entity.predicted_category and cluster_unit_entity.predicted_category.get(experiment_entity.id))]
         cluster_unit_entities_done = [cluster_unit_entity for cluster_unit_entity in cluster_unit_entities if (cluster_unit_entity.predicted_category and cluster_unit_entity.predicted_category.get(experiment_entity.id))]
@@ -242,8 +242,8 @@ class ExperimentService:
 
         This ensures tokens are NEVER lost, even if prediction parsing fails.
         """
-        if not prompt_entity.category == PromptCategory.Classify_cluster_units:
-            raise Exception("The prompt is of the wrong type!!!")
+        # if not prompt_entity.category == PromptCategory.Classify_cluster_units:
+        #     raise Exception("The prompt is of the wrong type!!!")
 
         if all_attempts_token_usage is None:
             all_attempts_token_usage = []
@@ -452,8 +452,8 @@ class ExperimentService:
 
     @staticmethod
     def parse_classification_prompt(cluster_unit_entity: ClusterUnitEntity, prompt_entity: PromptEntity, label_template_entity: LabelTemplateEntity):
-        if not prompt_entity.category == PromptCategory.Classify_cluster_units:
-            raise Exception("The prompt is of the wrong type!!!")
+        # if not prompt_entity.category == PromptCategory.Classify_cluster_units:
+        #     raise Exception("The prompt is of the wrong type!!!")
         prompt = prompt_entity.prompt
 
         # prompt += label_template_entity.create_llm_prompt_explanation_with_response_format()
@@ -526,10 +526,18 @@ class ExperimentService:
                 prediction_metrics = None
                 overall_accuracy = None
                 overall_kappa = None
-            else:
+            elif experiment.experiment_type == PromptCategory.Classify_cluster_units:
                 prediction_metrics = ExperimentService.calculate_prediction_metrics(experiment, sample_entity, user_threshold)
                 overall_accuracy = ExperimentService.calculate_overal_accuracy(prediction_metrics)
                 overall_kappa = ExperimentService.calculate_overall_consistency(prediction_metrics)
+            elif experiment.experiment_type == PromptCategory.Rewrite_cluster_unit_standalone:
+                prediction_metrics = None
+                overall_accuracy = None
+                overall_kappa = None
+            elif experiment.experiment_type == PromptCategory.Summarize_prediction_notes:
+                prediction_metrics = None
+                overall_accuracy = None
+                overall_kappa = None
             #:TODO Fix that I keep track of what version of prompt I am using
             experiment_response = GetExperimentsResponse(id=experiment.id,
                                                          name=f"{experiment.model} V{index}",

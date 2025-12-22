@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { LabelTemplateEntity } from '@/types/label-template';
 import { LabelTemplateLLMProjection, LabelValueField } from '@/types/cluster-unit';
+import { BaseSelector, BaseSelectorItem } from '../ui';
 
 interface OneShotExampleModalProps {
   isOpen: boolean;
@@ -13,6 +14,12 @@ interface OneShotExampleModalProps {
   onSave: (oneShotExample: Record<string, LabelTemplateLLMProjection>) => void;
   labelTemplate: LabelTemplateEntity;
   existingData: Record<string, LabelTemplateLLMProjection> | null | undefined;
+}
+
+interface categoryItem extends BaseSelectorItem {
+  id: string;
+  label: string;
+  value: number | string;
 }
 
 export const OneShotExampleModal: React.FC<OneShotExampleModalProps> = ({
@@ -50,7 +57,7 @@ export const OneShotExampleModal: React.FC<OneShotExampleModalProps> = ({
     }
   }, [isOpen, existingData, labelTemplate]);
 
-  const handleLabelValueChange = (labelKey: string, newValue: boolean) => {
+  const handleLabelValueChange = (labelKey: string, newValue: boolean | string | number| null) => {
     setFormData((prev) => ({
       ...prev,
       [labelKey]: {
@@ -59,6 +66,7 @@ export const OneShotExampleModal: React.FC<OneShotExampleModalProps> = ({
       },
     }));
   };
+
 
   const handlePerLabelFieldChange = (
     labelKey: string,
@@ -148,12 +156,47 @@ export const OneShotExampleModal: React.FC<OneShotExampleModalProps> = ({
                   </label>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-600">Value:</span>
-                    <input
+                    {label.type === "boolean" &&
+                    <Input
                       type="checkbox"
                       checked={formData[label.label]?.value as boolean}
                       onChange={(e) => handleLabelValueChange(label.label, e.target.checked)}
                       className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
+                    
+                  }
+                  {label.type === "string" &&
+                    <Input
+                      type="text"
+                      onChange={(e) => handleLabelValueChange(label.label, e.target.value)}
+                      className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    
+                  }
+
+                  {label.type === "category" && label.possible_values && label.possible_values.length > 0 && (
+                    <BaseSelector
+                      items={label.possible_values.map((value, idx) => ({
+                        id: String(idx),
+                        label: String(value),
+                        value: value
+                      }))}
+                      selectedItem={
+                        formData[label.label]?.value
+                          ? {
+                              id: String(label.possible_values.indexOf(formData[label.label].value)),
+                              label: String(formData[label.label].value),
+                              value: formData[label.label].value
+                            }
+                          : null
+                      }
+                      onSelect={(item) => handleLabelValueChange(label.label, item.value)}
+                      onClear={() => handleLabelValueChange(label.label, null)}
+                      placeholder="Select a category"
+                      className="min-w-[200px]"
+                    />
+                  )}
+                    
                   </div>
                 </div>
                 <p className="text-sm text-gray-600">{label.explanation}</p>

@@ -43,7 +43,7 @@ export default function SampleViewerPage() {
       try {
         setIsLoadingPrompts(true)
         const prompts = await experimentApi.getPrompts(authFetch);
-        const experiments: any = await experimentApi.getExperiments(authFetch, scraperClusterId)
+        const experiments: any = await experimentApi.getExperiments(authFetch, scraperClusterId, undefined, undefined, "classify_cluster_units")
         console.log("experiments = ", experiments)
         // Step 1: Create quick lookup from promptId → promptName
         const promptLookup: Record<string, string> = {};

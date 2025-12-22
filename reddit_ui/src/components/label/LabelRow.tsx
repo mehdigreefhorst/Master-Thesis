@@ -6,6 +6,7 @@ import { ReasoningIcon } from '../ui/ReasoningIcon';
 import { Button } from '../ui';
 import { clusterApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
+import { useToast } from '@/components/ui/use-toast';
 
 export interface LabelResult {
   count: number; // How many runs matched (0-3)
@@ -33,6 +34,7 @@ export const LabelRow: React.FC<LabelRowProps> = ({
   className = ''
 }) => {
   const authFetch = useAuthFetch();
+  const { toast } = useToast();
   const [newGroundTruth, setNewGroundTruth] = useState<boolean | null >(groundTruth)
   // Track which result cells have their reasoning expanded
   const [openStates, setOpenStates] = useState<boolean[]>(
@@ -48,14 +50,36 @@ export const LabelRow: React.FC<LabelRowProps> = ({
     setOpenStates(prev => prev.map((state, i) => i === index ? !state : state));
   };
 
-  const updateGroundTruth = () => {
-    const newBool = !newGroundTruth
-    setNewGroundTruth(newBool);
-    clusterApi.updateClusterUnitGroundTruth(authFetch, cluster_unit_id, labelTemplateId, labelName, newBool);
+  const updateGroundTruth = async () => {
+    const newBool = !newGroundTruth;
+    const previousValue = newGroundTruth;
 
-    // Update the cached data in the parent component
-    if (handleClusterUnitGroundTruthUpdate) {
-      handleClusterUnitGroundTruthUpdate(cluster_unit_id, labelName, newBool);
+    // Optimistically update the UI
+    setNewGroundTruth(newBool);
+
+    try {
+      await clusterApi.updateClusterUnitGroundTruth(authFetch, cluster_unit_id, labelTemplateId, labelName, newBool);
+
+      // Update the cached data in the parent component
+      if (handleClusterUnitGroundTruthUpdate) {
+        handleClusterUnitGroundTruthUpdate(cluster_unit_id, labelName, newBool);
+      }
+
+      toast({
+        title: "Success",
+        description: `Ground truth updated to ${newBool ? 'True' : 'False'}`,
+        variant: "success"
+      });
+    } catch (err) {
+      // Revert the optimistic update on error
+      setNewGroundTruth(previousValue);
+
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update ground truth';
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
     }
   }
 

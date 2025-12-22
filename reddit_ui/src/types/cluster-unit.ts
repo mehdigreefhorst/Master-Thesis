@@ -6,7 +6,7 @@
 
 export interface LabelValueField {
   label: string
-  value: string | number | boolean// None if not yet set. Or when it is part of a label_template_entity
+  value: string | number | boolean | null// None if not yet set. Or when it is part of a label_template_entity
   type: "string" | "boolean" | "category" | "integer" | "float" // # type of what the possible label can be 
 
 }

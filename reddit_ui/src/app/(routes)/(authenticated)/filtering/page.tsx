@@ -119,6 +119,11 @@ function FilteringPageContent() {
       const result = await filteringApi.getFilteredCount(authFetch, request);
       setBeforeCount(result.before_filtering);
       setAfterCount(result.after_filtering);
+      toast({
+        title: "Success",
+        description: "Count fetched successfully",
+        variant: "success",
+      });
     } catch (error) {
       console.error("Error fetching count:", error);
       toast({
@@ -136,6 +141,11 @@ function FilteringPageContent() {
       const result = await filteringApi.getFilteredClusterUnits(authFetch, request);
       setClusterUnits(result);
       setShowUnits(true);
+      toast({
+        title: "Success",
+        description: "Cluster units fetched successfully",
+        variant: "success",
+      });
     } catch (error) {
       console.error("Error fetching cluster units:", error);
       toast({

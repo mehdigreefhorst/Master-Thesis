@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 from app.database.entities.base_entity import BaseEntity, PyObjectId
 from app.database.entities.cluster_unit_entity import TokenUsageAttempt
 from app.database.entities.openrouter_data_entity import Pricing
+from app.database.entities.prompt_entity import PromptCategory
 from app.utils.types import StatusType
 
 
@@ -92,6 +93,7 @@ class ExperimentEntity(BaseEntity):
     prompt_id: PyObjectId
     input_id: PyObjectId
     input_type: Literal["sample", "filtering", "cluster"]
+    experiment_type: PromptCategory
     label_template_id: PyObjectId
     label_template_labels: List[str] = Field(default_factory=list)
     model: str

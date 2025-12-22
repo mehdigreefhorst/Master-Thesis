@@ -173,7 +173,8 @@ class FilteringService:
                                                                           user_id=user_id,
                                                                           scraper_cluster_id=scraper_cluster_id)
         
-        input_cluster_units, experiment_entity = FilteringService().get_input_cluster_units(filtering_entity.input_id)
+        input_cluster_units, experiment_entity = FilteringService().get_input_cluster_units(input_id=filtering_entity.input_id, 
+                                                                                            input_type=filtering_entity.input_type)
         if not input_cluster_units or not experiment_entity:
             raise Exception("no input inputs found or experiment found")
         filtering_entity.input_cluster_unit_ids = [cluster_unit.id for cluster_unit in input_cluster_units]

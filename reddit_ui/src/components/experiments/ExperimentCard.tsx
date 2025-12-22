@@ -9,6 +9,7 @@ import { StatusType } from '@/types/scraper-cluster';
 import { TokenStatistics as TokenStatsDisplay } from './TokenStatistics';
 import { experimentApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
+import { useToast } from '@/components/ui/use-toast';
 
 export interface TokenStatistics {
   total_successful_predictions: number;
@@ -79,6 +80,7 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
   className = ''
 }) => {
   const authFetch = useAuthFetch();
+  const { toast } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditingThreshold, setIsEditingThreshold] = useState(false);
   const [isUpdatingThreshold, setIsUpdatingThreshold] = useState(false);
@@ -136,6 +138,12 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
         newThreshold
       );
 
+      toast({
+        title: "Success",
+        description: "Threshold updated successfully",
+        variant: "success"
+      });
+
       // Wait 500ms before triggering refresh
       await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -145,6 +153,11 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
       setIsEditingThreshold(false);
     } catch (error) {
       console.error('Failed to update threshold:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to update threshold',
+        variant: "destructive"
+      });
     } finally {
       setIsUpdatingThreshold(false);
     }

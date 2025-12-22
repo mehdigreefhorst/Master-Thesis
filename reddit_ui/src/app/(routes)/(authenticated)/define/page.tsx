@@ -7,6 +7,7 @@ import { scraperClusterApi, scraperApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
 import type { ScraperClusterEntity, ScraperEntity, StatusType } from '@/types/scraper-cluster';
 import { HeaderStep } from '@/components/layout/HeaderStep';
+import { useToast } from '@/components/ui/use-toast';
 
 type Step = 'problem-definition' | 'keyword-generation';
 
@@ -14,6 +15,7 @@ export default function DefinePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const authFetch = useAuthFetch();
+  const { toast } = useToast();
 
   const [currentStep, setCurrentStep] = useState<Step>('problem-definition');
   const [scraperClusterId, setScraperClusterId] = useState<string>("");
@@ -61,6 +63,12 @@ export default function DefinePage() {
           console.error('stages or stages.scraping is undefined!', scraperClusterData);
         }
 
+        toast({
+          title: "Success",
+          description: "Scraper cluster data loaded successfully",
+          variant: "success"
+        });
+
         // Fetch scraper data if it exists
         if (scraperClusterData.scraper_entity_id) {
           const scraperData = await scraperApi.getScraperByScraperClusterId(authFetch, searchParamScraperClusterId);
@@ -68,10 +76,21 @@ export default function DefinePage() {
           setScraper(scraperData);
           setKeywords(scraperData.keywords || []);
           setSubreddits(scraperData.subreddits || []);
+          toast({
+            title: "Success",
+            description: "Scraper data loaded successfully",
+            variant: "success"
+          });
         }
       } catch (err) {
         console.error('Error fetching data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load data');
+        const errorMsg = err instanceof Error ? err.message : 'Failed to load data';
+        setError(errorMsg);
+        toast({
+          title: "Error",
+          description: errorMsg,
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }
@@ -153,10 +172,10 @@ export default function DefinePage() {
   const handleUpdateScraperCluster = async () => {
     setIsCreating(true);
     setError(null);
-    
+
     try {
       // Step 1: Create scraper cluster with problem description and target audience
-      
+
       const clusterData = await scraperClusterApi.updateScraperCluster(
         authFetch,
         scraperClusterId,
@@ -166,7 +185,11 @@ export default function DefinePage() {
         subreddits
       );
 
-      
+      toast({
+        title: "Success",
+        description: "Scraper cluster updated successfully",
+        variant: "success"
+      });
 
       // Step 3: Start scraping (optional - you can do this on a separate page)
       // await scraperApi.startScraper(authFetch, scraperClusterId);
@@ -174,7 +197,13 @@ export default function DefinePage() {
       // Navigate to the scraping progress page or next step
       router.push(`/scraping-progress?scraper_cluster_id=${scraperClusterId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create scraper');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to create scraper';
+      setError(errorMsg);
+      toast({
+        title: "Error",
+        description: errorMsg,
+        variant: "destructive"
+      });
       setIsCreating(false);
     }
   };
@@ -182,16 +211,22 @@ export default function DefinePage() {
   const handlCreateScraperCluster = async () => {
     setIsCreating(true);
     setError(null);
-    
+
     try {
       // Step 1: Create scraper cluster with problem description and target audience
-      
+
       const clusterData = await scraperClusterApi.createScraperCluster(
         authFetch,
         problemExplorationDescription,
         targetAudience
       );
       const scraperClusterId = clusterData.scraper_cluster_id;
+
+      toast({
+        title: "Success",
+        description: "Scraper cluster created successfully",
+        variant: "success"
+      });
 
       // Step 2: Create scraper with keywords
       await scraperApi.createScraper(
@@ -201,13 +236,25 @@ export default function DefinePage() {
         subreddits
       );
 
+      toast({
+        title: "Success",
+        description: "Scraper created successfully",
+        variant: "success"
+      });
+
       // Step 3: Start scraping (optional - you can do this on a separate page)
       // await scraperApi.startScraper(authFetch, scraperClusterId);
 
       // Navigate to the scraping progress page or next step
       router.push(`/scraping-progress?scraper_cluster_id=${scraperClusterId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create scraper');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to create scraper';
+      setError(errorMsg);
+      toast({
+        title: "Error",
+        description: errorMsg,
+        variant: "destructive"
+      });
       setIsCreating(false);
     }
   };

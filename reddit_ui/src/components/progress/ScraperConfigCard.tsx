@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import type { ScraperEntity } from '@/types/scraper-cluster';
 import { scraperApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
+import { useToast } from '@/components/ui/use-toast';
 
 interface ScraperConfigCardProps {
   scraperData: ScraperEntity;
@@ -34,6 +35,7 @@ const ScraperConfigCardComponent: React.FC<ScraperConfigCardProps> = ({
   onConfigUpdated,
 }) => {
   const authFetch = useAuthFetch();
+  const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,10 +59,21 @@ const ScraperConfigCardComponent: React.FC<ScraperConfigCardProps> = ({
         filter
       );
 
+      toast({
+        title: "Success",
+        description: "Scraper configuration updated successfully",
+        variant: "success"
+      });
       setIsEditing(false);
       onConfigUpdated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update configuration');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to update configuration';
+      setError(errorMsg);
+      toast({
+        title: "Error",
+        description: errorMsg,
+        variant: "destructive"
+      });
     } finally {
       setIsSaving(false);
     }

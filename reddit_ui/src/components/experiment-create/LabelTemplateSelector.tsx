@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { InfoTooltip } from '@/components/ui';
+import { useToast } from '@/components/ui/use-toast';
 
 interface LabelTemplateSelectorProps {
   selectedLabelTemplateId: string;
@@ -20,7 +21,8 @@ export const LabelTemplateSelector: React.FC<LabelTemplateSelectorProps> = ({
   className = '',
 }) => {
 
-  const router = useRouter()
+  const router = useRouter();
+  const { toast } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Handle label Template selection from dropdown
@@ -57,7 +59,12 @@ export const LabelTemplateSelector: React.FC<LabelTemplateSelectorProps> = ({
           const labelTemplates = await labelTemplateApi.getAllLabelTemplates(authFetch);
           setLabelTemplates(labelTemplates);
         } catch (err) {
-          console.error('Failed to fetch prompts:', err);
+          console.error('Failed to fetch label templates:', err);
+          toast({
+            title: "Error",
+            description: err instanceof Error ? err.message : 'Failed to fetch label templates',
+            variant: "destructive"
+          });
         } finally {
           setIsLoadingLabelTemplate(false);
         }

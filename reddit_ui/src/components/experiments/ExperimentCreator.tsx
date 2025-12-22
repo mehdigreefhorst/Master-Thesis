@@ -133,11 +133,22 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({
         setIsLoadingUnits(true);
         const models = await modelsApi.getAllModels(authFetch);
         setAvailableModels(models);
-        const units = await experimentApi.getSampleUnits(authFetch, scraperClusterId);
+        const units = await experimentApi.getSampleUnits(authFetch, scraperClusterId, "classify_cluster_units");
         setClusterUnits(units);
+        toast({
+          title: "Success",
+          description: "Models and sample units loaded successfully",
+          variant: "success"
+        });
       } catch (err) {
         console.error('Failed to fetch sample units:', err);
-        setError('Failed to load cluster units');
+        const errorMsg = 'Failed to load cluster units';
+        setError(errorMsg);
+        toast({
+          title: "Error",
+          description: errorMsg,
+          variant: "destructive"
+        });
       } finally {
         setIsLoadingUnits(false);
       }
@@ -153,8 +164,18 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({
         setIsLoadingPrompts(true);
         const prompts = await experimentApi.getPrompts(authFetch);
         setPrompts(prompts);
+        toast({
+          title: "Success",
+          description: "Prompts loaded successfully",
+          variant: "success"
+        });
       } catch (err) {
         console.error('Failed to fetch prompts:', err);
+        toast({
+          title: "Error",
+          description: err instanceof Error ? err.message : 'Failed to fetch prompts',
+          variant: "destructive"
+        });
       } finally {
         setIsLoadingPrompts(false);
       }
@@ -248,8 +269,19 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({
       );
 
       setParsedPrompt(parsed);
+      toast({
+        title: "Success",
+        description: "Prompt parsed successfully",
+        variant: "success"
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to parse prompt');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to parse prompt';
+      setError(errorMsg);
+      toast({
+        title: "Error",
+        description: errorMsg,
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -312,12 +344,25 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({
     router.push(`/experiments?scraper_cluster_id=${scraperClusterId}`);
   };
 
-  const handleTestCloseExperiment = () => {
+  const handleTestCloseExperiment = async () => {
     setShowTestModal(false);
     if (!createdExperimentId) {
       return;
     }
-    experimentApi.deleteExperiment(authFetch, createdExperimentId);
+    try {
+      await experimentApi.deleteExperiment(authFetch, createdExperimentId);
+      toast({
+        title: "Success",
+        description: "Experiment deleted successfully",
+        variant: "success"
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : 'Failed to delete experiment',
+        variant: "destructive"
+      });
+    }
   };
 
   const handleCreateExperiment = async () => {
@@ -370,6 +415,11 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({
       // Extract experiment ID from response
       const experimentId = response?.experiment_id || response?.id;
       if (experimentId) {
+        toast({
+          title: "Success",
+          description: "Experiment created successfully",
+          variant: "success"
+        });
         setCreatedExperimentId(experimentId);
         setShowTestModal(true);
       } else {

@@ -13,6 +13,7 @@ import { clusterApi, experimentApi, scraperApi } from '@/lib/api';
 import { HeaderStep } from '@/components/layout/HeaderStep';
 import type { KeywordSearches } from '@/types/scraper-cluster';
 import { Modal } from '@/components/ui/Modal';
+import { useToast } from '@/components/ui/use-toast';
 
 interface GetClusterUnitsResponse {
   cluster_unit_entities: ClusterUnitEntity[];
@@ -22,6 +23,7 @@ function SampleSelectorPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const authFetch = useAuthFetch();
+  const { toast } = useToast();
 
   const [posts, setPosts] = useState<ClusterUnitEntity[]>([]);
   const [sample, setSample] = useState<ClusterUnitEntity[]>([]);
@@ -115,9 +117,19 @@ function SampleSelectorPageContent() {
         // The response is a single GetKeywordSearches object
         if (data?.keyword_search_post_ids) {
           setKeywordSearches(data);
+          toast({
+            title: "Success",
+            description: "Keyword searches loaded successfully",
+            variant: "success"
+          });
         }
       } catch (err) {
         console.error('Failed to fetch keyword searches:', err);
+        toast({
+          title: "Error",
+          description: `Failed to fetch keyword searches: ${err instanceof Error ? err.message : String(err)}`,
+          variant: "destructive"
+        });
       }
     }
 
@@ -139,8 +151,19 @@ function SampleSelectorPageContent() {
 
         const cluster_unit_entities: ClusterUnitEntity[] = await clusterApi.getClusterUnits(authFetch, scraperClusterId, "post")
         setPosts(cluster_unit_entities);
+        toast({
+          title: "Success",
+          description: "Posts loaded successfully",
+          variant: "success"
+        });
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch posts');
+        const errorMsg = err instanceof Error ? err.message : 'Failed to fetch posts';
+        setError(errorMsg);
+        toast({
+          title: "Error",
+          description: errorMsg,
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }
@@ -161,11 +184,22 @@ function SampleSelectorPageContent() {
         setIsLoading(true);
         setError(null);
 
-        const clusterUnitsEntities: ClusterUnitEntity[] = await experimentApi.getSampleUnits(authFetch, scraperClusterId)
+        const clusterUnitsEntities: ClusterUnitEntity[] = await experimentApi.getSampleUnits(authFetch, scraperClusterId, "classify_cluster_units")
 
         setSample(clusterUnitsEntities);
+        toast({
+          title: "Success",
+          description: "Sample units loaded successfully",
+          variant: "success"
+        });
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch posts');
+        const errorMsg = err instanceof Error ? err.message : 'Failed to fetch posts';
+        setError(errorMsg);
+        toast({
+          title: "Error",
+          description: errorMsg,
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }
@@ -242,10 +276,21 @@ function SampleSelectorPageContent() {
         sampleSizeNum
       );
 
+      toast({
+        title: "Success",
+        description: "Sample created successfully",
+        variant: "success"
+      });
+
       // Navigate to prompts page after successful submission
       router.push(`/experiments?scraper_cluster_id=${scraperClusterId}`);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to create sample');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to create sample';
+      toast({
+        title: "Error",
+        description: errorMsg,
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
