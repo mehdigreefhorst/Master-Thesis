@@ -10,6 +10,7 @@ from app.database.entities.base_entity import BaseEntity
 SupportedParameter = Literal[
     'frequency_penalty',
     'include_reasoning',
+    'reasoning_effort',
     'logit_bias',
     'logprobs',
     'max_tokens',

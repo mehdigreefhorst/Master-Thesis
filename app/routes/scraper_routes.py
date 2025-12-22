@@ -59,7 +59,7 @@ def create_scraper_entity(body: CreateScraperRequest):
         return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {body.scraper_cluster_id}"), 400
     
     if scraper_cluster_entity.scraper_entity_id:
-        return jsonify(message="scraper has already been created before"), 409
+        return jsonify(error="scraper has already been created before"), 409
     
     
     scraper_entity = ScraperService.create_scraper_entity(body, user_id)
@@ -88,7 +88,7 @@ def update_scraper(body: ScraperUpdate):
         return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {body.scraper_cluster_id}"), 400
     
     if not scraper_cluster_entity.scraper_entity_id:
-        return jsonify(message="scraper entity has not been created "), 409
+        return jsonify(error="scraper entity has not been created "), 409
 
     scraper_entity = get_scraper_repository().find_by_id_and_user(user_id, scraper_cluster_entity.scraper_entity_id)
 
@@ -128,7 +128,7 @@ def pause_scraper(body: ScraperClusterId):
         return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {body.scraper_cluster_id}"), 400
     
     if not scraper_cluster_entity.scraper_entity_id:
-        return jsonify(message="scraper entity has not been created "), 409
+        return jsonify(error="scraper entity has not been created "), 409
     
     scraper_cluster_entity.stages.scraping = StatusType.Paused
     
@@ -158,7 +158,7 @@ def start_scraper(body: ScraperClusterId):
         return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {body.scraper_cluster_id}"), 400
     
     if not scraper_cluster_entity.scraper_entity_id:
-        return jsonify(message="scraper entity has not been created "), 409
+        return jsonify(error="scraper entity has not been created "), 409
     scraper_cluster_entity.stages.define = StatusType.Completed
     scraper_cluster_entity.stages.scraping = StatusType.Ongoing
     get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
@@ -180,7 +180,6 @@ def start_scraper(body: ScraperClusterId):
     scraper_cluster_entity.stages.scraping = StatusType.Completed
     get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
     return jsonify(scraper_response.model_dump()), 200
-    return jsonify(message="successfully scraped the scraper entity on reddit")
  
 
 @scraper_bp.route("/get_keyword_searches", methods=["GET"])
@@ -198,12 +197,12 @@ def get_keyword_searches(query: ScraperClusterId) -> GetKeywordSearches:
         return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {query.scraper_cluster_id}"), 400
     
     if not scraper_cluster_entity.scraper_entity_id:
-        return jsonify(message="scraper entity has not been created "), 409
+        return jsonify(error="scraper entity has not been created "), 409
     
     scraper_entity = get_scraper_repository().find_by_id_and_user(user_id, scraper_cluster_entity.scraper_entity_id)
 
     if not scraper_entity:
-        return jsonify(message="scraper entity is not findable"), 409
+        return jsonify(error="scraper entity is not findable"), 409
     
     return jsonify(ScraperService.get_all_post_ids_for_keyword_searches(scraper_entity).model_dump()), 200
 
@@ -224,4 +223,4 @@ def renew_all_post_entities():
     all_post_entities = get_post_repository().find({})
 
     updated_count = PostService().renew_posts_entities(all_post_entities)
-    return jsonify(message=f"Successfully updated {updated_count} posts!")
+    return jsonify(message=f"Successfully updated {updated_count} posts!"), 200

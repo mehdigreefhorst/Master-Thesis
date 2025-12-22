@@ -40,6 +40,7 @@ export const TestPredictionModal: React.FC<TestPredictionModalProps> = ({
         nrToPredict
       );
       setTestResult(result);
+      
     } catch (err) {
       toast({
         title: "Error",

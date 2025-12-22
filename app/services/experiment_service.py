@@ -12,7 +12,7 @@ import math
 
 from pydantic import BaseModel
 from app.database.entities.cluster_unit_entity import ClusterUnitEntityPredictedCategory, PredictionCategoryTokens, ClusterUnitEntity, ClusterUnitEntityCategory, TokenUsageAttempt
-from app.database import get_cluster_unit_repository, get_experiment_repository
+from app.database import get_cluster_repository, get_cluster_unit_repository, get_experiment_repository, get_filtering_repository, get_sample_repository
 from app.database.entities.experiment_entity import ExperimentEntity, PredictionResult, PrevelanceUnitDistribution
 from app.database.entities.label_template import LabelTemplateEntity
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
@@ -696,3 +696,52 @@ class ExperimentService:
                 max_retry_attempts_rate_limter=1)
         return predictions_output_format.get_single_predictions_output_format()
         
+
+
+    @staticmethod
+    def get_input_cluster_unit_entities_from_expertiment(experiment_entity: PyObjectId) -> List[ClusterUnitEntity]:
+        if experiment_entity.input_type == "sample":
+        
+            sample_entity = get_sample_repository().find_by_id(experiment_entity.input_id)
+
+            if not sample_entity:
+                raise Exception(f"the provided sample of the experiment_entity not exist| sample_id: {experiment_entity.input_id}")
+            
+            if not sample_entity.sample_cluster_unit_ids:
+                raise Exception(f"No cluster units have been assigned in the sample for us to do an experiment with | sample_id: {experiment_entity.input_id}")
+            
+            cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_entity.sample_cluster_unit_ids)
+
+            if not cluster_unit_entities or not len(cluster_unit_entities) == len(sample_entity.sample_cluster_unit_ids):
+                raise Exception(f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id}")
+
+        elif experiment_entity.input_type == "filtering":
+            
+            filtering_entity = get_filtering_repository().find_by_id(experiment_entity.input_id)
+
+            if not filtering_entity:
+                raise Exception(f"No filtering entity with id = {experiment_entity.input_id} is findable")
+            
+            if not filtering_entity.output_cluster_unit_ids:
+                raise Exception(f"missing output_cluster_unit_entities_ids for filtering entity id = {filtering_entity.id}")
+
+            cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(filtering_entity.output_cluster_unit_ids)
+
+            if not cluster_unit_entities or not len(cluster_unit_entities) == len(filtering_entity.output_cluster_unit_ids):
+                raise Exception(f"not all Cluster unit ids are found cannot be found for filtering entity in experiment: {experiment_entity.id}")
+
+        elif experiment_entity.input_type == "cluster":
+            
+            cluster_entity = get_cluster_repository().find_by_id(experiment_entity.input_id)
+            if not cluster_entity:
+                raise Exception(f"There is no cluster entity found, id = {experiment_entity.input_id}")
+            
+            cluster_unit_entities = get_cluster_unit_repository().find({"cluster_entity_id": experiment_entity.input_id})
+            
+            if not cluster_unit_entities:
+                raise Exception(f"Cluster unit ids are not found cannot be found for cluster entity in experiment: {experiment_entity.id}")
+
+        else:
+            raise Exception(f"unknown input type is given! type = {experiment_entity.input_type}")
+
+        return cluster_unit_entities

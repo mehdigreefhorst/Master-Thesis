@@ -19,6 +19,7 @@ interface ApiOptions extends RequestInit {
   requiresAuth?: boolean;
 }
 
+
 class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -97,7 +98,10 @@ export const clusterApi = {
    */
   async getClusterUnits(authFetch: ReturnType<typeof useAuthFetch>, scraperClusterId: string, reddit_message_type: "post" | "comment" | "all" = "all"): Promise<ClusterUnitEntity[]> {
     const data =  await authFetch(`/clustering/get_cluster_units?scraper_cluster_id=${scraperClusterId}&reddit_message_type=${reddit_message_type}`)
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
 
   },
   async updateClusterUnitGroundTruth(
@@ -128,7 +132,10 @@ export const clusterApi = {
         }
       }
     );
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   /**
    * Filter cluster units based on various criteria
@@ -214,7 +221,10 @@ export const clusterApi = {
     }
 
     const data = await authFetch(`/clustering/filter_cluster_units?${params.toString()}`);
-    return await data.json();
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   }
 };
 
@@ -230,7 +240,10 @@ export const scraperClusterApi = {
     authFetch: ReturnType<typeof useAuthFetch>
   ): Promise<ScraperClusterEntity[]> {
     const data =  await authFetch('/scraper_cluster/');
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
 
   /**
@@ -242,7 +255,10 @@ export const scraperClusterApi = {
     scraperClusterId: string
   ): Promise<ScraperClusterEntity> {
     const data = await authFetch(`/scraper_cluster/${scraperClusterId}`);
-    return data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
 
   /**
@@ -261,7 +277,10 @@ export const scraperClusterApi = {
         target_audience: targetAudience
       }
     });
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   async updateScraperCluster(
     authFetch: ReturnType<typeof useAuthFetch>,
@@ -282,7 +301,10 @@ export const scraperClusterApi = {
         subreddits: subreddits
       }
     });
-    return await data.json() 
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
     
   }
 };
@@ -299,7 +321,10 @@ export const scraperApi = {
     authFetch: ReturnType<typeof useAuthFetch>
   ): Promise<ScraperEntity[]> {
     const data =  await authFetch('/scraper/');
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
 
   /**
@@ -311,7 +336,10 @@ export const scraperApi = {
     scraperClusterId: string
   ): Promise<ScraperEntity> {
     const data = await authFetch(`/scraper?scraper_cluster_id=${scraperClusterId}`);
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
 
   /**
@@ -332,7 +360,10 @@ export const scraperApi = {
         subreddits
       }
     });
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
 
   /**
@@ -349,7 +380,10 @@ export const scraperApi = {
         scraper_cluster_id: scraperClusterId
       }
     });
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
 
   /**
@@ -366,7 +400,10 @@ export const scraperApi = {
         scraper_cluster_id: scraperClusterId
       }
     });
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   async updateScraper(
     authFetch: ReturnType<typeof useAuthFetch>,
@@ -385,14 +422,20 @@ export const scraperApi = {
         filter: filter
       }
     });
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   async getKeywordSearches(
     authFetch: ReturnType<typeof useAuthFetch>,
     scraper_cluster_id: string
   ): Promise<KeywordSearches> {
     const data = await authFetch(`/scraper/get_keyword_searches?scraper_cluster_id=${scraper_cluster_id}`);
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   }
 };
 
@@ -410,7 +453,7 @@ export const experimentApi = {
     pickedPostsClusterUnitIds: string[],
     sampleSize: number
   ) {
-    return await authFetch('/experiment/create_sample', {
+    const data = await authFetch('/experiment/create_sample', {
       method: 'POST',
       body: {
         scraper_cluster_id: scraperClusterId,
@@ -418,6 +461,11 @@ export const experimentApi = {
         sample_size: sampleSize
       }
     });
+
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
 
   
@@ -451,12 +499,18 @@ export const experimentApi = {
    * Get all prompts
    */
   async getPrompts(authFetch: ReturnType<typeof useAuthFetch>): Promise<PromptEntity[]> {
-    const response =  await authFetch('/experiment/get_prompts');
-    return await response.json()
+    const data =  await authFetch('/experiment/get_prompts');
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   async getSampleUnits(authFetch: ReturnType<typeof useAuthFetch>, scraperClusterId: string): Promise<ClusterUnitEntity[]> {
     const data = await authFetch(`/experiment/get_sample_units?scraper_cluster_id=${scraperClusterId}`);
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   async createPrompt(
     authFetch: ReturnType<typeof useAuthFetch>,
@@ -474,7 +528,10 @@ export const experimentApi = {
         category: category,
       }
     });
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   async createExperiment(
     authFetch: ReturnType<typeof useAuthFetch>,
@@ -485,6 +542,8 @@ export const experimentApi = {
     thresholdRunsPerUnits:number,
     labelTemplateId: string,
     reasoning_effort: string | null,
+    inputId: string,
+    inputType: "sample" | "filtering" | "cluster"
   ){
     console.log("model = ", model)
     const data = await authFetch('/experiment', {
@@ -496,10 +555,15 @@ export const experimentApi = {
         runs_per_unit: runs_per_unit,
         threshold_runs_true: thresholdRunsPerUnits,
         label_template_id: labelTemplateId,
-        reasoning_effort: reasoning_effort
+        reasoning_effort: reasoning_effort,
+        input_id: inputId,
+        input_type: inputType
       }
     })
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
 
   },
     async UpdateExperimentThreshold(
@@ -514,7 +578,10 @@ export const experimentApi = {
         threshold_runs_true: thresholdRunsPerUnits,
       }
     })
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
 
   },
   async continueExperiment(
@@ -524,7 +591,10 @@ export const experimentApi = {
     const data = await authFetch(`/experiment/continue_experiment?experiment_id=${experiment_id}`, {
       method: 'POST'
     })
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   async deleteExperiment(
     authFetch: ReturnType<typeof useAuthFetch>,
@@ -533,7 +603,10 @@ export const experimentApi = {
     const data = await authFetch(`/experiment?experiment_id=${experiment_id}`, {
       method: 'DELETE'
     })
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
 
   /**
@@ -563,7 +636,10 @@ export const experimentApi = {
 
 
     const data = await authFetch(`/experiment?scraper_cluster_id=${scraperClusterId}${experimentParamText}`);
-    return await data.json();
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
 
   /**
@@ -574,7 +650,10 @@ export const experimentApi = {
     experimentId: string
   ) {
     const data = await authFetch(`/experiment/${experimentId}`);
-    return await data.json();
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
 
   /**
@@ -585,7 +664,10 @@ export const experimentApi = {
     scraperClusterId: string
   ): Promise<SampleEntity> {
     const data = await authFetch(`/experiment/sample?scraper_cluster_id=${scraperClusterId}`);
-    return await data.json();
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   async completeSampleLabeledStatus(
     authFetch: ReturnType<typeof useAuthFetch>,
@@ -594,7 +676,10 @@ export const experimentApi = {
     const data = await authFetch(`/experiment/complete_sample_labeled_status?scraper_cluster_id=${scraperClusterId}`, {
       method: 'PUT'
     })
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   async testPrediction(
     authFetch: ReturnType<typeof useAuthFetch>,
@@ -610,7 +695,25 @@ export const experimentApi = {
         nr_to_predict: nrToPredict
       }
     });
-    return await data.json();
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
+  },
+
+  /**
+   * Get input entities (samples, filtering, clusters) for a scraper cluster
+   */
+  async getInputEntities(
+    authFetch: ReturnType<typeof useAuthFetch>,
+    scraperClusterId: string,
+    sampleOnly: boolean = true
+  ): Promise<import('@/types/input-entity').InputEntitiesResponse> {
+    const data = await authFetch(`/experiment/get_input_entities?scraper_cluster_id=${scraperClusterId}&sample_only=${sampleOnly}`);
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   }
 };
 
@@ -618,7 +721,10 @@ export const experimentApi = {
 export const userApi = {
   async getUserProfile(authFetch: ReturnType<typeof useAuthFetch>): Promise<UserProfile> {
     const data = await authFetch("/user")
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   async updateUserProfile(
     authFetch: ReturnType<typeof useAuthFetch>,
@@ -628,7 +734,10 @@ export const userApi = {
       method: 'PUT',
       body: userProfile
     })
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   
 }
@@ -638,56 +747,67 @@ export const modelsApi = {
     authFetch: ReturnType<typeof useAuthFetch>,
 
   ): Promise<ModelInfo[]>{
-    const response = await authFetch(`/models`)
-    const data = await response.json()
-    return data.models || []
+    const data = await authFetch(`/models`)
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response.models || []
   },
 
   async addFavoriteModel(
     authFetch: ReturnType<typeof useAuthFetch>,
     modelId: string
   ): Promise<{"inserted": number}>{
-    const response = await authFetch(`/models/favorite?model_id=${modelId}`, {
+    const data = await authFetch(`/models/favorite?model_id=${modelId}`, {
       method: 'POST',
     })
 
     // Check if response is actually JSON
-    const contentType = response.headers.get('content-type');
+    const contentType = data.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       throw new Error('Backend endpoint not available or returned non-JSON response');
     }
 
-    return await response.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   async removeFavoriteModel(
     authFetch: ReturnType<typeof useAuthFetch>,
     modelId: string
   ): Promise<{"removed": number}>{
-    const response = await authFetch(`/models/favorite?model_id=${modelId}`, {
+    const data = await authFetch(`/models/favorite?model_id=${modelId}`, {
       method: 'DELETE',
     })
 
     // Check if response is actually JSON
-    const contentType = response.headers.get('content-type');
+    const contentType = data.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       throw new Error('Backend endpoint not available or returned non-JSON response');
     }
 
-    return await response.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   async getFavoriteModels(
     authFetch: ReturnType<typeof useAuthFetch>): Promise<{"favorite_models": string[]}>{
-    const response = await authFetch(`/models/favorite`)
+    const data = await authFetch(`/models/favorite`)
 
     // Check if response is actually JSON
-    const contentType = response.headers.get('content-type');
+    const contentType = data.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       // Return empty favorites instead of throwing - this is a non-critical feature
       console.warn('Favorite models endpoint not available');
       return { favorite_models: [] };
     }
 
-    return await response.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
 }
 
@@ -696,8 +816,11 @@ export const labelTemplateApi = {
     authFetch: ReturnType<typeof useAuthFetch>
   ): Promise<LabelTemplateEntity[]> {
     const data = await authFetch('/label_template');
-    const labelTemplateResponse= await data.json();
-    return labelTemplateResponse?.label_template_entities
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response?.label_template_entities
+
   },
   async getLabelTemplateById(
     authFetch: ReturnType<typeof useAuthFetch>,
@@ -705,7 +828,10 @@ export const labelTemplateApi = {
   ): Promise<LabelTemplateEntity> {
     
     const data = await authFetch(`/label_template${labelTemplateId && `?label_template_id=${labelTemplateId}`}`);
-    const labelTemplateResponse= await data.json();
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    const labelTemplateResponse = response
     console.log("labelTemplateResponse?.label_template_entities = ", labelTemplateResponse?.label_template_entities[0])
     return labelTemplateResponse?.label_template_entities[0]
   },
@@ -718,7 +844,10 @@ export const labelTemplateApi = {
       method: 'POST',
       body: labelTemplate
     });
-    return await data.json();
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
 
   async AddLabelTemplateToSampleEntity(
@@ -735,7 +864,10 @@ export const labelTemplateApi = {
         action: action
       }
     });
-    return await data.json();
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   async UpdateOneShotExample(
     authFetch: ReturnType<typeof useAuthFetch>,
@@ -750,7 +882,10 @@ export const labelTemplateApi = {
         ground_truth_one_shot_example: groundTruthOneShotExample
       },
     });
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
 
   },
   async UpdateCombinedLabels(
@@ -766,7 +901,10 @@ export const labelTemplateApi = {
         combined_labels: combinedLabels
       },
     });
-    return await data.json()
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
 
   }
 }
@@ -777,8 +915,10 @@ export const labelTemplateApi = {
 export const visualizationApi = {
     async getVisualization(authFetch: ReturnType<typeof useAuthFetch>): Promise<string[]> {
     const data = await authFetch("/visualization")
-    const figure_json =  await data.json()
-    return await figure_json.figure_list
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return await response.figure_list
   },
 }
 
@@ -791,7 +931,10 @@ export const filteringApi = {
       method: "POST",
       body: filteringRequest
     });
-    return await data.json();
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
 
   async getFilteredClusterUnits(
@@ -802,7 +945,10 @@ export const filteringApi = {
       method: "POST",
       body: filteringRequest
     });
-    return await data.json();
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   async createFilteringEntity(
     authFetch: ReturnType<typeof useAuthFetch>,
@@ -812,21 +958,30 @@ export const filteringApi = {
       method: "POST",
       body: filteringCreateRequest
     });
-    return await data.json();
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   async getFilteringEntities(
     authFetch: ReturnType<typeof useAuthFetch>,
     scraper_cluster_id: string
   ): Promise<FilteringEntity[]> {
     const data = await authFetch(`/filtering?scraper_cluster_id=${scraper_cluster_id}`)
-    return await data.json();
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   async getFilteringEntity(
     authFetch: ReturnType<typeof useAuthFetch>,
     filteringEntityId: FilteringEntityId
   ): Promise<FilteringEntity> {
     const data = await authFetch(`/filtering?filtering_entity_id=${filteringEntityId.filtering_entity_id}`)
-    return await data.json();
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   },
   async deleteFilteringEntity(
     authFetch: ReturnType<typeof useAuthFetch>,
@@ -835,6 +990,9 @@ export const filteringApi = {
     const data = await authFetch(`/filtering/delete?filtering_entity_id=${filteringEntityId.filtering_entity_id}`, {
       method: "DELETE",
     });
-    return await data.json();
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
   }
 }

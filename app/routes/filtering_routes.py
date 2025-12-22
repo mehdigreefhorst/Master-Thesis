@@ -65,6 +65,7 @@ def create_filtering_entity(body: FilteringCreateRequest):
                                                                                      user_id=user_id,
                                                                                      scraper_cluster_id=body.scraper_cluster_id)
     
+    
     return jsonify(inserted_filtering_entity_id=inserted_filtering_entity_id), 200
 
 
@@ -111,7 +112,7 @@ def get_filtering_entities(query: GetFilteringEntities):
         filtering_entities = get_filtering_repository().find({"scraper_cluster_id": query.scraper_cluster_id})
 
         if not filtering_entities:
-            return jsonify(message=f"no filtering entities found for scraper_cluster_id: {query.scraper_cluster_id}")
+            return jsonify(error=f"no filtering entities found for scraper_cluster_id: {query.scraper_cluster_id}"), 400
         
         returnable_entities = [filtering_entity.model_dump() for filtering_entity in filtering_entities]
         return jsonify(returnable_entities), 200

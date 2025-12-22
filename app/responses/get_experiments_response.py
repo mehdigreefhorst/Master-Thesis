@@ -7,8 +7,11 @@ import math
 
 
 from app.database.entities.base_entity import PyObjectId
+from app.database.entities.cluster_entity import ClusterEntity
 from app.database.entities.cluster_unit_entity import ClusterUnitEntity, ClusterUnitEntityPredictedCategory, PredictionCategoryTokens, TokenUsageAttempt
 from app.database.entities.experiment_entity import ExperimentCost, ExperimentEntity, ExperimentTokenStatistics, PrevalenceDistribution, TokenUsage
+from app.database.entities.filtering_entity import FilteringEntity
+from app.database.entities.sample_entity import SampleEntity
 from app.utils.types import StatusType
 
 
@@ -683,6 +686,22 @@ class GetExperimentsResponse(BaseModel):
     status: StatusType
 
 
+class ClusterEntityInputCount(ClusterEntity):
+    count_cluster_units: int
+
+
+class InputEntitiesExperimentsResponse(BaseModel):
+    filtering_entities: List[FilteringEntity]
+    sample_entity: List[SampleEntity]
+    cluster_entity: Optional[List[ClusterEntityInputCount]] = None
+
+    def insert_cluster_entity_unit_count(self, 
+                                         cluster_entity: ClusterEntity,
+                                         count_cluster_units=int):
+        input_entity = cluster_entity.model_dump()
+        input_entity["count_cluster_units"] = count_cluster_units
+        self.cluster_entity = [ClusterEntityInputCount.model_validate(input_entity)]
+
 class SinglePredictionOutputFormat(BaseModel):
     system_prompt: Optional[str] = None
     input_prompt: Optional[str] = None
@@ -835,9 +854,4 @@ class PredictionsGroupedOutputFormat(BaseModel):
                 total_wasted_tokens.add_other_token_usage(token_usage)
 
         return total_wasted_tokens
-            
-        
-
-    
-    
             

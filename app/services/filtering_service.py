@@ -9,6 +9,7 @@ from app.database.entities.filtering_entity import FilterMisc, FilteringEntity, 
 from app.database.entities.label_template import LabelTemplateEntity
 from app.requests.filtering_requests import FilteringCreateRequest
 from app.services.cluster_prep_service import ClusterPrepService
+from app.services.experiment_service import ExperimentService
 from app.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -17,16 +18,51 @@ class FilteringService:
     """service for handling the Filtering Entity, and filtering actions for the UI"""
 
     @staticmethod
+    def get_input_cluster_units_from_experiment_entity(experiment_id: PyObjectId) -> Tuple[List[ClusterUnitEntity], ExperimentEntity | None]:
+        experiment_entity = get_experiment_repository().find_by_id(experiment_id)
+        ## Retrieve correct cluser units for experiment
+        cluster_unit_entities = ExperimentService().get_input_cluster_unit_entities_from_expertiment(experiment_entity=experiment_entity)
+
+        return cluster_unit_entities, experiment_entity
+    
+    @staticmethod
+    def get_filtered_cluster_units_from_experiment_entity_id(experiment_id: PyObjectId, filtering_fields: FilteringEntity | FilteringFields) -> List[ClusterUnitEntity]:
+        cluster_unit_entities, experiment_entity = FilteringService().get_input_cluster_units_from_experiment_entity(experiment_id=experiment_id)
+        filtered_cluster_units = FilteringService().filter_cluster_units(cluster_unit_entities=cluster_unit_entities,
+                                                filtering_fields=filtering_fields,
+                                                experiment_entity=experiment_entity)
+        return filtered_cluster_units
+
+    
+    @staticmethod
+    def get_input_cluster_units_from_filtering_entity(filtering_entity_id: PyObjectId) -> List[ClusterUnitEntity]:
+        filtering_entity = get_filtering_repository().find_by_id(filtering_entity_id)
+        if not filtering_entity:
+            raise Exception(f"Filtering entity not found! id = {filtering_entity_id}")
+        if filtering_entity.input_type == "experiment":
+            filtered_cluster_unit_entities = FilteringService().get_filtered_cluster_units_from_experiment_entity_id(experiment_id=filtering_entity.input_id, filtering_fields=filtering_entity)
+             
+        elif filtering_entity.input_type == "filtering":
+            cluster_unit_entities = FilteringService().get_input_cluster_units_from_filtering_entity(filtering_entity_id=filtering_entity.input_id)
+            filtered_cluster_unit_entities = FilteringService().filter_cluster_units(cluster_unit_entities=cluster_unit_entities,
+                                                                                     filtering_fields=filtering_entity)
+        else:
+            raise Exception(f"filtering entity inpt type is not implemented! input_type = {filtering_entity.input_type}")
+        
+        return filtered_cluster_unit_entities
+        
+
+    @staticmethod
     def get_input_cluster_units(input_id: PyObjectId, input_type: Literal["experiment", "filtering", "cluster"]) -> Tuple[List[ClusterUnitEntity], ExperimentEntity | None]:
         filter = dict()
         experiment_entity = None
         if input_type == "experiment":
-            experiment_entity = get_experiment_repository().find_by_id(input_id)
-            sample_entity = get_sample_repository().find_by_id(experiment_entity.sample_id)
-            cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_entity.sample_cluster_unit_ids)
+            cluster_unit_entities, experiment_entity = FilteringService().get_input_cluster_units_from_experiment_entity(experiment_id=input_id)
         elif input_type == "filtering":
+            
             # :TODO to implement -> Change requirement of sample_entity_id to be present in experiment -> change to input_id
             raise Exception("No implementation yet for filtering!")
+
             cluster_unit_entities = ""
         elif input_type == "cluster":
             cluster_unit_entities = ClusterPrepService().find_cluster_units_from_cluster_id_message_type(cluster_entity_id=input_id, reddit_message_type="all")
@@ -137,6 +173,12 @@ class FilteringService:
                                                                           user_id=user_id,
                                                                           scraper_cluster_id=scraper_cluster_id)
         
+        input_cluster_units, experiment_entity = FilteringService().get_input_cluster_units(filtering_entity.input_id)
+        if not input_cluster_units or not experiment_entity:
+            raise Exception("no input inputs found or experiment found")
+        filtering_entity.input_cluster_unit_ids = [cluster_unit.id for cluster_unit in input_cluster_units]
+        filtered_cluster_units = FilteringService.filter_cluster_units(cluster_unit_entities=input_cluster_units, filtering_fields=filtering_entity, experiment_entity=experiment_entity)
+        filtering_entity.output_cluster_unit_ids = [cluster_unit.id for cluster_unit in filtered_cluster_units]
         inserted_id = get_filtering_repository().insert(filtering_entity).inserted_id
         logger.info(f"Inserted filtering_entity with id: {inserted_id}")
         return inserted_id

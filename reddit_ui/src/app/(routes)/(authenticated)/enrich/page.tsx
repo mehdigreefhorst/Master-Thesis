@@ -3,7 +3,7 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ExperimentCreator } from '@/components/experiments/ExperimentCreator';
 
-export default function CreateExperimentPage() {
+export default function EnrichPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const scraperClusterId = searchParams.get('scraper_cluster_id');
@@ -21,11 +21,11 @@ export default function CreateExperimentPage() {
   return (
     <ExperimentCreator
       scraperClusterId={scraperClusterId}
-      experimentType="classify"
-      promptCategory="classify_cluster_units"
-      title="Create Experiment"
+      experimentType="enrich"
+      promptCategory="rewrite_cluster_unit_standalone"
+      title="Create Enrichment Prompt"
       onBack={() => router.push(`/dashboard?scraper_cluster_id=${scraperClusterId}`)}
-      helpText="💡 Tip: Use variables like {conversation_thread} and {final_reddit_message} in your prompt. They will be automatically replaced with the actual cluster unit data."
+      helpText="💡 Tip: This prompt is for compressing conversation threads into summaries or standalone text. The expected output is a string (not a dictionary). Use variables like {conversation_thread} and {final_reddit_message} to enrich the final message with context from the thread."
     />
   );
 }

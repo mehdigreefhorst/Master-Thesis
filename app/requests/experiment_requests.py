@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 from pydantic import BaseModel
 
 from app.database.entities.base_entity import PyObjectId
@@ -19,6 +19,8 @@ class CreateExperiment(BaseModel):
     threshold_runs_true: int = 1
     label_template_id: PyObjectId
     reasoning_effort: Optional[str]
+    input_id: PyObjectId
+    input_type: Literal["sample", "filtering", "cluster"]
 
 class TestPrediction(BaseModel):
     experiment_id: PyObjectId
@@ -74,3 +76,7 @@ class UpdateSample(BaseModel):
     scraper_cluster_id: PyObjectId
 
     
+
+class GetInputEntities(BaseModel):
+    scraper_cluster_id: PyObjectId
+    sample_only: bool

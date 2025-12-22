@@ -90,7 +90,8 @@ class ExperimentEntity(BaseEntity):
     user_id: PyObjectId
     scraper_cluster_id: PyObjectId
     prompt_id: PyObjectId
-    sample_id: PyObjectId
+    input_id: PyObjectId
+    input_type: Literal["sample", "filtering", "cluster"]
     label_template_id: PyObjectId
     label_template_labels: List[str] = Field(default_factory=list)
     model: str

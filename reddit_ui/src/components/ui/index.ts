@@ -12,3 +12,7 @@ export { InfoTooltip } from './InfoTooltip';
 export { ConfirmationDialog } from './ConfirmationDialog';
 export { Modal } from './Modal';
 export { TruncatedText } from './TruncatedText';
+export { BaseSelector } from './BaseSelector';
+export type { BaseSelectorItem } from './BaseSelector';
+export { ComplexSelector } from './ComplexSelector';
+export type { ComplexSelectorItem, ComplexSelectorTab, ComplexSelectorGroup } from './ComplexSelector';

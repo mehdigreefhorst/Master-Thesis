@@ -123,6 +123,8 @@ class FilteringFields(BaseModel):
 class FilteringEntity(FilteringFields, BaseEntity):
     user_id: PyObjectId
     scraper_cluster_id: PyObjectId
+    input_cluster_unit_ids: Optional[List[PyObjectId]] = None
+    output_cluster_unit_ids: Optional[List[PyObjectId]] = None
 
     @classmethod
     def create_filter_entity_from_body(cls, filtering_fields: FilteringFields, user_id: PyObjectId, scraper_cluster_id: PyObjectId) -> "FilteringEntity":

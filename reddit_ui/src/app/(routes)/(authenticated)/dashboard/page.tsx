@@ -40,7 +40,7 @@ const stageConfig = {
     description: 'Testing prompts and models',
   },
   cluster_filter: {
-    name: 'CLUSTER FILTER',
+    name: 'Filtering',
     route: '/filtering',
     description: 'Labeling and filtering samples',
   },

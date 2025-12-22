@@ -43,15 +43,15 @@ def prepare_cluster(body: PrepareClusterRequest):
 
     if not scraper_cluster_entity.scraper_entity_id:
         logger.warning(f"[prepare_cluster] Scraper not initialized: scraper_cluster_id={body.scraper_cluster_id}")
-        return jsonify(message="scraper is not yet initialized"), 409
+        return jsonify(error="scraper is not yet initialized"), 409
 
     if not scraper_cluster_entity.stages.scraping == StatusType.Completed:
         logger.warning(f"[prepare_cluster] Scraping not completed: scraper_cluster_id={body.scraper_cluster_id}, status={scraper_cluster_entity.stages.scraping}")
-        return jsonify(message="scraper is not completed yet"), 409
+        return jsonify(error="scraper is not completed yet"), 409
 
     if scraper_cluster_entity.stages.cluster_prep == StatusType.Completed:
         logger.info(f"[prepare_cluster] Cluster preparation already completed: scraper_cluster_id={body.scraper_cluster_id}")
-        return jsonify(message="Cluster preparation is already completed"), 409
+        return jsonify(error="Cluster preparation is already completed"), 409
 
     scraper_entity = get_scraper_repository().find_by_id_and_user(user_id, scraper_cluster_entity.scraper_entity_id)
     if not scraper_entity:
@@ -60,7 +60,7 @@ def prepare_cluster(body: PrepareClusterRequest):
 
     if scraper_entity.get_next_keyword():
         logger.warning(f"[prepare_cluster] Scraper has pending keywords: scraper_id={scraper_entity.id}, next_keyword={scraper_entity.get_next_keyword()}")
-        return jsonify(message=f"The scraper is not yet done as there are still pending keywords for with scraper_id = {scraper_entity.id} (keyword = {scraper_entity.get_next_keyword()})")
+        return jsonify(error=f"The scraper is not yet done as there are still pending keywords for with scraper_id = {scraper_entity.id} (keyword = {scraper_entity.get_next_keyword()})"), 400
 
     logger.info(f"[prepare_cluster] Starting cluster preparation: scraper_cluster_id={body.scraper_cluster_id}")
     scraper_cluster_entity.stages.scraping = StatusType.Completed
@@ -98,15 +98,15 @@ def enrich_cluster_text(body: ScraperClusterId):
 
     if not scraper_cluster_entity.scraper_entity_id:
         logger.warning(f"[enrich_cluster_text] Scraper not initialized: scraper_cluster_id={body.scraper_cluster_id}")
-        return jsonify(message="scraper is not yet initialized"), 409
+        return jsonify(error="scraper is not yet initialized"), 409
 
     if not scraper_cluster_entity.stages.scraping == StatusType.Completed:
         logger.warning(f"[enrich_cluster_text] Scraping not completed: scraper_cluster_id={body.scraper_cluster_id}, status={scraper_cluster_entity.stages.scraping}")
-        return jsonify(message="scraper is not completed yet"), 409
+        return jsonify(error="scraper is not completed yet"), 409
 
     if not scraper_cluster_entity.stages.cluster_prep == StatusType.Completed:
         logger.warning(f"[enrich_cluster_text] Cluster preparation not completed: scraper_cluster_id={body.scraper_cluster_id}, status={scraper_cluster_entity.stages.cluster_prep}")
-        return jsonify(message="Cluster preparation is not completed"), 409
+        return jsonify(error="Cluster preparation is not completed"), 409
 
     logger.info(f"[enrich_cluster_text] Starting cluster enrichment: scraper_cluster_id={body.scraper_cluster_id}")
     # :TODO Call the LLM for each comment
@@ -135,15 +135,15 @@ def get_cluster_units(query: GetClusterUnitsRequest):
 
     if not scraper_cluster_entity.scraper_entity_id:
         logger.warning(f"[get_cluster_units] Scraper not initialized: scraper_cluster_id={query.scraper_cluster_id}")
-        return jsonify(message="scraper is not yet initialized"), 409
+        return jsonify(error="scraper is not yet initialized"), 409
 
     if not scraper_cluster_entity.stages.scraping == StatusType.Completed:
         logger.warning(f"[get_cluster_units] Scraping not completed: scraper_cluster_id={query.scraper_cluster_id}, status={scraper_cluster_entity.stages.scraping}")
-        return jsonify(message="scraper is not completed yet"), 409
+        return jsonify(error="scraper is not completed yet"), 409
 
     if not scraper_cluster_entity.stages.cluster_prep == StatusType.Completed:
         logger.warning(f"[get_cluster_units] Cluster preparation not completed: scraper_cluster_id={query.scraper_cluster_id}, status={scraper_cluster_entity.stages.cluster_prep}")
-        return jsonify(message="Cluster preparation is no completed"), 409
+        return jsonify(error="Cluster preparation is no completed"), 409
 
     logger.info(f"[get_cluster_units] Converting cluster units to documents: scraper_cluster_id={query.scraper_cluster_id}, message_type={query.reddit_message_type}")
     returnable_cluster_units = ClusterPrepService.convert_cluster_units_to_bertopic_ready_documents(scraper_cluster_entity, query.reddit_message_type)
@@ -172,16 +172,16 @@ def update_ground_truth(body: UpdateGroundTruthRequest):
 
     if not cluster_unit_entity:
         logger.error(f"[update_ground_truth] Cluster unit not found: cluster_entity_id={body.cluster_unit_entity_id}")
-        return jsonify(message=f"cluster_unit_entity doesn't exist id = {body.cluster_unit_entity_id}"), 400
+        return jsonify(error=f"cluster_unit_entity doesn't exist id = {body.cluster_unit_entity_id}"), 400
 
     label_template_entity = get_label_template_repository().find_by_id(body.label_template_id)
     if not label_template_entity:
         logger.error(f"[update_ground_truth] Label template not found: label_template_id={body.label_template_id}")
-        return jsonify(message=f"label_template_entity not found for id = {body.label_template_id}"), 400
+        return jsonify(error=f"label_template_entity not found for id = {body.label_template_id}"), 400
 
     if not label_template_entity.is_ground_truth_value_part_of_label(label_name=body.ground_truth_category, label_value=body.ground_truth):
         logger.warning(f"[update_ground_truth] Invalid ground truth format: label_template_id={body.label_template_id}, category={body.ground_truth_category}, value={body.ground_truth}")
-        return jsonify(message=f"wrong format of ground truth or category"), 400
+        return jsonify(error=f"wrong format of ground truth or category"), 400
 
     logger.info(f"[update_ground_truth] Updating ground truth: cluster_entity_id={body.cluster_unit_entity_id}, category={body.ground_truth_category}, value={body.ground_truth}")
     result = LabelTemplateService().update_ground_truth(cluster_unit_entity=cluster_unit_entity,
@@ -210,12 +210,12 @@ def update_ground_truth_per_label(body: UpdateGroundTruthPerLabelRequest):
 
     if not cluster_unit_entity:
         logger.error(f"[update_ground_truth] Cluster unit not found: cluster_entity_id={body.cluster_unit_entity_id}")
-        return jsonify(message=f"cluster_unit_entity doesn't exist id = {body.cluster_unit_entity_id}"), 400
+        return jsonify(error=f"cluster_unit_entity doesn't exist id = {body.cluster_unit_entity_id}"), 400
 
     label_template_entity = get_label_template_repository().find_by_id(body.label_template_id)
     if not label_template_entity:
         logger.error(f"[update_ground_truth] Label template not found: label_template_id={body.label_template_id}")
-        return jsonify(message=f"label_template_entity not found for id = {body.label_template_id}"), 400
+        return jsonify(error=f"label_template_entity not found for id = {body.label_template_id}"), 400
 
     logger.info(f"[update_ground_truth] Updating ground truth: cluster_entity_id={body.cluster_unit_entity_id}")
 

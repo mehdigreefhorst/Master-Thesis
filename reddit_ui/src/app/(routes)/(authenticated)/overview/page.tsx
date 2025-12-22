@@ -126,7 +126,7 @@ export default function OverviewPage() {
               { name: 'Scraping', desc: 'Scraping data from Reddit' },
               { name: 'Cluster Prep', desc: 'Converting to cluster units' },
               { name: 'Experiment', desc: 'Running experiments on sample data' },
-              { name: 'Cluster Filter', desc: 'Filtering with prompts on sample data' },
+              { name: 'Filtering', desc: 'Filtering cluster units' },
               { name: 'Cluster Enrich', desc: 'Applying filtering and enrichment to all data' },
               { name: 'Clustering', desc: 'Clustering of standalone text' },
             ].map((stage, index) => (
