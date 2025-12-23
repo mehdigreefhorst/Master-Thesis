@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { Button } from '../ui/Button';
 
 interface PageHeaderProps {
@@ -9,6 +9,7 @@ interface PageHeaderProps {
   onNext?: () => void;
   disablePrevious?: boolean;
   disableNext?: boolean;
+  menuItem?: React.ReactNode
   className?: string;
 }
 
@@ -20,6 +21,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   onNext,
   disablePrevious = false,
   disableNext = false,
+  menuItem = null,
   className = ''
 }) => {
   return (
@@ -27,6 +29,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
       <h1 className="text-2xl font-semibold">{title}</h1>
       {currentSample !== undefined && totalSamples !== undefined && (
         <div className="flex items-center gap-4">
+          {menuItem}
           <span className="text-sm text-gray-600">
             #{currentSample} / {totalSamples}
           </span>

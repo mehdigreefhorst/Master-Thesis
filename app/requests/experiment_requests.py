@@ -67,6 +67,12 @@ class CreateSample(BaseModel):
 class GetSampleUnits(BaseModel):
     scraper_cluster_id: PyObjectId
     filter_experiment_type: Optional[PromptCategory] = None
+    filter_label_template_id: Optional[PyObjectId] = None
+
+
+class GetSampleUnitsLabelingFormat(BaseModel):
+    scraper_cluster_id: PyObjectId
+    filter_label_template_id: Optional[PyObjectId] = None
 
 
 class GetSample(BaseModel):
@@ -75,6 +81,7 @@ class GetSample(BaseModel):
 
 class UpdateSample(BaseModel):
     scraper_cluster_id: PyObjectId
+    label_template_id: PyObjectId
 
     
 

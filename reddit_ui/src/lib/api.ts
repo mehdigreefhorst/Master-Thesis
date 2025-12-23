@@ -109,7 +109,7 @@ export const clusterApi = {
     cluster_unit_entity_id: string,
     labelTemplateId: string,
     groundTruthCategory: string,
-    groundTruth: boolean
+    groundTruth: boolean | string | number
   ){
     return authFetch(`/clustering/update_ground_truth`,
       {method: "PUT",
@@ -505,13 +505,37 @@ export const experimentApi = {
 
     return response
   },
-  async getSampleUnits(authFetch: ReturnType<typeof useAuthFetch>, scraperClusterId: string, filterExperimentType?: 'classify_cluster_units' | 'rewrite_cluster_unit_standalone' | 'summarize_prediction_notes' | null): Promise<ClusterUnitEntity[]> {
+  async getSampleUnits(
+    authFetch: ReturnType<typeof useAuthFetch>, 
+    scraperClusterId: string, 
+    filterExperimentType?: 'classify_cluster_units' | 'rewrite_cluster_unit_standalone' | 'summarize_prediction_notes' | null,
+    filterLabelTemplateId?: string): Promise<ClusterUnitEntity[]> {
     let experimentParamText = ""
 
     if (filterExperimentType) {
       experimentParamText += `&filter_experiment_type=${filterExperimentType}`
     }
+
+    if (filterLabelTemplateId) {
+      experimentParamText += `&filter_label_template_id=${filterLabelTemplateId}`
+    }
     const data = await authFetch(`/experiment/get_sample_units?scraper_cluster_id=${scraperClusterId}${experimentParamText}`);
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
+  },
+  async getSampleUnitsLabelingFormat(
+    authFetch: ReturnType<typeof useAuthFetch>, 
+    scraperClusterId: string, 
+    filterLabelTemplateId: string
+    ): Promise<ClusterUnitEntity[]> {
+    let experimentParamText = ""
+
+   
+    experimentParamText += `&filter_label_template_id=${filterLabelTemplateId}`
+    
+    const data = await authFetch(`/experiment/get_sample_units_labeling_format?scraper_cluster_id=${scraperClusterId}${experimentParamText}`);
     const response = await data.json()
     if (response?.error){throw new Error(response.error)}
 
@@ -681,9 +705,10 @@ export const experimentApi = {
   },
   async completeSampleLabeledStatus(
     authFetch: ReturnType<typeof useAuthFetch>,
-    scraperClusterId: string
+    scraperClusterId: string,
+    labelTemplateId: string
   ): Promise<Response> {
-    const data = await authFetch(`/experiment/complete_sample_labeled_status?scraper_cluster_id=${scraperClusterId}`, {
+    const data = await authFetch(`/experiment/complete_sample_labeled_status?scraper_cluster_id=${scraperClusterId}&label_template_id=${labelTemplateId}`, {
       method: 'PUT'
     })
     const response = await data.json()

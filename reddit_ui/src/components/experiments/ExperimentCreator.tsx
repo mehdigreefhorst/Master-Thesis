@@ -654,6 +654,7 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({
           onClose={handleTestCloseExperiment}
           experimentId={createdExperimentId}
           autoRun={false}
+          
           onProceed={handleProceedToFullExperiment}
         />
       )}

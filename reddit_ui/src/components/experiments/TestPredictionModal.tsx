@@ -76,6 +76,7 @@ export const TestPredictionModal: React.FC<TestPredictionModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       showCloseButton={true}
+      blurBackground={true}
       maxWidth="max-w-7xl"
     >
       <div className="space-y-6">

@@ -12,7 +12,7 @@ from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.database.entities.scraper_cluster_entity import StageStatus
 from app.requests.cluster_prep_requests import ScraperClusterId
-from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, ExperimentId, GetExperiments, GetInputEntities, GetSample, GetSampleUnits, ParsePrompt, ParseRawPrompt, TestPrediction, UpdateExperimentThreshold, UpdateSample
+from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, ExperimentId, GetExperiments, GetInputEntities, GetSample, GetSampleUnits, GetSampleUnitsLabelingFormat, ParsePrompt, ParseRawPrompt, TestPrediction, UpdateExperimentThreshold, UpdateSample
 from app.responses.get_experiments_response import ClusterEntityInputCount, GetExperimentsResponse, InputEntitiesExperimentsResponse, PredictionsGroupedOutputFormat
 from app.services.cluster_prep_service import ClusterPrepService
 from app.services.experiment_service import ExperimentService
@@ -143,6 +143,10 @@ def create_experiment(body: CreateExperiment):
     if not prompt_entity.created_by_user_id == user_id and not prompt_entity.public_policy:
         return jsonify(error="The provided prompt is not public and not created by you!"), 400
     
+    label_template_entity = get_label_template_repository().find_by_id(body.label_template_id)
+    if not label_template_entity:
+        return jsonify(error=f"label_template_entity not found for id = {body.label_template_id}"), 400
+    
     # if not prompt_entity.category == PromptCategory.Classify_cluster_units:
     #     return jsonify(error=f"Selected prompt {prompt_entity.id} is not of category 'Classify_cluster_units', it is {prompt_entity.category}"), 400
     
@@ -156,8 +160,8 @@ def create_experiment(body: CreateExperiment):
         if not sample_entity.sample_cluster_unit_ids:
             return jsonify(error=f"No cluster units have been assigned in the sample for us to do an experiment with | sample_id: {body.input_id}"), 400
 
-        if not (sample_entity.sample_labeled_status == StatusType.Completed):
-            return jsonify(error=f"Before experiment creation the Sample must be labeled first!"), 400
+        if not (sample_entity.sample_label_template_labeled_status.get(label_template_entity.id) == StatusType.Completed):
+            return jsonify(error=f"Before experiment creation the Sample must be labeled first for this label template! "), 400
     elif body.input_type == "cluster":
         cluster_entity = get_cluster_repository().find_by_id(body.input_id)
         if not cluster_entity:
@@ -173,10 +177,6 @@ def create_experiment(body: CreateExperiment):
 
     logger.info("body.model = ", body.model)
     model_pricing = get_openrouter_data_repository().find_pricing_of_model(model_id=body.model)
-
-    label_template_entity = get_label_template_repository().find_by_id(body.label_template_id)
-    if not label_template_entity:
-        return jsonify(error=f"label_template_entity not found for id = {body.label_template_id}"), 400
 
     experiment_entity = ExperimentEntity(user_id=user_id,
                                          scraper_cluster_id=scraper_cluster_entity.id,
@@ -454,28 +454,96 @@ def get_sample_units(query: GetSampleUnits):
     if not sample_enity:
         return jsonify(error="the sample entity id that is associated cannot be found"), 400
     
-    if sample_enity.sample_labeled_status == StatusType.Initialized:
-        get_sample_repository().update(sample_enity.id, {"sample_labeled_status": StatusType.Ongoing})
+    # if sample_enity.sample_labeled_status == StatusType.Initialized:
+    #     get_sample_repository().update(sample_enity.id, {"sample_labeled_status": StatusType.Ongoing})
 
     logger.info(f"len(sample_enity.sample_cluster_unit_ids) = {len(sample_enity.sample_cluster_unit_ids)}")
-    if not sample_enity.label_template_ids:
-        return jsonify(error="add label_template_ids for sample first"), 400
-    label_template_entities = get_label_template_repository().find_many_by_ids(sample_enity.label_template_ids)
+    if not sample_enity.sample_label_template_labeled_status:
+        return jsonify(error="add label_template_ids to sample first"), 400
+    label_template_entities = get_label_template_repository().find_many_by_ids(sample_enity.get_label_template_ids())
     # for label_template_entity in label_template_entities:
     #     label_template_entity._create_ground_truth_field()
     #     get_label_template_repository().update(label_template_entity.id, label_template_entity)
     cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_enity.sample_cluster_unit_ids)
-    if query.filter_experiment_type:
-        experiment_ids = list({experiment_id for cluster_unit in cluster_unit_entities for experiment_id in cluster_unit.predicted_category.keys()})
-        experiment_entities = get_experiment_repository().find_many_by_ids(experiment_ids)
-        experiment_entities_to_remove = [experiment_entity for experiment_entity in experiment_entities if experiment_entity.experiment_type != query.filter_experiment_type]
-        for experiment_entity in experiment_entities_to_remove:
-            for cluster_unit in cluster_unit_entities:
-                if experiment_entity.id in cluster_unit.predicted_category:
-                    cluster_unit.predicted_category.pop(experiment_entity.id)
+    # if query.filter_experiment_type:
+    #     experiment_ids = list({experiment_id for cluster_unit in cluster_unit_entities for experiment_id in cluster_unit.predicted_category.keys()})
+    #     experiment_entities = get_experiment_repository().find_many_by_ids(experiment_ids)
+    #     experiment_entities_to_remove = [experiment_entity for experiment_entity in experiment_entities if experiment_entity.experiment_type != query.filter_experiment_type]
+    #     for experiment_entity in experiment_entities_to_remove:
+    #         for cluster_unit in cluster_unit_entities:
+    #             if experiment_entity.id in cluster_unit.predicted_category:
+    #                 cluster_unit.predicted_category.pop(experiment_entity.id)
+    cluster_unit_entities = ExperimentService().filter_cluster_units_predicted_experiments(cluster_unit_entities=cluster_unit_entities,
+                                                                                           filter_label_template_id=query.filter_label_template_id,
+                                                                                           filter_experiment_type= query.filter_experiment_type)
+    
+    cluster_unit_entities = ExperimentService().filter_cluster_units_ground_truth(cluster_unit_entities=cluster_unit_entities,
+                                                                                  filter_label_template_id=query.filter_label_template_id)
+    
     logger.info(f"len(cluster_unit_entities = ), {len(cluster_unit_entities)}")
 
     returnable_cluster_units = LabelTemplateService.convert_sample_cluster_units_return_format(cluster_unit_entities, label_template_entities)
+    logger.info(f"len(returnable_cluster_units) = {len(returnable_cluster_units)}")
+
+    found_cluster_unit_ids = [cluster_unit_id.id for cluster_unit_id in cluster_unit_entities]
+
+    logger.info(f"units not in db but in sample: {[unit_id for unit_id in sample_enity.sample_cluster_unit_ids if unit_id not in found_cluster_unit_ids]}")
+    if returnable_cluster_units:
+        return jsonify(returnable_cluster_units), 200
+    else:
+        return jsonify(error="The sample does not contain real cluster unit entities for the scraper cluster instance"), 400
+
+
+@experiment_bp.route("/get_sample_units_labeling_format", methods=["GET"])
+@validate_query_params(GetSampleUnitsLabelingFormat)
+@jwt_required()
+def get_sample_units_labeling_format(query: GetSampleUnitsLabelingFormat):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    
+    scraper_cluster_entity = get_scraper_cluster_repository().find_by_id_and_user(user_id, query.scraper_cluster_id)
+    
+    if not scraper_cluster_entity:
+        return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {query.scraper_cluster_id}"), 400
+    
+    if not scraper_cluster_entity.scraper_entity_id:
+        return jsonify(error="scraper is not yet initialized"), 409
+    
+    if not scraper_cluster_entity.stages.scraping == StatusType.Completed:
+        return jsonify(error="scraper is not completed yet"), 409
+    
+    if not scraper_cluster_entity.stages.cluster_prep == StatusType.Completed:
+        return jsonify(error="Cluster preparation is no completed"), 409
+    
+    if not scraper_cluster_entity.sample_id:
+        return jsonify(error="you must first create a sample entity"), 400
+    
+    sample_enity = get_sample_repository().find_by_id(scraper_cluster_entity.sample_id)
+
+    if not sample_enity:
+        return jsonify(error="the sample entity id that is associated cannot be found"), 400
+    
+    # if sample_enity.sample_labeled_status == StatusType.Initialized:
+    #     get_sample_repository().update(sample_enity.id, {"sample_labeled_status": StatusType.Ongoing})
+
+    logger.info(f"len(sample_enity.sample_cluster_unit_ids) = {len(sample_enity.sample_cluster_unit_ids)}")
+    if not sample_enity.sample_label_template_labeled_status or query.filter_label_template_id not in sample_enity.sample_label_template_labeled_status:
+        return jsonify(error=f"add label_template_ids to sample first {query.filter_label_template_id} not yet added to sample: {sample_enity.id}"), 400
+    label_template_entity = get_label_template_repository().find_many_by_ids(query.filter_label_template_id)
+
+    cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_enity.sample_cluster_unit_ids)
+
+    cluster_unit_entities = ExperimentService().filter_cluster_units_predicted_experiments(cluster_unit_entities=cluster_unit_entities,
+                                                                                           filter_label_template_id=query.filter_label_template_id)
+    
+    cluster_unit_entities = ExperimentService().filter_cluster_units_ground_truth(cluster_unit_entities=cluster_unit_entities,
+                                                                                  filter_label_template_id=query.filter_label_template_id)
+    
+    logger.info(f"len(cluster_unit_entities = ), {len(cluster_unit_entities)}")
+
+    returnable_cluster_units = LabelTemplateService.convert_sample_cluster_units_return_format_labeling_format(cluster_unit_entities, label_template_entity)
     logger.info(f"len(returnable_cluster_units) = {len(returnable_cluster_units)}")
 
     found_cluster_unit_ids = [cluster_unit_id.id for cluster_unit_id in cluster_unit_entities]
@@ -546,15 +614,19 @@ def complete_sample_labeled_status(query: UpdateSample):
     if not sample_entity:
         return jsonify(f"Scraper cluster entity: {scraper_cluster_entity.id} with sample_id: {scraper_cluster_entity.sample_id} is not findable")
 
+    label_template_entity = get_label_template_repository().find_by_id(query.label_template_id)
+    if not label_template_entity:
+        return jsonify(error=f"label_template_entity not found for id = {query.label_template_id}"), 400
     # Set all None ground truth values to False for all cluster units in the sample
-    if sample_entity.cluster_unit_ids and sample_entity.label_template_id:
-        updated_count = get_cluster_unit_repository().set_none_ground_truths_to_false(
-            cluster_unit_ids=sample_entity.cluster_unit_ids,
-            label_template_id=sample_entity.label_template_id
-        )
-        logger.info(f"Set None ground truths to False for {updated_count} cluster units in sample {sample_entity.id}")
+    # set the status sample to done
+    sample_entity.set_sample_labeled_status(label_template_id=query.label_template_id)
+    updated_count = get_cluster_unit_repository().set_none_ground_truths_to_false(
+        cluster_unit_ids=sample_entity.sample_cluster_unit_ids,
+        label_template_id=query.label_template_id
+    )
+    logger.info(f"Set None ground truths to False for {updated_count} cluster units in sample {sample_entity.id}")
 
-    get_sample_repository().update(sample_entity.id, {"sample_labeled_status": StatusType.Completed})
+    get_sample_repository().update(sample_entity.id, sample_entity)
 
     return jsonify(message="OK"), 200
 

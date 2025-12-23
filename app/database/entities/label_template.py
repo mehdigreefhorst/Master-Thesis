@@ -105,6 +105,14 @@ class LabelTemplateTruthProjection(BaseModel):
     values: Dict[labelName, LabelValueField] = Field(default_factory=dict) # key is label_value.label name of a LabelTemplateLLMProjection
 
 
+    def has_been_labeled(self):
+        """checks if the ground truth have has been labeled"""
+        for label_name, label_value_field in self.values.items():
+            if label_value_field.value is None:
+                return False
+        
+        return True
+
 class LabelTemplateEntity(BaseEntity):
     user_id: str # PyObjectId
     label_template_name: str

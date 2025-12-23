@@ -2,6 +2,7 @@
 import sys
 
 from app.database.entities.base_entity import PyObjectId
+from app.services.label_template_service import LabelTemplateService
 sys.path.append("../..")
 
 import asyncio
@@ -64,15 +65,18 @@ class ExperimentService:
             cluster_unit_entities_successfully_done = ExperimentService.update_add_to_db_cluster_unit_predictions(
                 predictions_grouped_output_format_object=predictions_grouped_output_format_object,
                 experiment_entity=experiment_entity)
+            # If there were any cluster unit entities remaining & there was at least a single failure of prediction. We set experiment status to error
+            success_count, failed_count = predictions_grouped_output_format_object.get_count_successful_failure_predictions()
         
             cluster_unit_entities_done.extend(cluster_unit_entities_successfully_done)
-        
-        ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities_done, experiment_entity, label_template_entity=label_template_entity)
+        if experiment_entity.experiment_type == PromptCategory.Classify_cluster_units and LabelTemplateService().cluster_unit_entities_done_labeling_ground_truth(cluster_unit_entities=cluster_unit_entities_done,
+                                                                                                                                                                  label_template_entity=label_template_entity):
+            ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities_done, experiment_entity, label_template_entity=label_template_entity)
 
         # Calculate and store aggregate token statistics
         ExperimentService.calculate_and_store_token_statistics(cluster_unit_entities_done, experiment_entity)
-        # If there were any cluster unit entities remaining & there was at least a single failure of prediction. We set experiment status to error
-        success_count, failed_count = predictions_grouped_output_format_object.get_count_successful_failure_predictions()
+       
+        
         if len(cluster_unit_entities_remain) > 0 and failed_count > 0:
             logger.error(f"THere is an error we have {failed_count} predictions")
             ExperimentService.calculate_and_store_wasted_token_statistics(predictions_grouped_output_format_object=predictions_grouped_output_format_object, experiment_entity=experiment_entity)
@@ -313,7 +317,7 @@ class ExperimentService:
             prediction_counter_single_unit = ExperimentService.create_prediction_counter_from_cluster_unit(cluster_unit_entity, experiment_entity)
             # Below we go over the possible categories, and how often they have been counted. Then we find the corresponding variable in aggregate results
             # Then we increase the counter of aggregate results with 1. This allows us to track how many runs have predicted that label.
-            
+
             for prediction_category_name, count_value in prediction_counter_single_unit.items():
                 prediction_category_prediction_result: PredictionResult = experiment_entity.get_label_aggregate_result(prediction_category_name)
                 count_key = str(count_value)  # Convert to string for MongoDB compatibility
@@ -322,8 +326,10 @@ class ExperimentService:
                 # Now we add the ground truth to the prediction result as a counter
                 print("prediction_category_name = ", prediction_category_name)
                 ground_truth_value: bool = cluster_unit_entity.get_value_of_ground_truth_variable(label_template_id=label_template_entity.id, variable_name=prediction_category_name)
-                prediction_category_prediction_result.individual_prediction_truth_label_list.append(PrevelanceUnitDistribution(runs_predicted_true=count_key,
-                                                                                                                               ground_truth=ground_truth_value))
+                prediction_category_prediction_result.individual_prediction_truth_label_list.append(
+                    PrevelanceUnitDistribution(
+                        runs_predicted_true=count_key,
+                        ground_truth=ground_truth_value))
                 if ground_truth_value:
                     prediction_category_prediction_result.sum_ground_truth += 1
         return experiment_entity
@@ -365,11 +371,6 @@ class ExperimentService:
         total_successful_predictions = 0
         total_failed_attempts = 0
 
-        # # Aggregated token counts
-        # total_tokens = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "reasoning_tokens": 0}
-        # tokens_wasted = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "reasoning_tokens": 0}
-        # tokens_from_retries = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "reasoning_tokens": 0}
-
         for cluster_unit_entity in cluster_unit_entities:
             if cluster_unit_entity.predicted_category is None:
                 continue
@@ -397,39 +398,7 @@ class ExperimentService:
 
                     if attempt.attempt_number > 1:
                         experiment_entity.token_statistics.tokens_from_retries.add_token_usage_attempt(attempt)
-                        
-                        
 
-                # # Process all attempts for this prediction
-                # for attempt in prediction.all_attempts_token_usage:
-                #     # Add to total tokens
-                    
-
-                #     experiment_entity.token_statistics.total_tokens_used.prompt_tokens += attempt.tokens_used.get("prompt_tokens", 0)
-                #     experiment_entity.token_statistics.total_tokens_used.completion_tokens += attempt.tokens_used.get("completion_tokens", 0)
-                #     experiment_entity.token_statistics.total_tokens_used.total_tokens += attempt.tokens_used.get("total_tokens", 0)
-                    
-                #     reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
-                #     experiment_entity.token_statistics.total_tokens_used.total_tokens += reasoning_tokens
-                #     # Track failed attempts
-                #     if not attempt.success:
-                #         total_failed_attempts += 1
-                #         experiment_entity.token_statistics.total_failed_attempts.prompt_tokens += attempt.tokens_used.get("prompt_tokens", 0)
-                #         experiment_entity.token_statistics.total_failed_attempts.completion_tokens += attempt.tokens_used.get("completion_tokens", 0)
-                #         experiment_entity.token_statistics.total_failed_attempts.total_tokens += attempt.tokens_used.get("total_tokens", 0)
-                        
-                #         reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
-                #         experiment_entity.token_statistics.total_failed_attempts.total_tokens += reasoning_tokens
-
-                #     # Track retry attempts (attempt_number > 1)
-                #     if attempt.attempt_number > 1: # len(prediction.all_attempts) > 1 # TODO needed because an attempt can also have a second number without there being a first one (retry because of our own rate limiter)
-                #         experiment_entity.token_statistics.tokens_from_retries.prompt_tokens += attempt.tokens_used.get("prompt_tokens", 0)
-                #         experiment_entity.token_statistics.tokens_from_retries.completion_tokens += attempt.tokens_used.get("completion_tokens", 0)
-                #         experiment_entity.token_statistics.tokens_from_retries.total_tokens += attempt.tokens_used.get("total_tokens", 0)
-                        
-                #         reasoning_tokens = attempt.tokens_used.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
-                #         experiment_entity.token_statistics.tokens_from_retries.total_tokens += reasoning_tokens
-        
         # Calculate the cost of the model
         if experiment_entity.model_pricing is not None:
             
@@ -752,4 +721,41 @@ class ExperimentService:
         else:
             raise Exception(f"unknown input type is given! type = {experiment_entity.input_type}")
 
+        return cluster_unit_entities
+    
+    
+    @staticmethod
+    def filter_cluster_units_predicted_experiments(cluster_unit_entities: List[ClusterUnitEntity], filter_label_template_id: Optional[str] = None, filter_experiment_type: Optional[PromptCategory] = None) -> List[ClusterUnitEntity]:
+        if filter_experiment_type is None and filter_label_template_id is None:
+            return cluster_unit_entities
+        
+        experiment_ids = list({experiment_id for cluster_unit in cluster_unit_entities for experiment_id in cluster_unit.predicted_category.keys()})
+        experiment_entities = get_experiment_repository().find_many_by_ids(experiment_ids)
+
+        experiment_entities_to_remove: List[ExperimentEntity] = list()
+        if filter_experiment_type:
+            
+            experiment_entities_to_remove_wrong_type = [experiment_entity for experiment_entity in experiment_entities if experiment_entity.experiment_type != filter_experiment_type]
+            experiment_entities_to_remove.extend(experiment_entities_to_remove_wrong_type)
+        if filter_label_template_id:
+            
+            experiment_entities_to_remove_wrong_label_template = [experiment_entity for experiment_entity in experiment_entities if experiment_entity.label_template_id != filter_label_template_id]
+            experiment_entities_to_remove.extend(experiment_entities_to_remove_wrong_label_template)
+        
+        # Removing the predicted categories
+        for experiment_entity in experiment_entities_to_remove:
+            for cluster_unit in cluster_unit_entities:
+                if experiment_entity.id in cluster_unit.predicted_category:
+                    cluster_unit.predicted_category.pop(experiment_entity.id)
+        
+        return cluster_unit_entities
+    
+    @staticmethod
+    def filter_cluster_units_ground_truth(cluster_unit_entities: List[ClusterUnitEntity], filter_label_template_id: Optional[str] = None):
+        if filter_label_template_id is None:
+            return cluster_unit_entities
+        
+        for cluster_unit_entity in cluster_unit_entities:
+            cluster_unit_entity.ground_truth = {filter_label_template_id: cluster_unit_entity.ground_truth.pop(filter_label_template_id)}
+        
         return cluster_unit_entities

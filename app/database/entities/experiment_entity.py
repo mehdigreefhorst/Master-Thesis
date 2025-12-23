@@ -100,7 +100,7 @@ class ExperimentEntity(BaseEntity):
     model_pricing: Optional[Pricing] = None
     experiment_cost: Optional[ExperimentCost] = None
     reasoning_effort: Optional[Literal["none", "minimal", "low", "medium", "high", "xhigh", "auto"]] = None
-    aggregate_result: Optional[AggregateResult] = None
+    aggregate_result: Optional[AggregateResult] = None # Only used when experiment_type == 
     runs_per_unit: int = 3
     threshold_runs_true: int = 1
     status: StatusType = StatusType.Initialized

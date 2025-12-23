@@ -55,10 +55,12 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
           throw Error("no sample found!")
         }
         setSample(sample);
-        if (sample.sample_labeled_status === "completed") {
-          setCanCreateExperiments(true)
-          
-        }
+
+        const allCompleted = Object.values(sample.sample_label_template_labeled_status)
+          .every(status => status === "completed");
+        
+          if (allCompleted) {setCanCreateExperiments(true)}
+      
         setTotalPostsAvailable(sample.picked_post_cluster_unit_ids.length || 0);
         setClusterUnitsUsed(sample.sample_size   || 0);
       } catch (err) {
@@ -82,11 +84,11 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
 
   // Determine if sample can be labeled
   const canLabel = useMemo(() => {
-    return sample && (sample.sample_labeled_status === 'initialized' || sample.sample_labeled_status === 'ongoing') && sample.label_template_ids.length > 0;
+    return sample && true //(sample.sample_label_template_labeled_status === 'initialized' || sample.sample_label_template_labeled_status === 'ongoing') && sample.label_template_ids.length > 0;
   }, [sample]);
 
   const sampleCompleted = useMemo(() => {
-    return sample && sample.sample_labeled_status === "completed"
+    return sample && true //sample.sample_label_template_labeled_status === "completed"
   }, [sample]);
 
   const handleViewSample = () => {
@@ -98,7 +100,7 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
   const handleLabelSample = () => {
     if (sample && scraperClusterId) {
       // Pass all selected label template IDs as comma-separated string
-      const labelTemplateIds = sample.label_template_ids.join(',');
+      const labelTemplateIds = Object.keys(sample.sample_label_template_labeled_status).join(',');
       router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&sample_id=${sample.id}&label_template_ids=${labelTemplateIds}`);
     }
   };
@@ -165,8 +167,13 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-4 mb-4">
-              <h3 className="text-xl font-bold text-gray-800">Sample Information</h3>
-              <StatusBadge status={sample.sample_labeled_status as StatusType} />
+              {/* <h3 className="text-xl font-bold text-gray-800">Sample Information</h3>
+              {Object.entries(sample.sample_label_template_labeled_status).map(([templateId, status]) => 
+                <div key={templateId}>
+                  <StatusBadge status={status as StatusType} />
+                </div>
+              )} */}
+              
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -205,9 +212,12 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
               {/* Labeling Status */}
               <div>
                 <p className="text-sm text-gray-500 mb-1">Labeling Status</p>
-                <p className="font-semibold text-gray-800 capitalize">
-                  {sample.sample_labeled_status}
-                </p>
+                  {Object.entries(sample.sample_label_template_labeled_status).map(([templateId, status]) => 
+                    <div key={templateId}>
+                      <StatusBadge status={status as StatusType} />
+                    </div>
+                  )}
+                
               </div>
 
               {/* Label Templates */}
@@ -220,7 +230,7 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
                            cursor-pointer flex items-center justify-between"
                 >
                   <span className="text-sm font-semibold text-gray-800">
-                    {sample.label_template_ids.length} selected
+                    {Object.keys(sample.sample_label_template_labeled_status).length} selected
                   </span>
                   <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

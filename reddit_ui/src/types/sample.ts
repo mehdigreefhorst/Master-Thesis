@@ -10,7 +10,7 @@ export interface SampleEntity {
   picked_post_cluster_unit_ids: string[];
   sample_cluster_unit_ids: string[];
   sample_size: number;
-  sample_labeled_status: StatusType;
+  sample_label_template_labeled_status: Record<string, StatusType>
   label_template_ids: string[];
 }
 

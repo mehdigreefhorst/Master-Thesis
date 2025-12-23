@@ -69,12 +69,7 @@ def add_to_sample(body: AddLabelTemplateToSampleRequest):
     if not sample_entity:
         return jsonify(f"sample_id: {body.sample_entity_id} is not findable")     
 
-    if body.label_template_id in sample_entity.label_template_ids:
-        if body.action == "remove":
-            sample_entity.label_template_ids = [label_template_id for label_template_id in sample_entity.label_template_ids if body.label_template_id != label_template_id]
-    else:
-        if body.action == "add":
-            sample_entity.label_template_ids.append(body.label_template_id)
+    sample_entity.add_remove_label_template(action=body.action, label_template_id=body.label_template_id)
     
     get_sample_repository().update(sample_entity.id, sample_entity)
 

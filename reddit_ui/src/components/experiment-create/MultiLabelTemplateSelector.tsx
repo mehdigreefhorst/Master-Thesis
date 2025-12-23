@@ -58,7 +58,7 @@ export const MultiLabelTemplateSelector: React.FC<MultiLabelTemplateSelectorProp
       return;
     }
 
-    const isCurrentlySelected = sampleEntity.label_template_ids.includes(labelTemplateId);
+    const isCurrentlySelected = labelTemplateId in sampleEntity.sample_label_template_labeled_status;
     const action: "add" | "remove" = isCurrentlySelected ? "remove" : "add";
 
     try {
@@ -101,7 +101,7 @@ export const MultiLabelTemplateSelector: React.FC<MultiLabelTemplateSelectorProp
   };
 
   const isTemplateSelected = (templateId: string) => {
-    return sampleEntity.label_template_ids.includes(templateId);
+    return templateId in sampleEntity.sample_label_template_labeled_status
   };
 
   return (
@@ -185,8 +185,8 @@ export const MultiLabelTemplateSelector: React.FC<MultiLabelTemplateSelectorProp
             </div>
 
             {/* Selected count */}
-            <div className="text-xs text-[var(--muted-foreground)] px-1">
-              {sampleEntity.label_template_ids.length} label template{sampleEntity.label_template_ids.length !== 1 ? 's' : ''} selected
+            <div className="text-xs text-(--muted-foreground) px-1">
+              {Object.keys(sampleEntity.sample_label_template_labeled_status).length} label template{Object.keys(sampleEntity.sample_label_template_labeled_status).length !== 1 ? 's' : ''} selected
             </div>
           </div>
         )}
@@ -195,10 +195,10 @@ export const MultiLabelTemplateSelector: React.FC<MultiLabelTemplateSelectorProp
       {/* Confirmation Modal for Create New */}
       <Modal isOpen={isModalOpen} onClose={handleCancelCreate} blurBackground maxWidth="max-w-lg">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-[var(--foreground)] mb-4">
+          <h2 className="text-2xl font-bold text-foreground mb-4">
             Create New Label Template?
           </h2>
-          <p className="text-[var(--muted-foreground)] mb-6">
+          <p className="text-(--muted-foreground) mb-6">
             You will be redirected to the label template creation page. Any unsaved changes on this page will be lost.
           </p>
           <div className="flex gap-4 justify-center">

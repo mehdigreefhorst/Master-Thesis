@@ -10,18 +10,18 @@ import { ExternalLink } from "lucide-react";
 
 
 interface ThreadFromUnitProps {
-  currentUnit: ClusterUnitEntity;
+  clusterUnitEntity: ClusterUnitEntity;
   defaultExpanded?: boolean; // true = show full thread, false = show only target
 }
 
 export const ThreadFromUnit: React.FC<ThreadFromUnitProps> = ({
-  currentUnit,
+  clusterUnitEntity,
   defaultExpanded = false
 
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
-  // Reset to default state when currentUnit changes
+  // Reset to default state when clusterUnitEntity changes
 
   // Toggle between expanded and collapsed view
   const toggleExpanded = () => {
@@ -30,11 +30,11 @@ export const ThreadFromUnit: React.FC<ThreadFromUnitProps> = ({
 
   // Render thread from thread_path_text
   const renderThread = () => {
-    if (!currentUnit) return null;
+    if (!clusterUnitEntity) return null;
 
-    const threadPath = currentUnit.thread_path_text || [];
-    const threadPathAuthor = currentUnit.thread_path_author || [];
-    const currentText = currentUnit.text;
+    const threadPath = clusterUnitEntity.thread_path_text || [];
+    const threadPathAuthor = clusterUnitEntity.thread_path_author || [];
+    const currentText = clusterUnitEntity.text;
 
     return (
       <ThreadBox>
@@ -44,7 +44,7 @@ export const ThreadFromUnit: React.FC<ThreadFromUnitProps> = ({
           }
           return <ThreadComment key={index} username={`u/${threadPathAuthor[index] ?? `u/author${index}`}`} content={text} />;
         })}
-        <ThreadTarget username={currentUnit.author} content={currentText} />
+        <ThreadTarget username={clusterUnitEntity.author} content={currentText} />
       </ThreadBox>
     );
   };
@@ -59,30 +59,30 @@ export const ThreadFromUnit: React.FC<ThreadFromUnitProps> = ({
   };
 
   // Calculate depth from thread_path_text
-  const depth = currentUnit.thread_path_text?.length || 0;
+  const depth = clusterUnitEntity.thread_path_text?.length || 0;
 
   return (
     <div className="mb-6">
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold">
-            r/{currentUnit.type === 'post' ? 'post' : 'comment'} Thread:
+            r/{clusterUnitEntity.type === 'post' ? 'post' : 'comment'} Thread:
           </h2>
           <div className="flex items-center gap-2 text-sm">
-            {currentUnit.type === 'comment' && (
+            {clusterUnitEntity.type === 'comment' && (
               <span className="flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full border border-purple-200">
                 <span className="font-medium">Depth:</span> {depth}
               </span>
             )}
             <span className="flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full border border-green-200">
-              <span className="font-medium">↑</span> {currentUnit.upvotes}
+              <span className="font-medium">↑</span> {clusterUnitEntity.upvotes}
             </span>
             <span className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full border border-blue-200">
-              <span className="font-medium">Date:</span> {formatDate(currentUnit.created_utc)}
+              <span className="font-medium">Date:</span> {formatDate(clusterUnitEntity.created_utc)}
             </span>
 
           <Link 
-            href={`https://www.reddit.com${currentUnit.permalink}`} 
+            href={`https://www.reddit.com${clusterUnitEntity.permalink}`} 
             target="_blank" 
             rel="noopener noreferrer"
             className="cursor-pointer"
