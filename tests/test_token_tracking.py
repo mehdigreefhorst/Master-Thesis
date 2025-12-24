@@ -39,7 +39,7 @@ async def test_token_tracking():
         scraper_cluster_id=PyObjectId(ObjectId()),
         prompt_id=PyObjectId(ObjectId()),
         sample_id=PyObjectId(ObjectId()),
-        model="gpt-4o-mini",  # Use a smaller model for testing
+        model_id="gpt-4o-mini",  # Use a smaller model for testing
         runs_per_unit=2,  # Only 2 runs for testing
     )
 
@@ -95,7 +95,7 @@ Classify this message according to the categories defined in the system prompt."
     )
 
     print(f"\nTest Configuration:")
-    print(f"  Model: {experiment_entity.model}")
+    print(f"  Model: {experiment_entity.model_id}")
     print(f"  Runs per unit: {experiment_entity.runs_per_unit}")
     print(f"  Comment: {cluster_unit_entity.text[:80]}...")
     print()

@@ -14,13 +14,13 @@ def test_experiment_entity_creation():
         scraper_cluster_id="507f1f77bcf86cd799439012",
         prompt_id="507f1f77bcf86cd799439013",
         sample_id="507f1f77bcf86cd799439014",
-        model="gpt-4"
+        model_id="gpt-4"
     )
 
     print(experiment)
 
 
-    assert experiment.model == "gpt-4"
+    assert experiment.model_id == "gpt-4"
     assert experiment.runs_per_unit == 3
     assert isinstance(experiment.aggregate_result, AggregateResult)
 
@@ -60,7 +60,7 @@ def test_experiment_with_custom_aggregate():
         scraper_cluster_id="507f1f77bcf86cd799439012",
         prompt_id="507f1f77bcf86cd799439013",
         sample_id="507f1f77bcf86cd799439014",
-        model="claude-3",
+        model_id="claude-3",
         reasoning_effort="high",
         aggregate_result=custom_aggregate,
         runs_per_unit=5

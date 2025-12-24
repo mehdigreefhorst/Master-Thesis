@@ -566,7 +566,7 @@ export const experimentApi = {
     authFetch: ReturnType<typeof useAuthFetch>,
     prompt_id: string,
     scraperClusterId: string,
-    model: string,
+    model_id: string,
     runs_per_unit: number,
     thresholdRunsPerUnits:number,
     labelTemplateId: string,
@@ -574,13 +574,13 @@ export const experimentApi = {
     inputId: string,
     inputType: "sample" | "filtering" | "cluster"
   ){
-    console.log("model = ", model)
+    console.log("model_id = ", model_id)
     const data = await authFetch('/experiment', {
       method: 'POST',
       body: {
         prompt_id: prompt_id,
         scraper_cluster_id: scraperClusterId,
-        model: model,
+        model_id: model_id,
         runs_per_unit: runs_per_unit,
         threshold_runs_true: thresholdRunsPerUnits,
         label_template_id: labelTemplateId,

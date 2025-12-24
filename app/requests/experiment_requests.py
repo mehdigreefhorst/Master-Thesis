@@ -14,7 +14,7 @@ class GetExperiments(BaseModel):
 class CreateExperiment(BaseModel):
     scraper_cluster_id: PyObjectId
     prompt_id: PyObjectId
-    model: str
+    model_id: str
     runs_per_unit: int = 3
     threshold_runs_true: int = 1
     label_template_id: PyObjectId

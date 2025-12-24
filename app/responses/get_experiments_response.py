@@ -6,11 +6,13 @@ from datetime import datetime
 import math
 
 
+from app.database import get_experiment_repository, get_prompt_repository
 from app.database.entities.base_entity import PyObjectId
 from app.database.entities.cluster_entity import ClusterEntity
 from app.database.entities.cluster_unit_entity import ClusterUnitEntity, ClusterUnitEntityPredictedCategory, PredictionCategoryTokens, TokenUsageAttempt
 from app.database.entities.experiment_entity import ExperimentCost, ExperimentEntity, ExperimentTokenStatistics, PrevalenceDistribution, TokenUsage
 from app.database.entities.filtering_entity import FilteringEntity
+from app.database.entities.prompt_entity import PromptEntitiesDict, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.utils.types import StatusType
 
@@ -855,3 +857,125 @@ class PredictionsGroupedOutputFormat(BaseModel):
 
         return total_wasted_tokens
             
+
+
+class ExperimentModelInformation(BaseModel):
+    experiment_id: PyObjectId
+    prompt_id: PyObjectId
+    prompt_name: str 
+    model_id: str # model_id from openrouter
+    label_template_id: PyObjectId
+    runs_per_unit: int
+    version:str
+
+
+class LabelResult(BaseModel):
+    count_match_ground_truth: int #; // How many runs matched groun (0-3)
+    total_runs: int #; // Total runs (default 3)
+    reasons: Optional[List[str]] = None
+
+
+class SingleUnitOneLabelAllExperiments(BaseModel):
+    """For a single cluster unit, for a single label, all the experiment predictions including the ground truth"""
+    label_name: str
+    ground_truth: bool | str
+    results: List[LabelResult | None] = Field(default=list)
+
+LabelName = str
+class ExperimentAllPredictedData(BaseModel):
+    """all experiment data with cluster unit, formatted for user interface"""
+    cluster_unit_enity: ClusterUnitEntity
+    label_name_predicted_data: List[SingleUnitOneLabelAllExperiments] = Field(default=list)
+
+
+
+class GetSampleUnitsReturnFormat(BaseModel):
+    all_experiments_model_information: List[ExperimentModelInformation] = Field(default=list) # all with the same label_template_id
+    completed_insert_model_information: bool = False
+    label_names: List[LabelName] = Field(default=dict)
+    experiment_unit_data: List[ExperimentAllPredictedData] = Field(default=list)
+
+
+
+
+    def insert_model_information(self, cluster_unit_entities: List[ClusterEntity], label_template_id: PyObjectId):
+        
+        # build the experiment_entities_dict, based on which experiments have been done across all cluster units, from a specific label_template_id 
+        experiment_entity_ids = {experiment_id for cluster_unit in cluster_unit_entities for experiment_id in cluster_unit.get_experiment_ids(filter_label_template_id=label_template_id)}
+        experiment_entities_dict = {experiment_id: get_experiment_repository().find_by_id(experiment_id) for experiment_id in experiment_entity_ids}
+        experiment_entities_dict: Dict[PyObjectId, ExperimentEntity] = {experiment_id: experiment for experiment_id, experiment in experiment_entities_dict.items() if experiment}
+
+        all_label_template_ids = list({experiment.label_template_id for experiment in experiment_entities_dict.values()})
+        if len(all_label_template_ids) >1:
+            raise Exception(f"experiments do not all have the same label_template ids, wrong! label_template_ids: {all_label_template_ids}")
+        
+        prompt_ids = {experiment.prompt_id for experiment in experiment_entities_dict.values()}
+        prompt_entities_dict = PromptEntitiesDict.create_from_prompt_ids(prompt_ids=prompt_ids)
+        
+        # sort the experiments, so that the model information list is built from increasing order of creation date
+        experiments_sorted = sorted([experiment for experiment in experiment_entities_dict.values() if experiment], key=lambda x: x.created_at)
+        # insert into self.labels the labels of the first experiment, all experiments have the same label_template so the labels are the same for all experiments
+        self.label_names = experiments_sorted[0].label_template_labels
+        for index, experiment in enumerate(experiments_sorted):
+            experiment_model_information = ExperimentModelInformation(
+                experiment_id = experiment.id,
+                prompt_id= experiment.prompt_id,
+                prompt_name=prompt_entities_dict.get_prompt_name(experiment.prompt_id),
+                model_id=experiment.model_id,
+                label_template_id=experiment.label_template_id,
+                runs_per_unit=experiment.runs_per_unit,
+                version= f"V{index+1}"
+            )
+            self.all_experiments_model_information.append(experiment_model_information)
+        
+        self.completed_insert_model_information = True
+
+    def insert_cluster_unit_experiment_data(self, cluster_unit_entities: List[ClusterUnitEntity], label_template_id: PyObjectId):
+        """inserts the predicted data into the correct format so that we have correct formatted data about how often cluster units
+        predicted data is the same as the ground truth. It does this per labelName, so the format is outputted for the table format of the user interface"""
+        if not self.completed_insert_model_information:
+            raise Exception("You first must insert model information before inserting experiment data")
+        
+        for cluster_unit in cluster_unit_entities:
+            experiment_predicted_data: ExperimentAllPredictedData = ExperimentAllPredictedData(cluster_unit_enity=cluster_unit)
+            for label_name in self.label_names:
+                one_label_experiment_data: SingleUnitOneLabelAllExperiments = SingleUnitOneLabelAllExperiments(label_name=label_name,
+                                                                                                               ground_truth=cluster_unit.get_value_of_ground_truth_variable(
+                                                                                                                   label_template_id=label_template_id,
+                                                                                                                   variable_name=label_name)
+                                                                                                                   )
+                for experiment_model_information in self.all_experiments_model_information:
+                    cluster_unit.predicted_category
+                    label_result: LabelResult = LabelResult(total_runs=experiment_model_information.runs_per_unit,
+                                                            count_match_ground_truth=cluster_unit.get_count_predicted_label_equal_to_ground_truth(label_name=label_name,
+                                                                                                                                                  experiment_id=experiment_model_information.experiment_id,
+                                                                                                                                                  label_template_id=label_template_id),
+                                                            reasons=cluster_unit.get_reasons_of_label_name_one_experiment(experiment_id=experiment_model_information.experiment_id,
+                                                                                                                          label_name=label_name))
+                    one_label_experiment_data.results.append(label_result)
+                experiment_predicted_data.label_name_predicted_data.append(one_label_experiment_data)
+            self.experiment_unit_data.append(experiment_predicted_data)
+                    
+                    
+        
+        
+            
+
+        
+        
+    
+    @classmethod
+    def create_from_cluster_units_label_template_id(cls, cluster_unit_entities: List[ClusterUnitEntity], label_template_id: PyObjectId):
+        """creates the whole return object with the data it needs, to be built correctly"""
+        sample_units_return_format_labeling = cls()
+
+        sample_units_return_format_labeling.insert_model_information(cluster_unit_entities=cluster_unit_entities, label_template_id=label_template_id)
+        sample_units_return_format_labeling.insert_cluster_unit_experiment_data(cluster_unit_entities=cluster_unit_entities, label_template_id=label_template_id)
+        return sample_units_return_format_labeling
+
+
+
+
+class PerformanceStatsSingleUnit(BaseModel):
+    accuracy: float
+

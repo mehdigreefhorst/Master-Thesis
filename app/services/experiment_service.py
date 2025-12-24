@@ -260,7 +260,7 @@ class ExperimentService:
             open_router_api_key=open_router_api_key,
             system_prompt=prompt_entity.system_prompt,
             prompt=parsed_prompt,
-            model=experiment_entity.model,
+            model=experiment_entity.model_id,
             reasoning_effort=experiment_entity.reasoning_effort,
             max_retry_attempts=max_retry_attempts
         )
@@ -509,8 +509,8 @@ class ExperimentService:
                 overall_kappa = None
             #:TODO Fix that I keep track of what version of prompt I am using
             experiment_response = GetExperimentsResponse(id=experiment.id,
-                                                         name=f"{experiment.model} V{index}",
-                                                         model=experiment.model,
+                                                         name=f"{experiment.model_id} V{index}",
+                                                         model=experiment.model_id,
                                                          prompt_id=experiment.prompt_id,
                                                          created=experiment.created_at,
                                                          total_samples=sample_entity.sample_size,

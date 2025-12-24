@@ -175,8 +175,8 @@ def create_experiment(body: CreateExperiment):
     else:
         raise Exception(f"unknown input type is given! type = {body.input_type}")
 
-    logger.info("body.model = ", body.model)
-    model_pricing = get_openrouter_data_repository().find_pricing_of_model(model_id=body.model)
+    logger.info("body.model = ", body.model_id)
+    model_pricing = get_openrouter_data_repository().find_pricing_of_model(model_id=body.model_id)
 
     experiment_entity = ExperimentEntity(user_id=user_id,
                                          scraper_cluster_id=scraper_cluster_entity.id,
@@ -186,7 +186,7 @@ def create_experiment(body: CreateExperiment):
                                          experiment_type=prompt_entity.category,
                                          label_template_id= label_template_entity.id,
                                          label_template_labels=label_template_entity.get_labels(),
-                                         model= body.model,
+                                         model_id= body.model_id,
                                          model_pricing=model_pricing,
                                          runs_per_unit=body.runs_per_unit,
                                          threshold_runs_true=body.threshold_runs_true,
@@ -543,14 +543,14 @@ def get_sample_units_labeling_format(query: GetSampleUnitsLabelingFormat):
     
     logger.info(f"len(cluster_unit_entities = ), {len(cluster_unit_entities)}")
 
-    returnable_cluster_units = LabelTemplateService.convert_sample_cluster_units_return_format_labeling_format(cluster_unit_entities, label_template_entity)
-    logger.info(f"len(returnable_cluster_units) = {len(returnable_cluster_units)}")
+    get_sample_unit_return_format = LabelTemplateService.convert_sample_cluster_units_return_format_labeling_format(cluster_unit_entities, label_template_entity)
+    logger.info(f"len(returnable_cluster_units) = {len(get_sample_unit_return_format.experiment_unit_data)}")
 
     found_cluster_unit_ids = [cluster_unit_id.id for cluster_unit_id in cluster_unit_entities]
 
     logger.info(f"units not in db but in sample: {[unit_id for unit_id in sample_enity.sample_cluster_unit_ids if unit_id not in found_cluster_unit_ids]}")
-    if returnable_cluster_units:
-        return jsonify(returnable_cluster_units), 200
+    if get_sample_unit_return_format:
+        return jsonify(get_sample_unit_return_format.model_dump()), 200
     else:
         return jsonify(error="The sample does not contain real cluster unit entities for the scraper cluster instance"), 400
 

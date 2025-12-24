@@ -98,6 +98,16 @@ class LabelTemplateLLMProjection(BaseModel):
         
         return prediction_counter
     
+    def get_count_predicted_label_expected_value(self, label_name: str, expected_value: Any) -> int:
+        """takes the value of the label_name's predicted label, if it is the same as the expecte_value return 1 else 0"""
+        label_value_field = self.values.get(label_name)
+        if not label_value_field:
+            return 0
+        
+        return 1 if  label_value_field.value == expected_value else 0
+
+        
+    
 
 class LabelTemplateTruthProjection(BaseModel):
     """the instance of the ground truth of the label template entity"""

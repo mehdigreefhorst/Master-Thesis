@@ -3,7 +3,7 @@
 from collections import defaultdict
 from datetime import datetime
 import json
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 from app.database.entities.base_entity import BaseEntity, PyObjectId
@@ -69,6 +69,32 @@ class ClusterUnitEntityPredictedCategory(BaseModel):
                 aggregate_prediction_counter[label_name] += label_true_counter
         
         return aggregate_prediction_counter
+    
+    def get_label_template_id(self):
+        return self.predicted_categories[0].labels_prediction.label_template_id
+    
+    def get_count_predicted_category_equal_to_expected_value(self, label_name: str, expected_value: Any):
+        count = 0
+        for predicted_category in self.predicted_categories:
+            count += predicted_category.labels_prediction.get_count_predicted_label_expected_value(label_name=label_name,
+                                                                                          expected_value=expected_value)
+        return count
+    
+    def get_reasons(self, label_name: str, per_label_detail_label_name: str = "reason") -> List[str]:
+        reasons: List[str] = list()
+        for predicted_category in self.predicted_categories:
+            label_value = predicted_category.labels_prediction.values.get(label_name)
+            if not label_value:
+                reasons.append("")
+            else:
+                for per_label_details in label_value.per_label_details:
+                    if per_label_details.label == per_label_detail_label_name:
+                        reasons.append(per_label_details.value)
+        
+        return reasons
+
+
+
 
 
 class ClusterUnitEntity(BaseEntity):
@@ -171,4 +197,30 @@ class ClusterUnitEntity(BaseEntity):
         if not prediction_category:
             raise Exception("can't take value of prediction category that doesn't exist")
         return prediction_category.value
+    
 
+    def get_experiment_ids(self, filter_label_template_id: Optional[str] = None) -> List[PyObjectId]:
+        """gets the experiment_ids that the user has particpated in for a specific label_template_id"""
+        if filter_label_template_id is None:
+
+            return [experiment_id for experiment_id in self.predicted_category.keys()]
+        
+        return  [experiment_id for experiment_id, prediction_category in self.predicted_category.items() if prediction_category.get_label_template_id() ==  filter_label_template_id]
+
+
+    def get_count_predicted_label_equal_to_ground_truth(self, label_name: str, experiment_id: PyObjectId, label_template_id: PyObjectId):
+        ground_truth_value = self.get_value_of_ground_truth_variable(label_template_id=label_template_id,
+                                                                     variable_name=label_name)
+        predicted_category = self.predicted_category.get(experiment_id)
+        if not predicted_category:
+            return 0
+        return predicted_category.get_count_predicted_category_equal_to_expected_value(label_name=label_name, expected_value=ground_truth_value)
+    
+    def get_reasons_of_label_name_one_experiment(self, label_name: str, experiment_id: PyObjectId, per_label_detail_label_name: str = "reason") -> List[str]:
+        reasons: List[str] = list()
+        predicted_category = self.predicted_category.get(experiment_id)
+        if not predicted_category:
+            return reasons
+        
+        return predicted_category.get_reasons(label_name=label_name, per_label_detail_label_name=per_label_detail_label_name)
+        
