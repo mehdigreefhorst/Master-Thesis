@@ -11,9 +11,15 @@ import { clusterApi, experimentApi } from "@/lib/api";
 import { useAuthFetch } from "@/utils/fetch";
 import { useToast } from "@/hooks/use-toast";
 import { produce } from "immer";
+import { PromptCategory } from "@/types/experiment";
+import { ViewerContentRewrite } from "./ViewerContentRewrite";
 
-
-export default function ViewerPage(){
+export interface ViewerPageProps {
+  experimentType: PromptCategory 
+}
+export default function ViewerPage(
+  {experimentType}: ViewerPageProps
+){
   const authFetch = useAuthFetch()
   const router = useRouter()
   const { toast } = useToast()
@@ -55,8 +61,14 @@ export default function ViewerPage(){
       try {
         setIsLoading(true);
         console.log('Fetching sample cluster units for scraper cluster:', scraperClusterId);
+        let sampleUnitsLabelingFormatResponseAPI: GetSampleUnitsLabelingFormatResponse
+        if (experimentType === "classify_cluster_units"){
+          sampleUnitsLabelingFormatResponseAPI = await experimentApi.getSampleUnitsLabelingFormat(authFetch, scraperClusterId, currentLabelTemplateEntity.id);
 
-        const sampleUnitsLabelingFormatResponseAPI: GetSampleUnitsLabelingFormatResponse = await experimentApi.getSampleUnitsLabelingFormat(authFetch, scraperClusterId, currentLabelTemplateEntity.id);
+        } else {
+          sampleUnitsLabelingFormatResponseAPI = await experimentApi.getSampleUnitsStandaloneFormat(authFetch, scraperClusterId, currentLabelTemplateEntity.id)
+
+        }
         console.log('Sample cluster units response:', sampleUnitsLabelingFormatResponseAPI);
         setSampleUnitsLabelingFormatResponse(sampleUnitsLabelingFormatResponseAPI)
         
@@ -92,11 +104,15 @@ export default function ViewerPage(){
       if (!labelTemplateEntity) {
         sampleUnitsLabelingFormatResponseAPI = null;
       } else {
-        sampleUnitsLabelingFormatResponseAPI = await experimentApi.getSampleUnitsLabelingFormat(
-          authFetch,
-          scraperClusterId,
-          labelTemplateEntity.id
-        );
+
+        if (experimentType === "classify_cluster_units"){
+          sampleUnitsLabelingFormatResponseAPI = await experimentApi.getSampleUnitsLabelingFormat(authFetch, scraperClusterId, labelTemplateEntity.id);
+
+        } else {
+          sampleUnitsLabelingFormatResponseAPI = await experimentApi.getSampleUnitsStandaloneFormat(authFetch, scraperClusterId, labelTemplateEntity.id)
+
+        }
+
         currentClusterUnit = sampleUnitsLabelingFormatResponseAPI.experiment_unit_data[0];
         totalClusterUnits = sampleUnitsLabelingFormatResponseAPI.experiment_unit_data.length;
       }
@@ -274,8 +290,23 @@ export default function ViewerPage(){
         />
         {isLoading ?
         <ViewerSkeleton />
-      
-        : <ViewerContentClassify
+          
+        : experimentType === "classify_cluster_units" as PromptCategory ?(
+        <ViewerContentClassify
+          scraperClusterId={scraperClusterId}
+          labelTemplateEntity={currentLabelTemplateEntity}
+          clusterUnitEntityExperimentData={currentClusterUnitExperimentData}
+          allExperimentsModelInformation={sampleUnitsLabelingFormatResponse?.all_experiments_model_information}
+          isLastClusterUnitEntity={isLastClusterUnitEntity}
+          handleUpdateGroundTruth={handleUpdateGroundTruth}
+          labelsPossibleValues={sampleUnitsLabelingFormatResponse?.labels_possible_values}
+          handleCompleteSampleLabeling={handleCompleteSampleLabeling}
+          handleNext={handleNext}
+          setIsLoading={setIsLoading}
+          isLoading={isLoading}          
+        />) :
+        (
+          <ViewerContentRewrite
             scraperClusterId={scraperClusterId}
             labelTemplateEntity={currentLabelTemplateEntity}
             clusterUnitEntityExperimentData={currentClusterUnitExperimentData}
@@ -286,10 +317,10 @@ export default function ViewerPage(){
             handleCompleteSampleLabeling={handleCompleteSampleLabeling}
             handleNext={handleNext}
             setIsLoading={setIsLoading}
-            isLoading={isLoading}
-
-          
-        />}
+            isLoading={isLoading} 
+          />
+        )
+      }
 
       </div>
     </div>

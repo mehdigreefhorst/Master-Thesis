@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useAuthFetch } from '@/utils/fetch';
 import { labelTemplateApi } from '@/lib/api';
 import { LabelTemplateEntity } from '@/types/label-template';
@@ -53,19 +53,28 @@ export function LabelTemplateSelector({
   const [labelTemplateEntities, setLabelTemplateEntities] = useState<LabelTemplateEntity[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // Use refs for callbacks to avoid re-running effect when they change
+  const onSelectRef = useRef(onSelect);
+  const onLoadingChangeRef = useRef(onLoadingChange);
+
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+    onLoadingChangeRef.current = onLoadingChange;
+  }, [onSelect, onLoadingChange]);
+
   // Fetch label template entities when IDs change
   useEffect(() => {
     async function fetchLabelTemplates() {
       if (labelTemplateIds.length === 0) {
         setLabelTemplateEntities([]);
         setIsLoading(false);
-        onLoadingChange?.(false);
+        onLoadingChangeRef.current?.(false);
         return;
       }
 
       try {
         setIsLoading(true);
-        onLoadingChange?.(true);
+        onLoadingChangeRef.current?.(true);
 
         // Fetch all label templates for the provided IDs
         const fetchedTemplates = await Promise.all(
@@ -76,7 +85,7 @@ export function LabelTemplateSelector({
 
         // Auto-select first template if enabled and conditions are met
         if (autoSelectFirst && !selectedLabelTemplateId && fetchedTemplates.length === 1) {
-          onSelect(fetchedTemplates[0]);
+          onSelectRef.current(fetchedTemplates[0]);
         }
       } catch (error) {
         console.error('Error fetching label templates:', error);
@@ -88,12 +97,12 @@ export function LabelTemplateSelector({
         setLabelTemplateEntities([]);
       } finally {
         setIsLoading(false);
-        onLoadingChange?.(false);
+        onLoadingChangeRef.current?.(false);
       }
     }
 
     fetchLabelTemplates();
-  }, []);//labelTemplateIds, authFetch, toast, autoSelectFirst, selectedLabelTemplateId, onSelect, onLoadingChange]);
+  }, [labelTemplateIds, authFetch, toast, autoSelectFirst, selectedLabelTemplateId]); // Re-fetch when these critical dependencies change
 
   // Convert label template entities to SimpleSelectorItems
   const labelTemplateSelectorItems: SimpleSelectorItem[] = useMemo(() => {

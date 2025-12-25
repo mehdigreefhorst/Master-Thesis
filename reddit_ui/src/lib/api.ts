@@ -542,6 +542,21 @@ export const experimentApi = {
 
     return response
   },
+  async getSampleUnitsStandaloneFormat(
+    authFetch: ReturnType<typeof useAuthFetch>, 
+    scraperClusterId: string, 
+    filterLabelTemplateId: string
+    ): Promise<GetSampleUnitsLabelingFormatResponse> {
+    let experimentParamText = ""
+
+    experimentParamText += `&filter_label_template_id=${filterLabelTemplateId}`
+    
+    const data = await authFetch(`/experiment/get_sample_units_standalone_format?scraper_cluster_id=${scraperClusterId}${experimentParamText}`);
+    const response = await data.json()
+    if (response?.error){throw new Error(response.error)}
+
+    return response
+  },
   async createPrompt(
     authFetch: ReturnType<typeof useAuthFetch>,
     name: string,

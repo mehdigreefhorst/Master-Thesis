@@ -12,10 +12,11 @@ from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.database.entities.scraper_cluster_entity import StageStatus
 from app.requests.cluster_prep_requests import ScraperClusterId
-from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, ExperimentId, GetExperiments, GetInputEntities, GetSample, GetSampleUnits, GetSampleUnitsLabelingFormat, ParsePrompt, ParseRawPrompt, TestPrediction, UpdateExperimentThreshold, UpdateSample
+from app.requests.experiment_requests import CreateExperiment, CreatePrompt, CreateSample, ExperimentId, GetExperiments, GetInputEntities, GetSample, GetSampleUnits, GetSampleUnitsLabelingFormat, GetSampleUnitsStandaloneFormat, ParsePrompt, ParseRawPrompt, TestPrediction, UpdateExperimentThreshold, UpdateSample
 from app.responses.get_experiments_response import ClusterEntityInputCount, GetExperimentsResponse, InputEntitiesExperimentsResponse, PredictionsGroupedOutputFormat
 from app.services.cluster_prep_service import ClusterPrepService
 from app.services.experiment_service import ExperimentService
+from app.services.filtering_service import FilteringService
 from app.services.label_template_service import LabelTemplateService
 from app.utils.api_validation import validate_request_body, validate_query_params
 from app.utils.llm_helper import LlmHelper
@@ -497,6 +498,57 @@ def get_sample_units(query: GetSampleUnits):
         return jsonify(error="The sample does not contain real cluster unit entities for the scraper cluster instance"), 400
 
 
+@experiment_bp.route("/get_sample_units_standalone_format", methods=["GET"])
+@validate_query_params(GetSampleUnitsStandaloneFormat)
+@jwt_required()
+def get_sample_units_standalone_format(query: GetSampleUnitsStandaloneFormat):
+    user_id = get_jwt_identity()
+    current_user = get_user_repository().find_by_id(user_id)
+    if not current_user:
+        return jsonify(error="No such user"), 401
+    
+    scraper_cluster_entity = get_scraper_cluster_repository().find_by_id_and_user(user_id, query.scraper_cluster_id)
+    
+    if not scraper_cluster_entity:
+        return jsonify(error=f"Could not find associated scraper_cluster_instance for id= {query.scraper_cluster_id}"), 400
+    
+    if not scraper_cluster_entity.scraper_entity_id:
+        return jsonify(error="scraper is not yet initialized"), 409
+    
+    if not scraper_cluster_entity.stages.scraping == StatusType.Completed:
+        return jsonify(error="scraper is not completed yet"), 409
+    
+    experiment_entities = get_experiment_repository().find({"label_template_id": query.filter_label_template_id})
+    if not experiment_entities:
+        return jsonify(error=f"Could not find experiment entities with label_template_id : {query.filter_label_template_id}")
+    
+    experiment_entities_types = list({experiment.experiment_type for experiment in experiment_entities})
+    if not len(experiment_entities_types) == 1:
+        return jsonify(error=f"We have too many experiment entities or too few -> AMOUNT = {len(experiment_entities)}")
+    
+    if experiment_entities_types[0] == PromptCategory.Classify_cluster_units:
+        return jsonify(error= f"Experiment entities have the wrong Prompt Category. CANNOT BE a classifying experiment type")
+    
+    experiment_input_ids = list({experiment.input_id for experiment in experiment_entities})
+    if not len(experiment_input_ids) == 1:
+        return jsonify(error=f"too many input types are used for this!")
+    
+    cluster_unit_entities = FilteringService().get_cluster_units_experiment_entities(experiment_entities= experiment_entities)
+    if not cluster_unit_entities:
+        return jsonify(error=f"no cluster units found for this query")
+    cluster_unit_entities = ExperimentService().filter_cluster_units_predicted_experiments(cluster_unit_entities=cluster_unit_entities,
+                                                                                           filter_label_template_id=query.filter_label_template_id)
+    label_template_entity = get_label_template_repository().find_by_id(query.filter_label_template_id)
+    if not label_template_entity:
+        return jsonify(error=f"label template entity is not found for id: {query.filter_label_template_id}")
+    get_sample_unit_return_format = LabelTemplateService.convert_sample_cluster_units_return_standalone_format(cluster_unit_entities, label_template_entity)
+    logger.info(f"len(returnable_cluster_units) = {len(get_sample_unit_return_format.experiment_unit_data)}")
+
+    if get_sample_unit_return_format:
+        return jsonify(get_sample_unit_return_format.model_dump()), 200
+    else:
+        return jsonify(error="The sample does not contain real cluster unit entities for the scraper cluster instance"), 400
+
 @experiment_bp.route("/get_sample_units_labeling_format", methods=["GET"])
 @validate_query_params(GetSampleUnitsLabelingFormat)
 @jwt_required()
@@ -532,9 +584,10 @@ def get_sample_units_labeling_format(query: GetSampleUnitsLabelingFormat):
     #     get_sample_repository().update(sample_enity.id, {"sample_labeled_status": StatusType.Ongoing})
 
     logger.info(f"len(sample_enity.sample_cluster_unit_ids) = {len(sample_enity.sample_cluster_unit_ids)}")
+    label_template_entity = get_label_template_repository().find_by_id(query.filter_label_template_id)
     if not sample_enity.sample_label_template_labeled_status or query.filter_label_template_id not in sample_enity.sample_label_template_labeled_status:
         return jsonify(error=f"add label_template_ids to sample first {query.filter_label_template_id} not yet added to sample: {sample_enity.id}"), 400
-    label_template_entity = get_label_template_repository().find_by_id(query.filter_label_template_id)
+    
 
     cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_enity.sample_cluster_unit_ids)
 

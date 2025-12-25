@@ -1,13 +1,13 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { ExperimentCard, ExperimentData } from "./ExperimentCard"
 import { useRouter } from "next/navigation";
 import { experimentApi } from "@/lib/api";
 import { useAuthFetch } from "@/utils/fetch";
-import { Button, Input, ThresholdSlider } from "../ui";
+import { BaseSelectorItem, Button, Input, ThresholdSlider } from "../ui";
 import { PageHeader } from "../layout";
 import { TestPredictionModal } from "./TestPredictionModal";
 import { useToast } from "@/components/ui/use-toast";
-import { ExperimentEntity, FilterExperimentType, GetExperimentsResponse } from "@/types/experiment";
+import { ExperimentEntity, FilterExperimentType, GetExperimentsResponse, PromptCategory } from "@/types/experiment";
 import { SimpleSelector } from "../common/SimpleSelector";
 import { LabelTemplateSelector } from "../common/LabelTemplateSelector";
 import { LabelTemplateEntity } from "@/types/label-template";
@@ -18,7 +18,7 @@ interface ExperimentsSearchBarResultsProps {
   isLoading: boolean;
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>
   canCreateExperiments: boolean;
-  filterExperimentType: FilterExperimentType
+  defaultFilterExperimentType?: FilterExperimentType | null
 }
 
 export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsProps> = ({
@@ -26,7 +26,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
   isLoading,
   setIsLoading,
   canCreateExperiments,
-  filterExperimentType
+  defaultFilterExperimentType = null
 }) => {
   const [currentLabelTemplateEntity, setCurrentLabelTemplateEntity] = useState<LabelTemplateEntity | null>(null);
   const [filterModel, setFilterModel] = useState<string>('all');
@@ -36,6 +36,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
   const [globalThreshold, setGlobalThreshold] = useState<number | null>(null);
   const [tempThresholdValue, setTempThresholdValue] = useState<number>(0.5);
   const [showThresholdSlider, setShowThresholdSlider] = useState(false);
+  const [filterExperimentType, setFilterExperimentType] = useState<PromptCategory | null>(defaultFilterExperimentType)
 
   // Test modal state
   const [showTestModal, setShowTestModal] = useState(false);
@@ -45,17 +46,24 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
   const authFetch = useAuthFetch();
   const { toast } = useToast();
   const thresholdDropdownRef = useRef<HTMLDivElement>(null);
+  const experimentsRef = useRef<ExperimentData[]>([]);
 
-  const uniqueLabelTemplateIds = Array.from(new Set(experiments.map(p => p.labelTemplateId)));
+  const uniqueLabelTemplateIds = useMemo(() =>
+    Array.from(new Set(experiments.map(p => p.labelTemplateId))),
+    [experiments]
+  );
 
-  
-  const uniqueModels = Array.from(new Set(experiments.map(p => p.model_id)));
+  const uniqueModels = useMemo(() =>
+    Array.from(new Set(experiments.map(p => p.model_id))),
+    [experiments]
+  );
   const filteredExperiments = experiments.filter(experiment => {
     const matchesSearch = experiment.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           experiment.model_id.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = filterModel === 'all' || experiment.model_id === filterModel;
-    const matchesLabelTemplateId = (currentLabelTemplateEntity === null || experiment.labelTemplateId === currentLabelTemplateEntity.id)
-    return matchesSearch && matchesFilter && matchesLabelTemplateId;
+    const matchesLabelTemplateId = (currentLabelTemplateEntity === null || experiment.labelTemplateId === currentLabelTemplateEntity.id);
+    const matchesFilterExperimentType = (filterExperimentType === null || experiment.experimentType === filterExperimentType);
+    return matchesSearch && matchesFilter && matchesLabelTemplateId && matchesFilterExperimentType;
   });
 
   const handleNewExperiment = () => {
@@ -125,7 +133,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
 
       try {
         // Fetch only the updated experiment
-        const experiments = await experimentApi.getExperiments(authFetch, scraperClusterId, [experiment_id], globalThreshold, filterExperimentType);
+        const experiments = await experimentApi.getExperiments(authFetch, scraperClusterId, [experiment_id], globalThreshold);
         const updatedExperiments = experiments.map(transformExperimentData);
 
         if (updatedExperiments.length > 0) {
@@ -206,6 +214,11 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
     };
   };
 
+  // Keep experimentsRef in sync with experiments state
+  useEffect(() => {
+    experimentsRef.current = experiments;
+  }, [experiments]);
+
   // Fetch experiments on mount
   useEffect(() => {
     async function fetchExperiments() {
@@ -218,7 +231,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       try {
         setIsLoading(true);
         setError(null);
-        const experiments = await experimentApi.getExperiments(authFetch, scraperClusterId, undefined, globalThreshold, filterExperimentType);
+        const experiments = await experimentApi.getExperiments(authFetch, scraperClusterId, undefined, globalThreshold);
 
         // Transform backend data to ExperimentData format
         const transformedData: ExperimentData[] = experiments.map(transformExperimentData);
@@ -253,13 +266,13 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
     fetchExperiments();
   }, [scraperClusterId, authFetch, globalThreshold]);
 
-  // Poll running experiments every second
+  // Poll running experiments every 10 seconds
   useEffect(() => {
     if (!scraperClusterId) return;
 
     const pollRunningExperiments = async () => {
-      // Find all experiments with "running" status
-      const runningExperimentIds = experiments
+      // Find all experiments with "running" status using the ref
+      const runningExperimentIds = experimentsRef.current
         .filter(exp => exp.status === 'ongoing')
         .map(exp => exp.id);
 
@@ -268,7 +281,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
 
       try {
         // Fetch only the running experiments
-        const experiments = await experimentApi.getExperiments(authFetch, scraperClusterId, runningExperimentIds, globalThreshold, filterExperimentType);
+        const experiments = await experimentApi.getExperiments(authFetch, scraperClusterId, runningExperimentIds, globalThreshold);
         const updatedExperiments = experiments.map(transformExperimentData);
 
         // Update the experiments state by merging the new data, preserving original names
@@ -284,12 +297,12 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       }
     };
 
-    // Set up interval to poll every 1 second (1000ms)
+    // Set up interval to poll every 10 seconds (10000ms)
     const intervalId = setInterval(pollRunningExperiments, 10000);
 
     // Cleanup interval on unmount or when dependencies change
     return () => clearInterval(intervalId);
-  }, [experiments, scraperClusterId, authFetch]);
+  }, [scraperClusterId, authFetch, globalThreshold]);
 
   // Handle click outside threshold dropdown
   useEffect(() => {
@@ -313,22 +326,10 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
 
   }
 
-  // Loading state
-    if (isLoading) {
-      return (
-        <div className="p-8">
-          <div className="max-w-[95vw] mx-auto">
-            <PageHeader title="Experiments Dashboard" className="mb-6" />
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-gray-600 font-medium">Loading experiments...</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
+  const handleSelectFilterExperimentType = (item: BaseSelectorItem) => {
+    console.log("item = ", item)
+    setFilterExperimentType(item.id as FilterExperimentType)
+  }
 
   // Error state
     if (error && experiments.length === 0) {
@@ -422,6 +423,17 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
             onSelect={handleSelectCurrentLabelTemplateEntity}
             autoSelectFirst={false}
             onLoadingChange={setIsLoading}
+          />
+
+          <SimpleSelector
+            items={['classify_cluster_units', 'rewrite_cluster_unit_standalone', 'summarize_prediction_notes']}
+            selectedItemId={filterExperimentType}
+            onSelect={handleSelectFilterExperimentType}
+            onClear={() => setFilterExperimentType(null)}
+            placeholder="Select Experiment Type"
+            title="Select Experiment Type"
+            enableSearch={false}
+            disabled={isLoading}
           />
 
           <Button variant="primary" onClick={handleNewExperiment}>

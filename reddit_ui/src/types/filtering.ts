@@ -35,10 +35,10 @@ export interface FilterMisc {
 export interface FilteringFields {
   label_template_id: string
   input_id: string // # Either an experiment_id, filtering_id or cluster_entity_id
-  input_type: "experiment" | "filtering" | "cluster"
-  label_template_filter_and?: Record<string, LabelTemplateFilter>
-  label_template_filter_or?: Record<string, LabelTemplateFilter>
-  filter_misc?: FilterMisc
+  input_type: "experiment" | "filtering" | "cluster" | "sample";
+  label_template_filter_and?: Record<string, LabelTemplateFilter>;
+  label_template_filter_or?: Record<string, LabelTemplateFilter>;
+  filter_misc?: FilterMisc;
 }
 
 export interface FilteringRequest extends FilteringFields {

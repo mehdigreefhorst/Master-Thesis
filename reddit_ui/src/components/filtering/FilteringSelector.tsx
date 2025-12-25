@@ -10,7 +10,7 @@ interface FilteringItem extends BaseSelectorItem {
   id: string;
   label: string;
   label_template_id: string;
-  input_type: "experiment" | "filtering" | "cluster";
+  input_type: "experiment" | "filtering" | "cluster" | "sample";
   created_at: Date;
 }
 

@@ -53,17 +53,18 @@ class FilteringService:
         
 
     @staticmethod
-    def get_input_cluster_units(input_id: PyObjectId, input_type: Literal["experiment", "filtering", "cluster"]) -> Tuple[List[ClusterUnitEntity], ExperimentEntity | None]:
+    def get_input_cluster_units(input_id: PyObjectId, input_type: Literal["experiment", "sample", "filtering", "cluster"]) -> Tuple[List[ClusterUnitEntity], ExperimentEntity | None]:
         filter = dict()
         experiment_entity = None
         if input_type == "experiment":
             cluster_unit_entities, experiment_entity = FilteringService().get_input_cluster_units_from_experiment_entity(experiment_id=input_id)
+        elif input_type == "sample":
+            sample_enity = get_sample_repository().find_by_id(input_id)
+            cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_enity.sample_cluster_unit_ids)
         elif input_type == "filtering":
-            
-            # :TODO to implement -> Change requirement of sample_entity_id to be present in experiment -> change to input_id
-            raise Exception("No implementation yet for filtering!")
-
-            cluster_unit_entities = ""
+            filtering_entity = get_filtering_repository().find_by_id(input_id)
+            cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(filtering_entity.output_cluster_unit_ids)
+           
         elif input_type == "cluster":
             cluster_unit_entities = ClusterPrepService().find_cluster_units_from_cluster_id_message_type(cluster_entity_id=input_id, reddit_message_type="all")
         
@@ -183,3 +184,20 @@ class FilteringService:
         inserted_id = get_filtering_repository().insert(filtering_entity).inserted_id
         logger.info(f"Inserted filtering_entity with id: {inserted_id}")
         return inserted_id
+
+
+    @staticmethod
+    def get_cluster_units_experiment_entities(experiment_entities: List[ExperimentEntity]) -> List[ClusterUnitEntity]:
+        """gets the cluster units from the experiment_entities that are its input """
+        experiment_input_ids_types = list({(experiment.input_id, experiment.input_type) for experiment in experiment_entities})
+        cluster_unit_entity_dict: Dict[str, List[ClusterUnitEntity]] = dict()
+        for input_id, input_type in experiment_input_ids_types:
+            cluster_unit_entities, _ = FilteringService().get_input_cluster_units(input_id=input_id,
+                                                                               input_type=input_type)
+            for cluster_unit_entity in cluster_unit_entities:
+                if not cluster_unit_entity_dict.get(cluster_unit_entity.id):
+                    cluster_unit_entity_dict[cluster_unit_entity.id] = cluster_unit_entity
+        return list(cluster_unit_entity_dict.values())
+                    
+            
+            

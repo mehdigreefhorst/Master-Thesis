@@ -79,6 +79,15 @@ class LabelTemplateService:
         return sample_units_return_format_labeling
     
     @staticmethod
+    def convert_sample_cluster_units_return_standalone_format(cluster_unit_entities: List[ClusterUnitEntity], label_template_entity: LabelTemplateEntity) -> GetSampleUnitsLabelingFormatResponse:
+
+        sample_units_return_format_labeling: GetSampleUnitsLabelingFormatResponse = GetSampleUnitsLabelingFormatResponse.create_from_cluster_units_label_template_id(
+            cluster_unit_entities=cluster_unit_entities,
+            label_template=label_template_entity
+        )
+        return sample_units_return_format_labeling
+    
+    @staticmethod
     def update_existing_ground_truth_value(cluster_unit_entity_id: str,
                                            label_template_id: str,
                                            ground_truth_label_name: str,

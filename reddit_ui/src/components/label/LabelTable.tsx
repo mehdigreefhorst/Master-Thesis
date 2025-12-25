@@ -49,10 +49,10 @@ export const LabelTable: React.FC<LabelTableProps> = ({
       <table className="w-full table-fixed border-separate border-spacing-0 bg-white rounded-lg shadow-(--shadow-sm)">
         <thead>
           <tr>
-            <th className="bg-(--secondary) p-3 text-left font-semibold text-sm text-(--secondary-foreground) border-b-2 border-(--border) w-1/4">
+            <th className="bg-(--secondary) p-3 text-left font-semibold text-sm text-(--secondary-foreground) border-b-2 border-(--border) w-1/10">
               Category
             </th>
-            <th className="bg-(--secondary) p-3 text-center font-semibold text-sm text-(--secondary-foreground) border-b-2 border-(--border) w-[10%]">
+            <th className="bg-(--secondary) pl-3  text-center font-semibold text-sm text-(--secondary-foreground) border-b-2 border-(--border) w-1/10">
               Truth
             </th>
             {allExperimentsModelInformation.map((model, index) => (

@@ -33,7 +33,7 @@ export interface ViewerContentProps {
  * Shared viewer component that displays cluster units with label comparison.
  * Can be configured with different data fetching strategies.
  */
-export function ViewerContent({
+export function ViewerContentRewrite({
   scraperClusterId,
   labelTemplateEntity,
   clusterUnitEntityExperimentData,

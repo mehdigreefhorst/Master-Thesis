@@ -76,6 +76,11 @@ class GetSampleUnitsLabelingFormat(BaseModel):
     filter_label_template_id: Optional[PyObjectId] = None
 
 
+class GetSampleUnitsStandaloneFormat(BaseModel):
+    scraper_cluster_id: PyObjectId
+    filter_label_template_id: PyObjectId
+    experiment_id: Optional[PyObjectId] = None
+
 class GetSample(BaseModel):
     scraper_cluster_id: PyObjectId
 
