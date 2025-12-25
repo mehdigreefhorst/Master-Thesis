@@ -82,6 +82,7 @@ export interface LabelResult{
     count_match_ground_truth: number; // How many runs matched groun (0-3)
     total_runs: number; // Total runs (default 3)
     reasons?: string[] //Optional[List[str]] = None
+    per_label_labels?: (string | boolean | number)[]
 }
 
 export interface SingleUnitOneLabelAllExperiments {

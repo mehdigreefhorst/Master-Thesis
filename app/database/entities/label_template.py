@@ -394,6 +394,13 @@ class LabelTemplateEntity(BaseEntity):
             labels.append(label.label)
         
         return labels
+    
+    def get_per_label_labels(self):
+        per_label_labels: List[str] = list()
+        for label in self.llm_prediction_fields_per_label:
+            per_label_labels.append(label)
+        
+        return per_label_labels
 
 
 

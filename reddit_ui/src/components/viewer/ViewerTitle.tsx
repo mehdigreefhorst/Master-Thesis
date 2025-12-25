@@ -1,5 +1,5 @@
 'use client'
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../layout";
 import { useAuthFetch } from "@/utils/fetch";
 import {  labelTemplateApi } from "@/lib/api";
@@ -20,7 +20,7 @@ export interface ViewerTitleProps{
   handleNext: () => void;
   handlePrevious: () => void;
   currentLabelTemplateEntity: LabelTemplateEntity | null;
-  setCurrentLabelTemplateEntity: (labelTemplateEntity: LabelTemplateEntity) => void;
+  setCurrentLabelTemplateEntity: (labelTemplateEntity: LabelTemplateEntity | null) => void;
   setIsLastClusterUnitEntity: (isLast: boolean) => void;
 }
 export default function ViewerTitle (
@@ -37,15 +37,15 @@ export default function ViewerTitle (
 ) {
 
   const router = useRouter()
-  
+
   const authFetch = useAuthFetch();
   const { toast } = useToast()
 
-  
-  
-  
+  const [labelTemplateEntities, setLabelTemplateEntities] = useState<LabelTemplateEntity[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState<boolean>(true);
+
   const searchParams = useSearchParams();
-  
+
   const labelTemplateIdsParam = searchParams.get('label_template_ids');
 
   if (!labelTemplateIdsParam) {
@@ -67,26 +67,58 @@ export default function ViewerTitle (
   const labelTemplateIds = useMemo(() => {
       if (labelTemplateIdsParam) {
         return labelTemplateIdsParam.split(',').filter(id => id.trim());
-      } 
+      }
       return [];
     }, [labelTemplateIdsParam]);
 
-  const handleSelectLabelTemplateId = async (item: SimpleSelectorItem) => {
-    try {
-      setIsLoading(true)
-      const labelTemplateEntity = await labelTemplateApi.getLabelTemplateById(authFetch, item.id)
-      setCurrentLabelTemplateEntity(labelTemplateEntity)
-    } catch (error) {
-        console.error('Error fetching label_templates', error);
+  // Fetch label template entities when component mounts or IDs change
+  useEffect(() => {
+    async function fetchLabelTemplates() {
+      if (labelTemplateIds.length === 0) return;
+
+      try {
+        setIsLoadingTemplates(true);
+        // Fetch all label templates for the provided IDs
+        const fetchedTemplates = await Promise.all(
+          labelTemplateIds.map(id => labelTemplateApi.getLabelTemplateById(authFetch, id))
+        );
+
+        setLabelTemplateEntities(fetchedTemplates);
+
+        // // Automatically select the first template if none is selected
+        // if (!currentLabelTemplateEntity && fetchedTemplates.length > 0) {
+        //   setCurrentLabelTemplateEntity(fetchedTemplates[0]);
+        // }
+      } catch (error) {
+        console.error('Error fetching label templates:', error);
         toast({
           title: "Error",
-          description: `Failed to load label template = error: ${error}`,
+          description: `Failed to load label templates: ${error}`,
           variant: "destructive"
         });
       } finally {
-        setIsLoading(false);
-      } 
+        setIsLoadingTemplates(false);
+      }
+    }
 
+    fetchLabelTemplates();
+  }, [labelTemplateIds, authFetch, toast]);
+
+  // Convert label template entities to SimpleSelectorItems
+  const labelTemplateSelectorItems: SimpleSelectorItem[] = useMemo(() => {
+    return labelTemplateEntities.map(template => ({
+      id: template.id,
+      name: template.label_template_name,
+      value: template
+    }));
+  }, [labelTemplateEntities]);
+
+  const handleSelectLabelTemplateId = (item: SimpleSelectorItem) => {
+    // Since we already have the entities loaded, just find and set it
+    const selectedTemplate = labelTemplateEntities.find(t => t.id === item.id);
+    if (selectedTemplate) {
+      setCurrentLabelTemplateEntity(selectedTemplate);
+    }
   }
   
   return (
@@ -99,10 +131,13 @@ export default function ViewerTitle (
       disablePrevious={currentUnitIndex <= 0}
       disableNext={currentUnitIndex >= totalClusterUnits - 1}
       menuItem={
-        <SimpleSelector 
-          items={labelTemplateIds}
+        <SimpleSelector
+          items={labelTemplateSelectorItems}
           selectedItemId={currentLabelTemplateEntity?.id}
-          onSelect={handleSelectLabelTemplateId}/>}
+          onSelect={handleSelectLabelTemplateId}
+          onClear={() => setCurrentLabelTemplateEntity(null)}/>
+          
+          }
       className="mb-6"
     />
   )

@@ -873,6 +873,7 @@ class LabelResult(BaseModel):
     count_match_ground_truth: int #; // How many runs matched groun (0-3)
     total_runs: int #; // Total runs (default 3)
     reasons: Optional[List[str]] = None
+    per_label_labels: Optional[Dict[str, List[str | bool | int | float]]] = None
 
 
 class SingleUnitOneLabelAllExperiments(BaseModel):
@@ -911,6 +912,7 @@ class GetSampleUnitsLabelingFormatResponse(BaseModel):
     all_experiments_model_information: List[ExperimentModelInformation] = Field(default_factory=list) # all with the same label_template_id
     completed_insert_model_information: bool = False
     label_names: List[LabelName] = Field(default_factory=list)
+    per_label_names: List[LabelName] = Field(default_factory=list)
     experiment_unit_data: List[ExperimentAllPredictedData] = Field(default_factory=list) # List of cluster_units with experiment data
 
 
@@ -934,6 +936,7 @@ class GetSampleUnitsLabelingFormatResponse(BaseModel):
         experiments_sorted = sorted([experiment for experiment in experiment_entities_dict.values() if experiment], key=lambda x: x.created_at)
         # insert into self.labels the labels of the first experiment, all experiments have the same label_template so the labels are the same for all experiments
         self.label_names = experiments_sorted[0].label_template_labels
+        self.per_label_names = experiments_sorted[0].label_template_per_label_labels
         for index, experiment in enumerate(experiments_sorted):
             experiment_model_information = ExperimentModelInformation(
                 experiment_id = experiment.id,
@@ -969,8 +972,13 @@ class GetSampleUnitsLabelingFormatResponse(BaseModel):
                                                             count_match_ground_truth=cluster_unit.get_count_predicted_label_equal_to_ground_truth(label_name=label_name,
                                                                                                                                                   experiment_id=experiment_model_information.experiment_id,
                                                                                                                                                   label_template_id=label_template_id),
-                                                            reasons=cluster_unit.get_reasons_of_label_name_one_experiment(experiment_id=experiment_model_information.experiment_id,
-                                                                                                                          label_name=label_name))
+                                                            
+                                                            reasons=cluster_unit.get_per_label_runs_one_experiment(experiment_id=experiment_model_information.experiment_id,
+                                                                                                                   label_name=label_name),
+                                                            per_label_labels=cluster_unit.get_per_label_dict_single_experiment(experiment_id=experiment_model_information.experiment_id,
+                                                                                                                               label_name=label_name,
+                                                                                                                               per_label_detail_label_names=self.per_label_names))
+                                                                                                                          
                     one_label_experiment_data.results.append(label_result)
                 experiment_predicted_data.label_name_predicted_data.append(one_label_experiment_data)
             self.experiment_unit_data.append(experiment_predicted_data)

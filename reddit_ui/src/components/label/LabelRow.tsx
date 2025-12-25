@@ -118,7 +118,7 @@ export const LabelRow: React.FC<LabelRowProps> = ({
                   </span>
                 )}
               </div>
-              <ReasoningIcon reasons={result.reasons} setIsOpen={() => toggleOpen(index)} isOpen={openStates[index]}/>
+              <ReasoningIcon per_label_labels={result.per_label_labels} setIsOpen={() => toggleOpen(index)} isOpen={openStates[index]}/>
 
             </div>
           )}

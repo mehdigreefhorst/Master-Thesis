@@ -96,6 +96,7 @@ class ExperimentEntity(BaseEntity):
     experiment_type: PromptCategory
     label_template_id: PyObjectId
     label_template_labels: List[str] = Field(default_factory=list)
+    label_template_per_label_labels: List[str] = Field(default_factory=list)
     model_id: str
     model_pricing: Optional[Pricing] = None
     experiment_cost: Optional[ExperimentCost] = None

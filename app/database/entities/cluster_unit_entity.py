@@ -216,7 +216,7 @@ class ClusterUnitEntity(BaseEntity):
             return 0
         return predicted_category.get_count_predicted_category_equal_to_expected_value(label_name=label_name, expected_value=ground_truth_value)
     
-    def get_reasons_of_label_name_one_experiment(self, label_name: str, experiment_id: PyObjectId, per_label_detail_label_name: str = "reason") -> List[str]:
+    def get_per_label_runs_one_experiment(self, label_name: str, experiment_id: PyObjectId, per_label_detail_label_name: str = "reason") -> List[str | bool | int | float]:
         reasons: List[str] = list()
         predicted_category = self.predicted_category.get(experiment_id)
         if not predicted_category:
@@ -224,3 +224,13 @@ class ClusterUnitEntity(BaseEntity):
         
         return predicted_category.get_reasons(label_name=label_name, per_label_detail_label_name=per_label_detail_label_name)
         
+    def get_per_label_dict_single_experiment(self, label_name: str, experiment_id: PyObjectId, per_label_detail_label_names: List[str]) -> Dict[str, List[str | bool | int | float]]:
+        """gets all the per label details of a single experiment inside a cluster unit. Returns a dict of the per label name"""
+        per_label_dict = dict()
+        for per_label in per_label_detail_label_names:
+            per_label_list = self.get_per_label_runs_one_experiment(label_name=label_name,
+                                                                           experiment_id=experiment_id,
+                                                                           per_label_detail_label_name=per_label)
+            per_label_dict[per_label] = per_label_list
+        
+        return per_label_dict
