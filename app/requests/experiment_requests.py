@@ -10,6 +10,7 @@ class GetExperiments(BaseModel):
     experiment_ids: Optional[List[PyObjectId]] = None
     user_threshold: Optional[float] = None #  0-1 threshold proportion of how many runs a classification must have become true. If not set, the experiment specific one is used
     filter_experiment_type: Optional[PromptCategory] = None
+    filter_label_template_ids: Optional[List[str]] = None
 
 class CreateExperiment(BaseModel):
     scraper_cluster_id: PyObjectId

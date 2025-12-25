@@ -3,6 +3,7 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { TruncatedText } from '../ui/TruncatedText';
+import { Ribbon } from '../ui/Ribbon';
 import { MetricBar } from './MetricBar';
 import { PredictionMetricVisualization, PredictionMetric } from './PredictionMetrics';
 import { StatusType } from '@/types/scraper-cluster';
@@ -10,6 +11,7 @@ import { TokenStatistics as TokenStatsDisplay } from './TokenStatistics';
 import { experimentApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
 import { useToast } from '@/components/ui/use-toast';
+import { PromptCategory, ReasoningEffort } from '@/types/experiment';
 
 export interface TokenStatistics {
   total_successful_predictions: number;
@@ -52,19 +54,20 @@ export interface ExperimentData {
   runsPerUnit: 1 | 2 | 3 | 4 | 5;
   thresholdRunsTrue: 1 | 2 | 3 | 4 | 5;
   status: StatusType
-  reasoningEffort: null | "low" | "medium" | "high";
+  reasoningEffort: ReasoningEffort
   tokenStatistics?: TokenStatistics;
   experimentCost?: ExperimentCost;
   labelTemplateId: string;
+  experimentType: PromptCategory
 }
 
 interface ExperimentCardProps {
   experiment: ExperimentData;
-  onView?: (experiment_id: string, label_template_id: string) => void;
-  onClone?: (experiment_id: string) => void;
-  onContinue?: (experiment_id: string) => void;
-  onFilterSelect?: (experiment_id: string, label_template_id: string) => void;
-  onTest?: (experiment_id: string) => void;
+  onView?: (experiment: ExperimentData) => void ; //experiment_id: string, label_template_id: string) => void;
+  onClone?: (experiment: ExperimentData) => void;
+  onContinue?: (experiment: ExperimentData) => void;
+  onFilterSelect?: (experiment: ExperimentData) => void;
+  onTest?: (experiment: ExperimentData) => void;
   onThresholdUpdate?: (experiment_id: string) => void;
   className?: string;
 }
@@ -129,6 +132,34 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
 
   const statusStyles = getStatusStyles(experiment.status);
 
+  // Get experiment type ribbon configuration
+  const getExperimentTypeConfig = (type: PromptCategory): { bg: string; label: string } => {
+    switch (type) {
+      case 'classify_cluster_units':
+        return {
+          bg: '#7C3AED', // Purple
+          label: 'Classify'
+        };
+      case 'rewrite_cluster_unit_standalone':
+        return {
+          bg: '#059669', // Green
+          label: 'Enrich'
+        };
+      case 'summarize_prediction_notes':
+        return {
+          bg: '#F59E0B', // Amber
+          label: 'Summarize'
+        };
+      default:
+        return {
+          bg: '#6B7280', // Gray
+          label: type
+        };
+    }
+  };
+
+  const experimentTypeConfig = getExperimentTypeConfig(experiment.experimentType);
+
   const handleThresholdUpdate = async (newThreshold: number) => {
     try {
       setIsUpdatingThreshold(true);
@@ -164,7 +195,18 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
   };
 
   return (
-    <Card className={`p-4 hover:shadow-(--shadow-md) transition-shadow duration-200 ${className}`}>
+    <Card className={`p-4 pl-8 hover:shadow-(--shadow-md) transition-shadow duration-200 relative overflow-visible ${className}`}>
+      {/* Experiment Type Ribbon */}
+      <Ribbon
+        text={experimentTypeConfig.label}
+        backgroundColor={experimentTypeConfig.bg}
+        textColor="#FFFFFF"
+        size="sm"
+        corner='top-right'
+
+      />
+
+
       {/* Header */}
       <div className="flex justify-between items-start mb-3">
         <div className="flex-1">
@@ -185,35 +227,35 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
               <Button
                 variant="invisible"
                 className="mt-0! py-1! px-2! text-xs"
-                onClick={() => onTest?.(experiment.id)}
+                onClick={() => onTest?.(experiment)}
               >
                 Test
               </Button>
               <Button
                 variant="invisible"
                 className="mt-0! py-1! px-2! text-xs"
-                onClick={() => onContinue?.(experiment.id)}
+                onClick={() => onContinue?.(experiment)}
               >
                 Continue
               </Button>
               <Button
                 variant="invisible"
                 className="mt-0! py-1! px-2! text-xs"
-                onClick={() => onView?.(experiment.id, experiment.labelTemplateId)}
+                onClick={() => onView?.(experiment)}
               >
                 View
               </Button>
               <Button
                 variant="invisible"
                 className="mt-0! py-1! px-2! text-xs"
-                onClick={() => onFilterSelect?.(experiment.id, experiment.labelTemplateId)}
+                onClick={() => onFilterSelect?.(experiment)}
               >
                 Filter
               </Button>
               <Button
                 variant="invisible"
                 className="mt-0! !py-1 px-2! text-xs"
-                onClick={() => onClone?.(experiment.id)}
+                onClick={() => onClone?.(experiment)}
               >
                 Clone
               </Button>

@@ -12,6 +12,7 @@ import { PromptEntity, testPredictionsOutput } from "@/types/prompt";
 import { MediaStrategySkipType } from "@/types/cluster-prep";
 import { CreateLabelTemplateRequest, LabelTemplateEntity } from "@/types/label-template";
 import { FilteringFields, filteringResponseCount, FilteringRequest, FilteringResponseClusterUnits, FilteringCreateRequest, FilteringEntityId, FilteringEntity } from "@/types/filtering";
+import { ExperimentEntity, GetExperimentsResponse } from "@/types/experiment";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || 'http://localhost:5001';
 
@@ -646,8 +647,9 @@ export const experimentApi = {
     scraperClusterId: string,
     experimentIds?: string[],
     userThreshold?: number | null,
-    filterExperimentType?: 'classify_cluster_units' | 'rewrite_cluster_unit_standalone' | 'summarize_prediction_notes' | null
-  ) {
+    filterExperimentType?: 'classify_cluster_units' | 'rewrite_cluster_unit_standalone' | 'summarize_prediction_notes' | null,
+    filterLabelTemplateIds?: string[] | null 
+  ): Promise<GetExperimentsResponse[]> {
     if (experimentIds) {
       console.log("experimentIds = ", experimentIds.toString())
     }
@@ -664,6 +666,10 @@ export const experimentApi = {
 
     if (filterExperimentType) {
       experimentParamText += `&filter_experiment_type=${filterExperimentType}`
+    }
+
+    if (filterLabelTemplateIds) {
+      experimentParamText += `&filter_label_template_ids=[${filterLabelTemplateIds}]`
     }
 
     console.log("experimentParamText = ", experimentParamText)

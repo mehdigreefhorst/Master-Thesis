@@ -523,7 +523,8 @@ class ExperimentService:
                                                          reasoning_effort=experiment.reasoning_effort,
                                                          token_statistics=experiment.token_statistics,
                                                          experiment_cost=experiment.experiment_cost,
-                                                         status=experiment.status)
+                                                         status=experiment.status,
+                                                         experiment_type=experiment.experiment_type)
             
             returnable_experiments.append(experiment_response)  
         

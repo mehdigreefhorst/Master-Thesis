@@ -7,12 +7,15 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { HeaderStep } from '@/components/layout/HeaderStep';
 import { SampleView } from '@/components/sample/SampleView';
 import { ExperimentsSearchBarResults } from '@/components/experiments/experimentsSearchBarResults';
+import { FilterExperimentType } from '@/types/experiment';
 
 function ExperimentsPageContent() {
   const searchParams = useSearchParams();
   const scraperClusterId = searchParams.get('scraper_cluster_id');
 
   const [canCreateExperiments, setCanCreateExperiments] = useState(false)
+
+  const FilterExperimentType: FilterExperimentType = "classify_cluster_units"
 
   const [isLoading, setIsLoading] = useState(true);  
 
@@ -28,7 +31,7 @@ function ExperimentsPageContent() {
         <SampleView scraperClusterId={scraperClusterId ?? ""} setCanCreateExperiments={setCanCreateExperiments}/>
         
         
-        <ExperimentsSearchBarResults scraperClusterId={scraperClusterId} isLoading={isLoading} setIsLoading={setIsLoading} canCreateExperiments={canCreateExperiments}/>
+        <ExperimentsSearchBarResults scraperClusterId={scraperClusterId} isLoading={isLoading} setIsLoading={setIsLoading} canCreateExperiments={canCreateExperiments} filterExperimentType={FilterExperimentType} />
 
         
 

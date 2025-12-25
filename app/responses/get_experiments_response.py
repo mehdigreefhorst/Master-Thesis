@@ -13,7 +13,7 @@ from app.database.entities.cluster_unit_entity import ClusterUnitEntity, Cluster
 from app.database.entities.experiment_entity import ExperimentCost, ExperimentEntity, ExperimentTokenStatistics, PrevalenceDistribution, TokenUsage
 from app.database.entities.filtering_entity import FilteringEntity
 from app.database.entities.label_template import LabelTemplateEntity
-from app.database.entities.prompt_entity import PromptEntity
+from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.utils.types import StatusType
 
@@ -687,6 +687,7 @@ class GetExperimentsResponse(BaseModel):
     token_statistics: Optional[ExperimentTokenStatistics] = None
     experiment_cost: Optional[ExperimentCost] = None
     status: StatusType
+    experiment_type: PromptCategory
 
 
 class ClusterEntityInputCount(ClusterEntity):

@@ -55,6 +55,10 @@ def get_experiment_instances(query: GetExperiments) -> List[GetExperimentsRespon
 
     if query.filter_experiment_type:
         filter["experiment_type"] = query.filter_experiment_type.value
+    
+    if query.filter_label_template_ids:
+        filter["label_template_id"] = {"$in": query.filter_label_template_ids}
+    
     logger.info(f"filter = {filter}")
     # Debug logging
     logger.info(f"Filter being used: {filter}")

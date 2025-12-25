@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ViewerContent } from '@/components/viewer/ViewerContent';
+import { ViewerContentClassify } from '@/components/viewer/ViewerContentClassify';
 import { clusterApi, experimentApi } from '@/lib/api';
 import type { ClusterUnitEntity } from '@/types/cluster-unit';
 import { useAuthFetch } from '@/utils/fetch';
@@ -151,7 +151,7 @@ export default function ViewerPageContent() {
   }, [authFetch]);
 
   return (
-    <ViewerContent
+    <ViewerContentClassify
       scraperClusterId={scraperClusterId}
       promptsNameExperimentIdDict={promptsNameExperimentIdDict}
       clusterUnitEntityId={clusterUnitEntityId}

@@ -6,7 +6,7 @@ import ViewerTitle from "./ViewerTitle";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ViewerSkeleton } from "../ui/Skeleton";
 import { ClusterUnitEntity, ExperimentAllPredictedData, GetSampleUnitsLabelingFormatResponse } from "@/types/cluster-unit";
-import { ViewerContent } from "./ViewerContent";
+import { ViewerContentClassify } from "./ViewerContentClassify";
 import { clusterApi, experimentApi } from "@/lib/api";
 import { useAuthFetch } from "@/utils/fetch";
 import { useToast } from "@/hooks/use-toast";
@@ -81,31 +81,49 @@ export default function ViewerPage(){
   }, [scraperClusterId, currentLabelTemplateEntity, authFetch])
 
   const handleChangeCurrentLabelTemplateEntity = async (labelTemplateEntity: LabelTemplateEntity | null) => {
-    setIsLoading(true)
-    let sampleUnitsLabelingFormatResponseAPI: GetSampleUnitsLabelingFormatResponse | null = null;
-    let totalClusterUnits: number = 0;
-    let currentClusterUnit: ExperimentAllPredictedData | null = null;
-    if (!scraperClusterId) return null;
-    if (!labelTemplateEntity) {
-      sampleUnitsLabelingFormatResponseAPI = null;
-      
+    if (!scraperClusterId) return;
 
-    } else {
-      sampleUnitsLabelingFormatResponseAPI = await experimentApi.getSampleUnitsLabelingFormat(authFetch, scraperClusterId, labelTemplateEntity.id);
-      currentClusterUnit = sampleUnitsLabelingFormatResponseAPI.experiment_unit_data[0];
-      totalClusterUnits = sampleUnitsLabelingFormatResponseAPI.experiment_unit_data.length;
+    try {
+      setIsLoading(true);
+      let sampleUnitsLabelingFormatResponseAPI: GetSampleUnitsLabelingFormatResponse | null = null;
+      let totalClusterUnits: number = 0;
+      let currentClusterUnit: ExperimentAllPredictedData | null = null;
 
-    
+      if (!labelTemplateEntity) {
+        sampleUnitsLabelingFormatResponseAPI = null;
+      } else {
+        sampleUnitsLabelingFormatResponseAPI = await experimentApi.getSampleUnitsLabelingFormat(
+          authFetch,
+          scraperClusterId,
+          labelTemplateEntity.id
+        );
+        currentClusterUnit = sampleUnitsLabelingFormatResponseAPI.experiment_unit_data[0];
+        totalClusterUnits = sampleUnitsLabelingFormatResponseAPI.experiment_unit_data.length;
+      }
+
+      console.log('Sample cluster units response:', sampleUnitsLabelingFormatResponseAPI);
+
+      // Update all state together
+      setSampleUnitsLabelingFormatResponse(sampleUnitsLabelingFormatResponseAPI);
+      setCurrentClusterUnitExperimentData(currentClusterUnit);
+      setTotalClusterUnits(totalClusterUnits);
+      setCurrentLabelTemplateEntity(labelTemplateEntity);
+
+      toast({
+        title: "Success",
+        description: `Switched to label template: ${labelTemplateEntity?.label_template_name || 'None'}`,
+        variant: "success"
+      });
+    } catch (error) {
+      console.error('Error changing label template:', error);
+      toast({
+        title: "Error",
+        description: `Failed to load label template data: ${error}`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
-    console.log('Sample cluster units response:', sampleUnitsLabelingFormatResponseAPI);
-    setSampleUnitsLabelingFormatResponse(sampleUnitsLabelingFormatResponseAPI)
-        
-
-    //setClusterUnits(cluster_unit_entities);
-    setCurrentClusterUnitExperimentData(currentClusterUnit)
-    setTotalClusterUnits(totalClusterUnits)
-    setCurrentLabelTemplateEntity(labelTemplateEntity)
-    setIsLoading(false)
   }
 
   // Navigation handlers
@@ -257,7 +275,7 @@ export default function ViewerPage(){
         {isLoading ?
         <ViewerSkeleton />
       
-        : <ViewerContent
+        : <ViewerContentClassify
             scraperClusterId={scraperClusterId}
             labelTemplateEntity={currentLabelTemplateEntity}
             clusterUnitEntityExperimentData={currentClusterUnitExperimentData}

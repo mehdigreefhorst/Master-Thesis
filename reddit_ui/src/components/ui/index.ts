@@ -16,3 +16,6 @@ export { BaseSelector } from './BaseSelector';
 export type { BaseSelectorItem } from './BaseSelector';
 export { ComplexSelector } from './ComplexSelector';
 export type { ComplexSelectorItem, ComplexSelectorTab, ComplexSelectorGroup } from './ComplexSelector';
+export { Ribbon } from './Ribbon';
+export type { RibbonProps } from './Ribbon';
+export { ThresholdSlider } from './ThresholdSlider';

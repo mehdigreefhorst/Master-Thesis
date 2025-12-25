@@ -3,26 +3,32 @@ import { ExperimentCard, ExperimentData } from "./ExperimentCard"
 import { useRouter } from "next/navigation";
 import { experimentApi } from "@/lib/api";
 import { useAuthFetch } from "@/utils/fetch";
-import { Button } from "../ui";
+import { Button, Input, ThresholdSlider } from "../ui";
 import { PageHeader } from "../layout";
 import { TestPredictionModal } from "./TestPredictionModal";
 import { useToast } from "@/components/ui/use-toast";
+import { ExperimentEntity, FilterExperimentType, GetExperimentsResponse } from "@/types/experiment";
+import { SimpleSelector } from "../common/SimpleSelector";
+import { LabelTemplateSelector } from "../common/LabelTemplateSelector";
+import { LabelTemplateEntity } from "@/types/label-template";
 
 
 interface ExperimentsSearchBarResultsProps {
   scraperClusterId?: string | null;
   isLoading: boolean;
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>
-  canCreateExperiments: boolean
+  canCreateExperiments: boolean;
+  filterExperimentType: FilterExperimentType
 }
 
 export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsProps> = ({
   scraperClusterId,
   isLoading,
   setIsLoading,
-  canCreateExperiments
+  canCreateExperiments,
+  filterExperimentType
 }) => {
-
+  const [currentLabelTemplateEntity, setCurrentLabelTemplateEntity] = useState<LabelTemplateEntity | null>(null);
   const [filterModel, setFilterModel] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [experiments, setExperiments] = useState<ExperimentData[]>([]);
@@ -40,6 +46,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
   const { toast } = useToast();
   const thresholdDropdownRef = useRef<HTMLDivElement>(null);
 
+  const uniqueLabelTemplateIds = Array.from(new Set(experiments.map(p => p.labelTemplateId)));
 
   
   const uniqueModels = Array.from(new Set(experiments.map(p => p.model_id)));
@@ -47,7 +54,8 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
     const matchesSearch = experiment.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           experiment.model_id.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = filterModel === 'all' || experiment.model_id === filterModel;
-    return matchesSearch && matchesFilter;
+    const matchesLabelTemplateId = (currentLabelTemplateEntity === null || experiment.labelTemplateId === currentLabelTemplateEntity.id)
+    return matchesSearch && matchesFilter && matchesLabelTemplateId;
   });
 
   const handleNewExperiment = () => {
@@ -56,38 +64,38 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
     }
   };
 
-  const handleView = (experiment_id: string, label_template_id: string) => {
+  const handleView = (experiment: ExperimentData) => {
       if (scraperClusterId) {
-        router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&experiment_id=${experiment_id}&label_template_id=${label_template_id}`);
+        router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&experiment_id=${experiment.id}&label_template_ids=${experiment.labelTemplateId}`);
       }
     };
 
-    const handleClone = (experiment_id: string) => {
-      console.log('Clone experiment:', experiment_id);
+    const handleClone = (experiment: ExperimentData) => {
+      console.log('Clone experiment:', experiment.id);
       // TODO: Open clone experiment dialog
     };
 
-    const handleFilterSelect = (experiment_id: string, label_template_id: string) => {
-      router.push(`/filtering?scraper_cluster_id=${scraperClusterId}&experiment_id=${experiment_id}&label_template_id=${label_template_id}`)
+    const handleFilterSelect = (experiment: ExperimentData) => {
+      router.push(`/filtering?scraper_cluster_id=${scraperClusterId}&experiment_id=${experiment.id}&label_template_id=${experiment.id}`)
     }
 
-    const handleTest = (experiment_id: string) => {
-      setTestExperimentId(experiment_id);
+    const handleTest = (experiment: ExperimentData) => {
+      setTestExperimentId(experiment.id);
       setShowTestModal(true);
     };
   
-    const handleExperimentContinue = async (experiment_id: string) => {
+    const handleExperimentContinue = async (experiment: ExperimentData) => {
       // Optimistically update the experiment status to "ongoing"
       setExperiments(prevExperiments =>
         prevExperiments.map(exp =>
-          exp.id === experiment_id
+          exp.id === experiment.id
             ? { ...exp, status: 'ongoing' }
             : exp
         )
       );
 
       try {
-        await experimentApi.continueExperiment(authFetch, experiment_id);
+        await experimentApi.continueExperiment(authFetch, experiment.id);
         toast({
           title: "Success",
           description: "Experiment resumed successfully",
@@ -104,7 +112,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
         // Revert the optimistic update on error
         setExperiments(prevExperiments =>
           prevExperiments.map(exp =>
-            exp.id === experiment_id
+            exp.id === experiment.id
               ? { ...exp, status: 'paused' }
               : exp
           )
@@ -117,8 +125,8 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
 
       try {
         // Fetch only the updated experiment
-        const data = await experimentApi.getExperiments(authFetch, scraperClusterId, [experiment_id], globalThreshold);
-        const updatedExperiments = (data.experiments || data || []).map(transformExperimentData);
+        const experiments = await experimentApi.getExperiments(authFetch, scraperClusterId, [experiment_id], globalThreshold, filterExperimentType);
+        const updatedExperiments = experiments.map(transformExperimentData);
 
         if (updatedExperiments.length > 0) {
           // Update the experiments state while maintaining position and preserving name
@@ -139,7 +147,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
     }
 
     // Transform backend experiment data to frontend format
-  const transformExperimentData = (exp: any): ExperimentData => {
+  const transformExperimentData = (exp: GetExperimentsResponse): ExperimentData => {
     // Transform prediction_metrics to match frontend PredictionMetric interface
     const predictionMetrics = (exp.prediction_metrics || []).map((pm: any) => ({
       labelName: pm.prediction_category_name,
@@ -164,7 +172,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
         prompt_tokens: exp.token_statistics.total_tokens_used?.prompt_tokens || 0,
         completion_tokens: exp.token_statistics.total_tokens_used?.completion_tokens || 0,
         total_tokens: exp.token_statistics.total_tokens_used?.total_tokens || 0,
-        reasoning_tokens: exp.token_statistics.total_tokens_used?.reasoning_tokens || 0,
+        reasoning_tokens: exp.token_statistics.total_tokens_used?.internal_reasoning_tokens || 0,
       },
       tokens_wasted_on_failures: {
         prompt_tokens: exp.token_statistics.tokens_wasted_on_failures?.prompt_tokens || 0,
@@ -184,16 +192,17 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       model_id: exp.model,
       created: new Date(exp.created).toLocaleDateString(),
       totalSamples: exp.total_samples,
-      overallAccuracy: exp.overall_accuracy * 100, // Convert to percentage
-      overallKappa: exp.overall_kappa * 100, // Convert to percentage
+      overallAccuracy: (exp.overall_accuracy || 0 ) * 100, // Convert to percentage
+      overallKappa: (exp.overall_kappa || 0) * 100, // Convert to percentage
       predictionMetrics: predictionMetrics,
       runsPerUnit: exp.runs_per_unit,
-      thresholdRunsTrue: exp.threshold_runs_true,
+      thresholdRunsTrue: exp.threshold_runs_true || 1,
       status: exp.status,
       reasoningEffort: exp.reasoning_effort,
       tokenStatistics: tokenStatistics,
       experimentCost: exp.experiment_cost,
-      labelTemplateId: exp.label_template_id
+      labelTemplateId: exp.label_template_id,
+      experimentType: exp.experiment_type
     };
   };
 
@@ -209,10 +218,10 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       try {
         setIsLoading(true);
         setError(null);
-        const data = await experimentApi.getExperiments(authFetch, scraperClusterId, undefined, globalThreshold);
+        const experiments = await experimentApi.getExperiments(authFetch, scraperClusterId, undefined, globalThreshold, filterExperimentType);
 
         // Transform backend data to ExperimentData format
-        const transformedData: ExperimentData[] = (data.experiments || data || []).map(transformExperimentData);
+        const transformedData: ExperimentData[] = experiments.map(transformExperimentData);
 
         // Preserve original names when updating with global threshold
         setExperiments(prevExperiments => {
@@ -259,8 +268,8 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
 
       try {
         // Fetch only the running experiments
-        const data = await experimentApi.getExperiments(authFetch, scraperClusterId, runningExperimentIds, globalThreshold);
-        const updatedExperiments = (data.experiments || data || []).map(transformExperimentData);
+        const experiments = await experimentApi.getExperiments(authFetch, scraperClusterId, runningExperimentIds, globalThreshold, filterExperimentType);
+        const updatedExperiments = experiments.map(transformExperimentData);
 
         // Update the experiments state by merging the new data, preserving original names
         setExperiments(prevExperiments => {
@@ -298,6 +307,11 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showThresholdSlider]);
+
+  const handleSelectCurrentLabelTemplateEntity = (labelTemplateEntity: LabelTemplateEntity | null) => {
+    setCurrentLabelTemplateEntity(labelTemplateEntity)
+
+  }
 
   // Loading state
     if (isLoading) {
@@ -365,7 +379,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       {/* Actions Bar */}
         <div className="flex justify-between items-center mb-6 gap-4">
           <div className="flex gap-3 flex-1">
-            <input
+            <Input
               type="text"
               placeholder="Search prompts..."
               value={searchQuery}
@@ -387,64 +401,28 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
               ))}
             </select>
           </div>
-
-          {/* Global Threshold Selector */}
-          <div className="relative" ref={thresholdDropdownRef}>
-            <button
-              onClick={() => {
-                // Sync temp value with global threshold when opening
-                if (!showThresholdSlider && globalThreshold !== null) {
-                  setTempThresholdValue(globalThreshold);
-                }
-                setShowThresholdSlider(!showThresholdSlider);
-              }}
-              className="px-4 py-2 border border-(--border) rounded-(--radius) bg-background text-foreground text-sm
-                         focus:outline-none focus:ring-2 focus:ring-(--ring) cursor-pointer hover:bg-gray-50 transition-colors
-                         min-w-[180px] text-left flex items-center justify-between"
-            >
-              <span>{globalThreshold === null ? 'Experiment specific' : `Threshold: ${globalThreshold.toFixed(2)}`}</span>
-              <span className="ml-2">▼</span>
-            </button>
-
-            {showThresholdSlider && (
-              <div className="absolute top-full mt-2 right-0 bg-white border border-gray-300 rounded-lg shadow-lg p-4 z-50 w-[280px]">
-                <div className="mb-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-medium text-gray-700">Global Threshold</label>
-                    <button
-                      onClick={() => {
-                        setGlobalThreshold(null);
-                        setTempThresholdValue(0.5);
-                        setShowThresholdSlider(false);
-                      }}
-                      className="text-xs text-blue-600 hover:text-blue-800"
-                    >
-                      Reset
-                    </button>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={tempThresholdValue}
-                    onChange={(e) => setTempThresholdValue(parseFloat(e.target.value))}
-                    onMouseUp={() => setGlobalThreshold(tempThresholdValue)}
-                    onTouchEnd={() => setGlobalThreshold(tempThresholdValue)}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>0.0</span>
-                    <span className="font-medium text-gray-700">{tempThresholdValue.toFixed(2)}</span>
-                    <span>1.0</span>
-                  </div>
-                </div>
-                <div className="text-xs text-gray-500">
-                  Set a global threshold (0-1) to override experiment-specific thresholds
-                </div>
-              </div>
-            )}
-          </div>
+          <ThresholdSlider
+            value={tempThresholdValue}
+            onChange={setTempThresholdValue}
+            onCommit={setGlobalThreshold}
+            onReset={() => {
+              setGlobalThreshold(null);
+              setTempThresholdValue(0.5);
+              setShowThresholdSlider(false);
+            }}
+            label="Global Threshold"
+            helpText="Set a global threshold (0-1) to override experiment-specific thresholds"
+            min={0}
+            max={1}
+            step={0.01}
+          />
+         <LabelTemplateSelector
+            labelTemplateIds={uniqueLabelTemplateIds}
+            selectedLabelTemplateId={currentLabelTemplateEntity?.id}
+            onSelect={handleSelectCurrentLabelTemplateEntity}
+            autoSelectFirst={false}
+            onLoadingChange={setIsLoading}
+          />
 
           <Button variant="primary" onClick={handleNewExperiment}>
             + New Experiment
@@ -458,13 +436,13 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
         </div>
 
         {/* Prompt Cards - Horizontal Scrolling */}
-        <div className="overflow-x-auto pb-4">
+        <div className="overflow-x-auto overflow-y-visible pb-4">
           <div className="flex gap-6 min-w-min">
             {filteredExperiments.map((experiment, index) => (
               <div
                 key={experiment.id}
                 style={{ animationDelay: `${index * 50}ms` }}
-                className="animate-[insightAppear_300ms_ease-out] shrink-0 w-[500px]"
+                className="animate-[insightAppear_300ms_ease-out] shrink-0 w-[500px] overflow-visible mt-5"
               >
                 <ExperimentCard
                   experiment={experiment}
