@@ -395,10 +395,20 @@ class LabelTemplateEntity(BaseEntity):
         
         return labels
     
+    def get_labels_possible_values(self):
+        labels_possible_values: Dict[str, List[str] | List[bool] | List[int]] = list()
+
+        for label in self.labels:
+            labels_possible_values[label.label] = label.possible_values
+        
+        return labels_possible_values
+        
+
+    
     def get_per_label_labels(self):
         per_label_labels: List[str] = list()
         for label in self.llm_prediction_fields_per_label:
-            per_label_labels.append(label)
+            per_label_labels.append(label.label)
         
         return per_label_labels
 

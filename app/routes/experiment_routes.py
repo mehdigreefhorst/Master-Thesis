@@ -186,6 +186,7 @@ def create_experiment(body: CreateExperiment):
                                          experiment_type=prompt_entity.category,
                                          label_template_id= label_template_entity.id,
                                          label_template_labels=label_template_entity.get_labels(),
+                                         label_template_labels_possible_values = label_template_entity.get_labels_possible_values(),
                                          label_template_per_label_labels=label_template_entity.get_per_label_labels(),
                                          model_id= body.model_id,
                                          model_pricing=model_pricing,

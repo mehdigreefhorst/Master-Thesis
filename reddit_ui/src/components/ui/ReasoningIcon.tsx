@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 
 interface ReasoningIconProps {
-  reasons?: string[]
   per_label_labels?: Record<string,(string | boolean | number)[]>
   className?: string;
   isOpen?: boolean;
@@ -11,7 +10,6 @@ interface ReasoningIconProps {
 }
 
 export const ReasoningIcon: React.FC<ReasoningIconProps> = ({
-  reasons,
   per_label_labels,
   className = '',
   isOpen = false,
@@ -40,12 +38,7 @@ export const ReasoningIcon: React.FC<ReasoningIconProps> = ({
             ))
             
           ))}
-          {reasons && reasons.map((reason, index) => (
-            <div key={index} className="mb-2 last:mb-0">
-              <span className='font-bold'>{reason.substring(0,6)}</span>
-              <span className="text-sm text-gray-700">{reason.substring(6)}</span>
-            </div>
-          ))}
+          
         </div>
       )}
     </>

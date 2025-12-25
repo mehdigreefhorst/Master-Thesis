@@ -21,7 +21,9 @@ interface LabelTableProps {
   allExperimentsModelInformation: ExperimentModelInformation[]
   clusterUnitEntityExperimentData: ExperimentAllPredictedData
   labelTemplateId: string;
-  handleClusterUnitGroundTruthUpdate: (category: string, newValue: boolean) => void;
+  handleClusterUnitGroundTruthUpdate: (category: string, newValue: boolean | string | number) => void;
+  labelsPossibleValues?: Record<string, string[] | boolean[]> | null
+
   className?: string;
 }
 
@@ -30,6 +32,7 @@ export const LabelTable: React.FC<LabelTableProps> = ({
   clusterUnitEntityExperimentData,
   labelTemplateId,
   handleClusterUnitGroundTruthUpdate,
+  labelsPossibleValues,
   className = ''
 }) => {
   // console.log("models = ")
@@ -40,6 +43,7 @@ export const LabelTable: React.FC<LabelTableProps> = ({
   // console.log(JSON.stringify(stats))
   // console.log("cluster_unit_id = ")
   // console.log(cluster_unit_id)
+
   return (
     <div className={`${className}`}>
       <table className="w-full table-fixed border-separate border-spacing-0 bg-white rounded-lg shadow-(--shadow-sm)">
@@ -66,13 +70,16 @@ export const LabelTable: React.FC<LabelTableProps> = ({
         </thead>
         <tbody>
           {clusterUnitEntityExperimentData && (clusterUnitEntityExperimentData.label_name_predicted_data.map((label, index) => (
+            
             <LabelRow
               key={index}
               labelName={label.label_name}
               labelTemplateId={labelTemplateId}
               groundTruth={label.ground_truth}
+              groundTruthValues={labelsPossibleValues ? labelsPossibleValues[label.label_name] : null}
               results={label.results}
               handleClusterUnitGroundTruthUpdate={handleClusterUnitGroundTruthUpdate}
+              clusterUnitEntityId={clusterUnitEntityExperimentData.cluster_unit_enity.id}
             />
           )))}
         </tbody>

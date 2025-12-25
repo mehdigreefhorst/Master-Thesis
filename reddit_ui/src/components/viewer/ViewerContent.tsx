@@ -20,7 +20,8 @@ export interface ViewerContentProps {
   clusterUnitEntityExperimentData?: ExperimentAllPredictedData | null;
   allExperimentsModelInformation?: ExperimentModelInformation[]
   isLastClusterUnitEntity: boolean;
-  handleUpdateGroundTruth: (labelName: string, value: boolean | string) => void;
+  handleUpdateGroundTruth: (labelName: string, value: boolean | string | number) => void;
+  labelsPossibleValues?: Record<string, string[] | boolean[]> | null
   handleCompleteSampleLabeling: ()=> void;
   handleNext?: () => void;
   /**
@@ -43,6 +44,7 @@ export function ViewerContent({
   allExperimentsModelInformation,
   isLastClusterUnitEntity,  
   handleUpdateGroundTruth,
+  labelsPossibleValues,
   handleCompleteSampleLabeling,
   handleNext,
   setIsLoading,
@@ -92,6 +94,8 @@ export function ViewerContent({
           handleClusterUnitGroundTruthUpdate={(category, value) =>
             handleUpdateGroundTruth(category, value)
           }
+          labelsPossibleValues={labelsPossibleValues}
+          
         />
         
           <div className="mt-3 text-sm text-gray-600">

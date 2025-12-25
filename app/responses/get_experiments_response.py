@@ -912,9 +912,9 @@ class GetSampleUnitsLabelingFormatResponse(BaseModel):
     all_experiments_model_information: List[ExperimentModelInformation] = Field(default_factory=list) # all with the same label_template_id
     completed_insert_model_information: bool = False
     label_names: List[LabelName] = Field(default_factory=list)
+    labels_possible_values: Dict[str, List[str] | List[bool] | List[int]] = Field(default_factory=dict)
     per_label_names: List[LabelName] = Field(default_factory=list)
     experiment_unit_data: List[ExperimentAllPredictedData] = Field(default_factory=list) # List of cluster_units with experiment data
-
 
 
 
@@ -937,6 +937,7 @@ class GetSampleUnitsLabelingFormatResponse(BaseModel):
         # insert into self.labels the labels of the first experiment, all experiments have the same label_template so the labels are the same for all experiments
         self.label_names = experiments_sorted[0].label_template_labels
         self.per_label_names = experiments_sorted[0].label_template_per_label_labels
+        self.labels_possible_values = experiments_sorted[0].labels_possible_values
         for index, experiment in enumerate(experiments_sorted):
             experiment_model_information = ExperimentModelInformation(
                 experiment_id = experiment.id,

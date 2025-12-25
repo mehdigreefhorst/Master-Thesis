@@ -82,13 +82,13 @@ export interface LabelResult{
     count_match_ground_truth: number; // How many runs matched groun (0-3)
     total_runs: number; // Total runs (default 3)
     reasons?: string[] //Optional[List[str]] = None
-    per_label_labels?: (string | boolean | number)[]
+    per_label_labels?: Record<string,(string | boolean | number)[]>
 }
 
 export interface SingleUnitOneLabelAllExperiments {
     //"""For a single cluster unit, for a single label, all the experiment predictions including the ground truth"""
     label_name: string;
-    ground_truth: boolean | string;
+    ground_truth: boolean | string | number;
     results: (LabelResult | null)[];
 }
 
@@ -102,6 +102,8 @@ export interface ExperimentAllPredictedData {
 export interface GetSampleUnitsLabelingFormatResponse{
     all_experiments_model_information: ExperimentModelInformation[]//# all with the same label_template_id
     completed_insert_model_information: boolean
-    label_names: string[] 
+    label_names: string[]
+    per_label_labels: string[] | null
     experiment_unit_data: ExperimentAllPredictedData[] //# List of cluster_units with experiment data
+    labels_possible_values: Record<string, string[] | boolean[]> | null
 }

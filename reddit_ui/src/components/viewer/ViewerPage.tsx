@@ -160,7 +160,7 @@ export default function ViewerPage(){
 
   const handleUpdateGroundTruth = (
     category: string,
-    newValue: boolean | string
+    newValue: boolean | string | number
   ) => {
     if (!currentClusterUnitExperimentData) {
       return toast({
@@ -194,17 +194,21 @@ export default function ViewerPage(){
         variant: "destructive"
       });
     }
+
+    const clusterUnitToChange = currentClusterUnitExperimentData
+    const clusterUnitToChangeIndex = currentUnitIndex
+    const labelTemplateEntitySelected = currentLabelTemplateEntity
     
     try {
-      clusterApi.updateClusterUnitGroundTruth(authFetch, currentClusterUnitExperimentData.cluster_unit_enity.id, currentLabelTemplateEntity.id, category, newValue)
+      clusterApi.updateClusterUnitGroundTruth(authFetch, clusterUnitToChange.cluster_unit_enity.id, labelTemplateEntitySelected.id, category, newValue)
       setSampleUnitsLabelingFormatResponse(
         produce((draft) => {
            if (!draft) {return }
-           const unitExperiment = draft.experiment_unit_data[currentUnitIndex]
+           const unitExperiment = draft.experiment_unit_data[clusterUnitToChangeIndex]
            const labelExperiments = unitExperiment.label_name_predicted_data.find(labelExperiment => labelExperiment.label_name == category)
             const unit = unitExperiment.cluster_unit_enity
-           if (unit?.ground_truth && unit.ground_truth[currentLabelTemplateEntity.id] && unit.ground_truth[currentLabelTemplateEntity.id].values[category]) {
-            unit.ground_truth[currentLabelTemplateEntity.id].values[category].value = newValue;
+           if (unit?.ground_truth && unit.ground_truth[labelTemplateEntitySelected.id] && unit.ground_truth[labelTemplateEntitySelected.id].values[category]) {
+            unit.ground_truth[labelTemplateEntitySelected.id].values[category].value = newValue;
           }
           if (labelExperiments) {
             labelExperiments.ground_truth = newValue
@@ -260,6 +264,7 @@ export default function ViewerPage(){
             allExperimentsModelInformation={sampleUnitsLabelingFormatResponse?.all_experiments_model_information}
             isLastClusterUnitEntity={isLastClusterUnitEntity}
             handleUpdateGroundTruth={handleUpdateGroundTruth}
+            labelsPossibleValues={sampleUnitsLabelingFormatResponse?.labels_possible_values}
             handleCompleteSampleLabeling={handleCompleteSampleLabeling}
             setIsLoading={setIsLoading}
             isLoading={isLoading}
