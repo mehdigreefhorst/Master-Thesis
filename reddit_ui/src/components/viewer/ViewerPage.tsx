@@ -312,9 +312,6 @@ export default function ViewerPage(
             clusterUnitEntityExperimentData={currentClusterUnitExperimentData}
             allExperimentsModelInformation={sampleUnitsLabelingFormatResponse?.all_experiments_model_information}
             isLastClusterUnitEntity={isLastClusterUnitEntity}
-            handleUpdateGroundTruth={handleUpdateGroundTruth}
-            labelsPossibleValues={sampleUnitsLabelingFormatResponse?.labels_possible_values}
-            handleCompleteSampleLabeling={handleCompleteSampleLabeling}
             handleNext={handleNext}
             setIsLoading={setIsLoading}
             isLoading={isLoading} 

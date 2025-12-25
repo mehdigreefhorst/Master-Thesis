@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { ThreadFromUnit } from '../thread/ThreadFromUnit';
 import { LabelTemplateEntity } from '@/types/label-template';
 import { useToast } from '@/components/ui/use-toast';
+import { LabelTableTextLabels } from '../label/LabelTableTextLabels';
 
 
 export interface ViewerContentRewriteProps {
@@ -16,9 +17,6 @@ export interface ViewerContentRewriteProps {
   clusterUnitEntityExperimentData?: ExperimentAllPredictedData | null;
   allExperimentsModelInformation?: ExperimentModelInformation[]
   isLastClusterUnitEntity: boolean;
-  handleUpdateGroundTruth: (labelName: string, value: boolean | string | number) => void;
-  labelsPossibleValues?: Record<string, string[] | boolean[]> | null
-  handleCompleteSampleLabeling: ()=> void;
   handleNext?: () => void;
   /**
    * Base path for navigation (e.g., '/viewer' or '/viewer/sample')
@@ -39,9 +37,6 @@ export function ViewerContentRewrite({
   clusterUnitEntityExperimentData,
   allExperimentsModelInformation,
   isLastClusterUnitEntity,  
-  handleUpdateGroundTruth,
-  labelsPossibleValues,
-  handleCompleteSampleLabeling,
   handleNext,
   setIsLoading,
   isLoading
@@ -83,14 +78,10 @@ export function ViewerContentRewrite({
         {/* Thread Context */}
         <ThreadFromUnit clusterUnitEntity={clusterUnitEntityExperimentData.cluster_unit_enity} />
 
-        <LabelTable
+        <LabelTableTextLabels
           allExperimentsModelInformation={allExperimentsModelInformation}
           clusterUnitEntityExperimentData={clusterUnitEntityExperimentData}
           labelTemplateId={labelTemplateEntity?.id || ""}
-          handleClusterUnitGroundTruthUpdate={(category, value) =>
-            handleUpdateGroundTruth(category, value)
-          }
-          labelsPossibleValues={labelsPossibleValues}
           
         />
         

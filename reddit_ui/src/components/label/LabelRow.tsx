@@ -189,7 +189,7 @@ export const LabelRow: React.FC<LabelRowProps> = ({
                 <span className="text-sm font-semibold">
                   {result.count_match_ground_truth}/{result.total_runs || 3}
                 </span>
-                {result.reasons && (
+                {result.per_label_labels && (
                   <span
                     className="inline-block cursor-pointer text-xl transition-transform duration-200 hover:scale-110 hover:rotate-6"
                     onClick={() => toggleOpen(index)}

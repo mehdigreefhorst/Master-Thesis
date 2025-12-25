@@ -875,6 +875,7 @@ class LabelResult(BaseModel):
     count_match_ground_truth: int #; // How many runs matched groun (0-3)
     total_runs: int #; // Total runs (default 3)
     reasons: Optional[List[str]] = None
+    values: Optional[List[str | bool | int | float]] = None
     per_label_labels: Optional[Dict[str, List[str | bool | int | float]]] = None
 
 
@@ -976,8 +977,9 @@ class GetSampleUnitsLabelingFormatResponse(BaseModel):
                                                                                                                                                   experiment_id=experiment_model_information.experiment_id,
                                                                                                                                                   label_template_id=label_template.id),
                                                             
-                                                            reasons=cluster_unit.get_per_label_runs_one_experiment(experiment_id=experiment_model_information.experiment_id,
-                                                                                                                   label_name=label_name),
+                                                            values=cluster_unit.get_label_values_single_experiment(label_name=label_name, 
+                                                                                                                   experiment_id=experiment_model_information.experiment_id),
+                                                                                                                   
                                                             per_label_labels=cluster_unit.get_per_label_dict_single_experiment(experiment_id=experiment_model_information.experiment_id,
                                                                                                                                label_name=label_name,
                                                                                                                                per_label_detail_label_names=self.per_label_names))
