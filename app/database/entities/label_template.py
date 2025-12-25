@@ -396,12 +396,23 @@ class LabelTemplateEntity(BaseEntity):
         return labels
     
     def get_labels_possible_values(self):
-        labels_possible_values: Dict[str, List[str] | List[bool] | List[int]] = list()
+        labels_possible_values: Dict[str, List[str] | List[bool] | List[int]] = dict()
 
         for label in self.labels:
             labels_possible_values[label.label] = label.possible_values
         
         return labels_possible_values
+    
+    def get_labels_default_values(self) -> Dict[str, bool | str | int]:
+        labels_possible_values = self.get_labels_possible_values()
+        label_default_values = dict()
+        for label_name, possible_values in labels_possible_values.items():
+                
+            default_value = possible_values[0]
+            
+            label_default_values[label_name] = default_value
+
+        return label_default_values
         
 
     

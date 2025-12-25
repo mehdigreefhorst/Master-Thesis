@@ -115,7 +115,7 @@ class ClusterUnitRepository(BaseRepository[ClusterUnitEntity]):
         logger.info(f"inserted a total of {inserted_count} predictions. During {experiment_id} experiment")
         return 
     
-    def set_none_ground_truths_to_false(self, cluster_unit_ids: List[PyObjectId], label_template_id: PyObjectId):
+    def set_none_ground_truths_to_false(self, cluster_unit_ids: List[PyObjectId], label_template_id: PyObjectId, labels_default_values: Dict[str, bool | str | int]):
         """
         Set all ground truth values that are None to False for multiple cluster units.
 
@@ -156,7 +156,7 @@ class ClusterUnitRepository(BaseRepository[ClusterUnitEntity]):
             for category, category_data in values.items():
                 if isinstance(category_data, dict) and category_data.get("value") is None:
                     update_path = f"ground_truth.{label_template_id}.values.{category}.value"
-                    update_ops[update_path] = False
+                    update_ops[update_path] = labels_default_values.get(category)
 
             # If there are updates to make, execute them
             if update_ops:

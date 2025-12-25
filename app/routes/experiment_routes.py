@@ -185,9 +185,6 @@ def create_experiment(body: CreateExperiment):
                                          input_type=body.input_type,
                                          experiment_type=prompt_entity.category,
                                          label_template_id= label_template_entity.id,
-                                         label_template_labels=label_template_entity.get_labels(),
-                                         label_template_labels_possible_values = label_template_entity.get_labels_possible_values(),
-                                         label_template_per_label_labels=label_template_entity.get_per_label_labels(),
                                          model_id= body.model_id,
                                          model_pricing=model_pricing,
                                          runs_per_unit=body.runs_per_unit,
@@ -621,10 +618,11 @@ def complete_sample_labeled_status(query: UpdateSample):
         return jsonify(error=f"label_template_entity not found for id = {query.label_template_id}"), 400
     # Set all None ground truth values to False for all cluster units in the sample
     # set the status sample to done
-    sample_entity.set_sample_labeled_status(label_template_id=query.label_template_id)
+    sample_entity.set_sample_labeled_status(label_template_id=query.label_template_id, new_status=StatusType.Completed)
     updated_count = get_cluster_unit_repository().set_none_ground_truths_to_false(
         cluster_unit_ids=sample_entity.sample_cluster_unit_ids,
-        label_template_id=query.label_template_id
+        label_template_id=query.label_template_id,
+        labels_default_values=label_template_entity.get_labels_default_values()
     )
     logger.info(f"Set None ground truths to False for {updated_count} cluster units in sample {sample_entity.id}")
 

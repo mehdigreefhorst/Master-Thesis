@@ -74,15 +74,9 @@ class LabelTemplateService:
         
         sample_units_return_format_labeling: GetSampleUnitsLabelingFormatResponse = GetSampleUnitsLabelingFormatResponse.create_from_cluster_units_label_template_id(
             cluster_unit_entities=cluster_unit_entities,
-            label_template_id=label_template_entity.id
+            label_template=label_template_entity
         )
         return sample_units_return_format_labeling
-
-        
-        
-        returnable_cluster_units = [cluster_unit_entity.model_dump() for cluster_unit_entity in cluster_unit_entities]
-        return returnable_cluster_units
-
     
     @staticmethod
     def update_existing_ground_truth_value(cluster_unit_entity_id: str,

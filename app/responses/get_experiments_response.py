@@ -12,6 +12,7 @@ from app.database.entities.cluster_entity import ClusterEntity
 from app.database.entities.cluster_unit_entity import ClusterUnitEntity, ClusterUnitEntityPredictedCategory, PredictionCategoryTokens, TokenUsageAttempt
 from app.database.entities.experiment_entity import ExperimentCost, ExperimentEntity, ExperimentTokenStatistics, PrevalenceDistribution, TokenUsage
 from app.database.entities.filtering_entity import FilteringEntity
+from app.database.entities.label_template import LabelTemplateEntity
 from app.database.entities.prompt_entity import PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.utils.types import StatusType
@@ -918,10 +919,10 @@ class GetSampleUnitsLabelingFormatResponse(BaseModel):
 
 
 
-    def insert_model_information(self, cluster_unit_entities: List[ClusterEntity], label_template_id: PyObjectId):
+    def insert_model_information(self, cluster_unit_entities: List[ClusterEntity], label_template: LabelTemplateEntity):
         
         # build the experiment_entities_dict, based on which experiments have been done across all cluster units, from a specific label_template_id 
-        experiment_entity_ids = {experiment_id for cluster_unit in cluster_unit_entities for experiment_id in cluster_unit.get_experiment_ids(filter_label_template_id=label_template_id)}
+        experiment_entity_ids = {experiment_id for cluster_unit in cluster_unit_entities for experiment_id in cluster_unit.get_experiment_ids(filter_label_template_id=label_template.id)}
         experiment_entities_dict = {experiment_id: get_experiment_repository().find_by_id(experiment_id) for experiment_id in experiment_entity_ids}
         experiment_entities_dict: Dict[PyObjectId, ExperimentEntity] = {experiment_id: experiment for experiment_id, experiment in experiment_entities_dict.items() if experiment}
 
@@ -935,9 +936,9 @@ class GetSampleUnitsLabelingFormatResponse(BaseModel):
         # sort the experiments, so that the model information list is built from increasing order of creation date
         experiments_sorted = sorted([experiment for experiment in experiment_entities_dict.values() if experiment], key=lambda x: x.created_at)
         # insert into self.labels the labels of the first experiment, all experiments have the same label_template so the labels are the same for all experiments
-        self.label_names = experiments_sorted[0].label_template_labels
-        self.per_label_names = experiments_sorted[0].label_template_per_label_labels
-        self.labels_possible_values = experiments_sorted[0].labels_possible_values
+        self.label_names = label_template.get_labels()
+        self.per_label_names = label_template.get_per_label_labels()
+        self.labels_possible_values = label_template.get_labels_possible_values()
         for index, experiment in enumerate(experiments_sorted):
             experiment_model_information = ExperimentModelInformation(
                 experiment_id = experiment.id,
@@ -953,7 +954,7 @@ class GetSampleUnitsLabelingFormatResponse(BaseModel):
         
         self.completed_insert_model_information = True
 
-    def insert_cluster_unit_experiment_data(self, cluster_unit_entities: List[ClusterUnitEntity], label_template_id: PyObjectId):
+    def insert_cluster_unit_experiment_data(self, cluster_unit_entities: List[ClusterUnitEntity], label_template: LabelTemplateEntity):
         """inserts the predicted data into the correct format so that we have correct formatted data about how often cluster units
         predicted data is the same as the ground truth. It does this per labelName, so the format is outputted for the table format of the user interface"""
         if not self.completed_insert_model_information:
@@ -964,7 +965,7 @@ class GetSampleUnitsLabelingFormatResponse(BaseModel):
             for label_name in self.label_names:
                 one_label_experiment_data: SingleUnitOneLabelAllExperiments = SingleUnitOneLabelAllExperiments(label_name=label_name,
                                                                                                                ground_truth=cluster_unit.get_value_of_ground_truth_variable(
-                                                                                                                   label_template_id=label_template_id,
+                                                                                                                   label_template_id=label_template.id,
                                                                                                                    variable_name=label_name)
                                                                                                                    )
                 for experiment_model_information in self.all_experiments_model_information:
@@ -972,7 +973,7 @@ class GetSampleUnitsLabelingFormatResponse(BaseModel):
                     label_result: LabelResult = LabelResult(total_runs=experiment_model_information.runs_per_unit,
                                                             count_match_ground_truth=cluster_unit.get_count_predicted_label_equal_to_ground_truth(label_name=label_name,
                                                                                                                                                   experiment_id=experiment_model_information.experiment_id,
-                                                                                                                                                  label_template_id=label_template_id),
+                                                                                                                                                  label_template_id=label_template.id),
                                                             
                                                             reasons=cluster_unit.get_per_label_runs_one_experiment(experiment_id=experiment_model_information.experiment_id,
                                                                                                                    label_name=label_name),
@@ -985,11 +986,11 @@ class GetSampleUnitsLabelingFormatResponse(BaseModel):
             self.experiment_unit_data.append(experiment_predicted_data)
 
     @classmethod
-    def create_from_cluster_units_label_template_id(cls, cluster_unit_entities: List[ClusterUnitEntity], label_template_id: PyObjectId) -> "GetSampleUnitsLabelingFormatResponse":
+    def create_from_cluster_units_label_template_id(cls, cluster_unit_entities: List[ClusterUnitEntity], label_template: LabelTemplateEntity) -> "GetSampleUnitsLabelingFormatResponse":
         """creates the whole return object with the data it needs, to be built correctly"""
         sample_units_return_format_labeling = cls()
 
-        sample_units_return_format_labeling.insert_model_information(cluster_unit_entities=cluster_unit_entities, label_template_id=label_template_id)
-        sample_units_return_format_labeling.insert_cluster_unit_experiment_data(cluster_unit_entities=cluster_unit_entities, label_template_id=label_template_id)
+        sample_units_return_format_labeling.insert_model_information(cluster_unit_entities=cluster_unit_entities, label_template=label_template)
+        sample_units_return_format_labeling.insert_cluster_unit_experiment_data(cluster_unit_entities=cluster_unit_entities, label_template=label_template)
         return sample_units_return_format_labeling
 

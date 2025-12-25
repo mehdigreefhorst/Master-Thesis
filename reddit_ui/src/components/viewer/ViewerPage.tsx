@@ -266,6 +266,7 @@ export default function ViewerPage(){
             handleUpdateGroundTruth={handleUpdateGroundTruth}
             labelsPossibleValues={sampleUnitsLabelingFormatResponse?.labels_possible_values}
             handleCompleteSampleLabeling={handleCompleteSampleLabeling}
+            handleNext={handleNext}
             setIsLoading={setIsLoading}
             isLoading={isLoading}
 
