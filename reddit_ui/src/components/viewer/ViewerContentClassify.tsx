@@ -1,9 +1,5 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { PageHeader } from '@/components/layout/PageHeader';
-
 import { LabelTable } from '@/components/label/LabelTable';
 import { Button } from '@/components/ui/Button';
 import { ViewerSkeleton } from '@/components/ui/Skeleton';
