@@ -66,3 +66,41 @@ export interface ClusterUnitEntity {
 export interface GetClusterUnitsResponse {
   cluster_unit_entities: ClusterUnitEntity[];
 }
+
+export interface ExperimentModelInformation {
+    experiment_id: string;
+    prompt_id: string;
+    prompt_name: string; 
+    model_id: string; // # model_id from openrouter
+    label_template_id: string;
+    runs_per_unit: number;
+    version: string;
+
+}
+
+export interface LabelResult{
+    count_match_ground_truth: number; // How many runs matched groun (0-3)
+    total_runs: number; // Total runs (default 3)
+    reasons?: string[] //Optional[List[str]] = None
+}
+
+export interface SingleUnitOneLabelAllExperiments {
+    //"""For a single cluster unit, for a single label, all the experiment predictions including the ground truth"""
+    label_name: string;
+    ground_truth: boolean | string;
+    results: (LabelResult | null)[];
+}
+
+export interface ExperimentAllPredictedData {
+  //"""all experiment data for one cluster unit entity, formatted for user interface"""
+    cluster_unit_enity: ClusterUnitEntity
+    label_name_predicted_data: SingleUnitOneLabelAllExperiments[]
+}
+
+
+export interface GetSampleUnitsLabelingFormatResponse{
+    all_experiments_model_information: ExperimentModelInformation[]//# all with the same label_template_id
+    completed_insert_model_information: boolean
+    label_names: string[] 
+    experiment_unit_data: ExperimentAllPredictedData[] //# List of cluster_units with experiment data
+}

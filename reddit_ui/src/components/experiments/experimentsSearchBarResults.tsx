@@ -42,11 +42,11 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
 
 
   
-  const uniqueModels = Array.from(new Set(experiments.map(p => p.model)));
+  const uniqueModels = Array.from(new Set(experiments.map(p => p.model_id)));
   const filteredExperiments = experiments.filter(experiment => {
     const matchesSearch = experiment.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          experiment.model.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filterModel === 'all' || experiment.model === filterModel;
+                          experiment.model_id.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = filterModel === 'all' || experiment.model_id === filterModel;
     return matchesSearch && matchesFilter;
   });
 
@@ -181,7 +181,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
     return {
       id: exp.id,
       name: exp.name,
-      model: exp.model,
+      model_id: exp.model,
       created: new Date(exp.created).toLocaleDateString(),
       totalSamples: exp.total_samples,
       overallAccuracy: exp.overall_accuracy * 100, // Convert to percentage

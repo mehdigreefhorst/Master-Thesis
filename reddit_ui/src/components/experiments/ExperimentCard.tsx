@@ -43,7 +43,7 @@ export interface ExperimentCost {
 export interface ExperimentData {
   id: string;
   name: string;
-  model: string;
+  model_id: string;
   created: string;
   totalSamples: number;
   overallAccuracy: number;
@@ -220,7 +220,7 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
             </div>
           </div>
           <div className="flex gap-2 text-xs text-(--muted-foreground)">
-            <Badge variant="default">{experiment.model}</Badge>
+            <Badge variant="default">{experiment.model_id}</Badge>
             <span>•</span>
             <span>{experiment.created}</span>
             <span>•</span>

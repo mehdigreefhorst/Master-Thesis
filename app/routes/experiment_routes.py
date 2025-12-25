@@ -175,7 +175,7 @@ def create_experiment(body: CreateExperiment):
     else:
         raise Exception(f"unknown input type is given! type = {body.input_type}")
 
-    logger.info("body.model = ", body.model_id)
+    logger.info("body.model_id = ", body.model_id)
     model_pricing = get_openrouter_data_repository().find_pricing_of_model(model_id=body.model_id)
 
     experiment_entity = ExperimentEntity(user_id=user_id,
@@ -531,7 +531,7 @@ def get_sample_units_labeling_format(query: GetSampleUnitsLabelingFormat):
     logger.info(f"len(sample_enity.sample_cluster_unit_ids) = {len(sample_enity.sample_cluster_unit_ids)}")
     if not sample_enity.sample_label_template_labeled_status or query.filter_label_template_id not in sample_enity.sample_label_template_labeled_status:
         return jsonify(error=f"add label_template_ids to sample first {query.filter_label_template_id} not yet added to sample: {sample_enity.id}"), 400
-    label_template_entity = get_label_template_repository().find_many_by_ids(query.filter_label_template_id)
+    label_template_entity = get_label_template_repository().find_by_id(query.filter_label_template_id)
 
     cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_enity.sample_cluster_unit_ids)
 

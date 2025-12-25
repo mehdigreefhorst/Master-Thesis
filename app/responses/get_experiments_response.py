@@ -12,7 +12,7 @@ from app.database.entities.cluster_entity import ClusterEntity
 from app.database.entities.cluster_unit_entity import ClusterUnitEntity, ClusterUnitEntityPredictedCategory, PredictionCategoryTokens, TokenUsageAttempt
 from app.database.entities.experiment_entity import ExperimentCost, ExperimentEntity, ExperimentTokenStatistics, PrevalenceDistribution, TokenUsage
 from app.database.entities.filtering_entity import FilteringEntity
-from app.database.entities.prompt_entity import PromptEntitiesDict, PromptEntity
+from app.database.entities.prompt_entity import PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.utils.types import StatusType
 
@@ -878,22 +878,40 @@ class LabelResult(BaseModel):
 class SingleUnitOneLabelAllExperiments(BaseModel):
     """For a single cluster unit, for a single label, all the experiment predictions including the ground truth"""
     label_name: str
-    ground_truth: bool | str
-    results: List[LabelResult | None] = Field(default=list)
+    ground_truth: bool | str | None
+    results: List[LabelResult | None] = Field(default_factory=list)
 
 LabelName = str
 class ExperimentAllPredictedData(BaseModel):
-    """all experiment data with cluster unit, formatted for user interface"""
+    """all experiment data for one cluster unit entity, formatted for user interface"""
     cluster_unit_enity: ClusterUnitEntity
-    label_name_predicted_data: List[SingleUnitOneLabelAllExperiments] = Field(default=list)
+    label_name_predicted_data: List[SingleUnitOneLabelAllExperiments] = Field(default_factory=list)
 
 
 
-class GetSampleUnitsReturnFormat(BaseModel):
-    all_experiments_model_information: List[ExperimentModelInformation] = Field(default=list) # all with the same label_template_id
+class PromptEntitiesDict(BaseModel):
+    prompt_entities_dict: Dict[PyObjectId, PromptEntity]
+
+    @classmethod
+    def create_from_prompt_ids(cls, prompt_ids: List[PyObjectId]) -> "PromptEntitiesDict":
+        prompt_entities_dict = {prompt_id: get_prompt_repository().find_by_id(prompt_id) for prompt_id in prompt_ids}
+        return cls(prompt_entities_dict=prompt_entities_dict)
+    
+    def get_prompt_entity(self, prompt_id: PyObjectId) -> PromptEntity | None:
+        return self.prompt_entities_dict.get(prompt_id)
+    
+    def get_prompt_name(self, prompt_id: PyObjectId):
+        prompt_enity = self.get_prompt_entity(prompt_id=prompt_id)
+        if prompt_enity is None:
+            return f"Not found: prompt_id: {prompt_id}"
+        else:
+            return prompt_enity.name if prompt_enity.name else "No Prompt name"
+
+class GetSampleUnitsLabelingFormatResponse(BaseModel):
+    all_experiments_model_information: List[ExperimentModelInformation] = Field(default_factory=list) # all with the same label_template_id
     completed_insert_model_information: bool = False
-    label_names: List[LabelName] = Field(default=dict)
-    experiment_unit_data: List[ExperimentAllPredictedData] = Field(default=list)
+    label_names: List[LabelName] = Field(default_factory=list)
+    experiment_unit_data: List[ExperimentAllPredictedData] = Field(default_factory=list) # List of cluster_units with experiment data
 
 
 
@@ -926,6 +944,7 @@ class GetSampleUnitsReturnFormat(BaseModel):
                 runs_per_unit=experiment.runs_per_unit,
                 version= f"V{index+1}"
             )
+            print(self.all_experiments_model_information)
             self.all_experiments_model_information.append(experiment_model_information)
         
         self.completed_insert_model_information = True
@@ -955,27 +974,13 @@ class GetSampleUnitsReturnFormat(BaseModel):
                     one_label_experiment_data.results.append(label_result)
                 experiment_predicted_data.label_name_predicted_data.append(one_label_experiment_data)
             self.experiment_unit_data.append(experiment_predicted_data)
-                    
-                    
-        
-        
-            
 
-        
-        
-    
     @classmethod
-    def create_from_cluster_units_label_template_id(cls, cluster_unit_entities: List[ClusterUnitEntity], label_template_id: PyObjectId):
+    def create_from_cluster_units_label_template_id(cls, cluster_unit_entities: List[ClusterUnitEntity], label_template_id: PyObjectId) -> "GetSampleUnitsLabelingFormatResponse":
         """creates the whole return object with the data it needs, to be built correctly"""
         sample_units_return_format_labeling = cls()
 
         sample_units_return_format_labeling.insert_model_information(cluster_unit_entities=cluster_unit_entities, label_template_id=label_template_id)
         sample_units_return_format_labeling.insert_cluster_unit_experiment_data(cluster_unit_entities=cluster_unit_entities, label_template_id=label_template_id)
         return sample_units_return_format_labeling
-
-
-
-
-class PerformanceStatsSingleUnit(BaseModel):
-    accuracy: float
 

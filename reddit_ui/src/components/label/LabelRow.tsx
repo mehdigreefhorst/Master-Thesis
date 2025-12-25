@@ -7,20 +7,20 @@ import { Button } from '../ui';
 import { clusterApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
 import { useToast } from '@/components/ui/use-toast';
+import { LabelResult } from '@/types/cluster-unit';
 
-export interface LabelResult {
-  count: number; // How many runs matched (0-3)
-  total: number; // Total runs (default 3)
-  reasons?: string[]
-}
+// export interface LabelResult {
+//   count: number; // How many runs matched (0-3)
+//   total: number; // Total runs (default 3)
+//   reasons?: string[]
+// }
 
 interface LabelRowProps {
   labelName: string;
   labelTemplateId: string;
-  groundTruth: boolean | null; // true = ✓, false = ✗, null = -
+  groundTruth: boolean | string | null; // true = ✓, false = ✗, null = -
   results: (LabelResult | null)[]; // null means no data (—)
-  cluster_unit_id: string;
-  handleClusterUnitGroundTruthUpdate?: (clusterUnitEntityId: string, category: string, newValue: boolean) => void;
+  handleClusterUnitGroundTruthUpdate: (category: string, newValue: boolean) => void;
   className?: string;
 }
 
@@ -29,13 +29,11 @@ export const LabelRow: React.FC<LabelRowProps> = ({
   labelTemplateId,
   groundTruth,
   results,
-  cluster_unit_id,
   handleClusterUnitGroundTruthUpdate,
   className = ''
 }) => {
-  const authFetch = useAuthFetch();
   const { toast } = useToast();
-  const [newGroundTruth, setNewGroundTruth] = useState<boolean | null >(groundTruth)
+  const [newGroundTruth, setNewGroundTruth] = useState<boolean | null | string >(groundTruth)
   // Track which result cells have their reasoning expanded
   const [openStates, setOpenStates] = useState<boolean[]>(
     results.map(() => false)
@@ -44,7 +42,7 @@ export const LabelRow: React.FC<LabelRowProps> = ({
   // Update newGroundTruth when groundTruth or cluster_unit_id or labelTemplateId changes
   useEffect(() => {
     setNewGroundTruth(groundTruth);
-  }, [groundTruth, cluster_unit_id, labelTemplateId]);
+  }, [groundTruth, labelTemplateId]);
 
   const toggleOpen = (index: number) => {
     setOpenStates(prev => prev.map((state, i) => i === index ? !state : state));
@@ -58,12 +56,10 @@ export const LabelRow: React.FC<LabelRowProps> = ({
     setNewGroundTruth(newBool);
 
     try {
-      await clusterApi.updateClusterUnitGroundTruth(authFetch, cluster_unit_id, labelTemplateId, labelName, newBool);
-
       // Update the cached data in the parent component
-      if (handleClusterUnitGroundTruthUpdate) {
-        handleClusterUnitGroundTruthUpdate(cluster_unit_id, labelName, newBool);
-      }
+     
+      handleClusterUnitGroundTruthUpdate(labelName, newBool);
+      
 
       toast({
         title: "Success",
@@ -96,7 +92,7 @@ export const LabelRow: React.FC<LabelRowProps> = ({
         </Button>
       </td>
       {results.map((result, index) => (
-        <td key={index} className={`p-4 border-b border-(--border) ${newGroundTruth && result && result.count !== result.total ? "bg-amber-200": ""} `}>
+        <td key={index} className={`p-4 border-b border-(--border) ${newGroundTruth && result && result.count_match_ground_truth !== result.total_runs ? "bg-amber-200": ""} `}>
           {result === null ? (
             <div className="text-center text-gray-400">—</div>
           ) : (
@@ -104,13 +100,14 @@ export const LabelRow: React.FC<LabelRowProps> = ({
               <div className="flex items-center gap-2">
                 <div className="flex-1">
                   <ConsensusBar
-                    value={result.count}
+                    value={result.count_match_ground_truth}
                     groundTruth={newGroundTruth}
-                    total={result.total}
+                    total={result.total_runs}
                   />
+                  {JSON.stringify(result.count_match_ground_truth)}
                 </div>
                 <span className="text-sm font-semibold">
-                  {result.count}/{result.total || 3}
+                  {result.count_match_ground_truth}/{result.total_runs || 3}
                 </span>
                 {result.reasons && (
                   <span

@@ -1,13 +1,11 @@
 'use client'
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { PageHeader } from "../layout";
-import { ClusterUnitEntity } from "@/types/cluster-unit";
 import { useAuthFetch } from "@/utils/fetch";
-import { experimentApi, labelTemplateApi } from "@/lib/api";
+import {  labelTemplateApi } from "@/lib/api";
 import { LabelTemplateEntity } from "@/types/label-template";
-import { BaseSelector, Button } from "../ui";
-import { ExperimentSelector } from "../filtering/ExperimentSelector";
-import { LabelTemplateSelector } from "../experiment-create/LabelTemplateSelector";
+import {  Button } from "../ui";
+
 import { SimpleSelector, SimpleSelectorItem } from "../common/SimpleSelector";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +15,6 @@ import { useToast } from "@/hooks/use-toast";
 export interface ViewerTitleProps{
   scraperClusterId: string;
   setIsLoading: (isLoading: boolean) => void;
-  setCurrentClusterUnit: (clusterUnitEntity: ClusterUnitEntity) => void;
   currentUnitIndex: number;
   totalClusterUnits: number
   handleNext: () => void;
@@ -29,7 +26,6 @@ export interface ViewerTitleProps{
 export default function ViewerTitle (
   {scraperClusterId,
     setIsLoading,
-    setCurrentClusterUnit,
     currentUnitIndex,
     totalClusterUnits,
     handleNext,
@@ -74,11 +70,6 @@ export default function ViewerTitle (
       } 
       return [];
     }, [labelTemplateIdsParam]);
-  
-  
-
-  
-
 
   const handleSelectLabelTemplateId = async (item: SimpleSelectorItem) => {
     try {
@@ -95,62 +86,9 @@ export default function ViewerTitle (
       } finally {
         setIsLoading(false);
       } 
-    
 
   }
-
-  // Fetch prompts on mount
-  useEffect(() => {
-    async function fetchPrompts() {
-      if (!scraperClusterId) {
-        return toast({
-          "variant": "destructive",
-          "title": "Missing scraperClusterId",
-          "text": "too bad"
-        })
-      }
-      try {
-        setIsLoadingPrompts(true)
-        const prompts = await experimentApi.getPrompts(authFetch);
-        const experiments: any = await experimentApi.getExperiments(authFetch, scraperClusterId, undefined, undefined, "classify_cluster_units")
-        console.log("experiments = ", experiments)
-        // Step 1: Create quick lookup from promptId → promptName
-        const promptLookup: Record<string, string> = {};
-        prompts.forEach(p => {
-            promptLookup[p.id] = p.name;
-        });
-        console.log("promptLookup. - ", promptLookup)
-        // Step 2: Build your final record
-        const promptsNameExperimentIdDictTemp: Record<string, { promptId: string; promptName: string; modelId: string; labelTemplateId: string }> = {};
-        
-        experiments.forEach((exp: { prompt_id: any; id: string | number; model: string, label_template_id: string;}) => {
-            const promptId = exp.prompt_id; // adjust if field name differs
-            console.log("promptId = ", promptId)
-            promptsNameExperimentIdDictTemp[exp.id] = {
-                promptId,
-                promptName: promptLookup[promptId] ?? "Unknown",
-                modelId: exp.model,
-                labelTemplateId: exp.label_template_id
-            };
-        });
-        console.log("promptsNameExperimentIdDict = ", promptsNameExperimentIdDictTemp)
-
-        setPromptsNameExperimentIdDict(promptsNameExperimentIdDictTemp)
-
-        setPrompts(prompts);
-      } catch (err) {
-        console.error('Failed to fetch prompts:', err);
-      } finally {
-        setIsLoadingPrompts(false);
-      }
-    }
-
-    fetchPrompts();
-  }, [authFetch]);
   
-
-  
-
   return (
     <PageHeader
       title="Label Accuracy Viewer" 

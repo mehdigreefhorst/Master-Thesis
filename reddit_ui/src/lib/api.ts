@@ -4,7 +4,7 @@
 
 import { useAuthFetch } from "@/utils/fetch";
 import type { KeywordSearches, ScraperClusterEntity, ScraperEntity } from "@/types/scraper-cluster";
-import { ClusterUnitEntity, labelName, LabelTemplateLLMProjection } from "@/types/cluster-unit";
+import { ClusterUnitEntity, GetSampleUnitsLabelingFormatResponse, labelName, LabelTemplateLLMProjection } from "@/types/cluster-unit";
 import { SampleEntity } from "@/types/sample";
 import { UserProfile } from "@/types/user";
 import { ModelInfo } from "@/types/model";
@@ -529,7 +529,7 @@ export const experimentApi = {
     authFetch: ReturnType<typeof useAuthFetch>, 
     scraperClusterId: string, 
     filterLabelTemplateId: string
-    ): Promise<ClusterUnitEntity[]> {
+    ): Promise<GetSampleUnitsLabelingFormatResponse> {
     let experimentParamText = ""
 
    

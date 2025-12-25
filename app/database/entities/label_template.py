@@ -18,6 +18,16 @@ class LabelValueField(BaseModel):
     value: Optional[Any] = None # None if not yet set. Or when it is part of a label_template_entity
     type: Literal["string", "boolean", "category", "integer", "float"]  # type of what the possible label can be 
 
+    @model_validator(mode="after")
+    def delist_value(self):
+        # sometimes the LLM during prediction adds a list around the prediction. For example value = [True] instead of True
+        if isinstance(self.value, list) and len(self.value) == 1:
+            self.value = self.value[0]
+            
+        else:
+            self.value = self.value
+        return self
+
 
 class LLMLabelField(LabelValueField):
     explanation: str # explanation of what the variable does
@@ -104,7 +114,13 @@ class LabelTemplateLLMProjection(BaseModel):
         if not label_value_field:
             return 0
         
-        return 1 if  label_value_field.value == expected_value else 0
+        # sometimes the LLM during prediction adds a list around the prediction. For example value = [True] instead of True
+        if isinstance(label_value_field.value, list) and len(label_value_field.value) == 1:
+            value = label_value_field.value[0]
+            
+        else:
+            value = label_value_field.value
+        return 1 if  value == expected_value else 0
 
         
     

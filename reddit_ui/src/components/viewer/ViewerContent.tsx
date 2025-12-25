@@ -7,22 +7,18 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { LabelTable } from '@/components/label/LabelTable';
 import { Button } from '@/components/ui/Button';
 import { ViewerSkeleton } from '@/components/ui/Skeleton';
-import type { ClusterUnitEntity } from '@/types/cluster-unit';
+import type { ClusterUnitEntity, ExperimentAllPredictedData, ExperimentModelInformation } from '@/types/cluster-unit';
 import Link from 'next/link';
-import { PromptEntity } from '@/types/prompt';
 import { ThreadFromUnit } from '../thread/ThreadFromUnit';
 import { LabelTemplateEntity } from '@/types/label-template';
 import { useToast } from '@/components/ui/use-toast';
-import { produce } from 'immer';
-import { experimentApi, labelTemplateApi } from '@/lib/api';
-import { useAuthFetch } from '@/utils/fetch';
-import { SampleEntity } from '@/types/sample';
-import { MultiLabelTemplateSelector } from '../experiment-create/MultiLabelTemplateSelector';
+
 
 export interface ViewerContentProps {
   scraperClusterId: string | null;
   labelTemplateEntity?: LabelTemplateEntity | null;
-  clusterUnitEntity?: ClusterUnitEntity | null;
+  clusterUnitEntityExperimentData?: ExperimentAllPredictedData | null;
+  allExperimentsModelInformation?: ExperimentModelInformation[]
   isLastClusterUnitEntity: boolean;
   handleUpdateGroundTruth: (labelName: string, value: boolean | string) => void;
   handleCompleteSampleLabeling: ()=> void;
@@ -43,7 +39,8 @@ export interface ViewerContentProps {
 export function ViewerContent({
   scraperClusterId,
   labelTemplateEntity,
-  clusterUnitEntity,
+  clusterUnitEntityExperimentData,
+  allExperimentsModelInformation,
   isLastClusterUnitEntity,  
   handleUpdateGroundTruth,
   handleCompleteSampleLabeling,
@@ -63,7 +60,7 @@ export function ViewerContent({
   }
 
   // No data state
-  if (!clusterUnitEntity) {
+  if (!clusterUnitEntityExperimentData || !allExperimentsModelInformation) {
     return (
       <div className="p-8">
         <div className="max-w-7xl mx-auto">
@@ -86,23 +83,21 @@ export function ViewerContent({
         
 
         {/* Thread Context */}
-        <ThreadFromUnit clusterUnitEntity={clusterUnitEntity} />
+        <ThreadFromUnit clusterUnitEntity={clusterUnitEntityExperimentData.cluster_unit_enity} />
 
         <LabelTable
-          models={data.models}
-          labels={data.labels}
-          stats={data.stats}
-          cluster_unit_id={currentClusterUnit.id}
-          labelTemplateId={template.id}
-          handleClusterUnitGroundTruthUpdate={(clusterId, category, value) =>
-            handleClusterUnitGroundTruthUpdate(clusterId, template.id, category, value)
+          allExperimentsModelInformation={allExperimentsModelInformation}
+          clusterUnitEntityExperimentData={clusterUnitEntityExperimentData}
+          labelTemplateId={labelTemplateEntity?.id || ""}
+          handleClusterUnitGroundTruthUpdate={(category, value) =>
+            handleUpdateGroundTruth(category, value)
           }
         />
-        {index === allTemplateData.length - 1 && (
+        
           <div className="mt-3 text-sm text-gray-600">
             💬 = Click to view reasoning | ⚠️ = Inconsistent across runs | ✓ = All runs match
           </div>
-        )}
+        
 
 
         {/* Action Buttons */}

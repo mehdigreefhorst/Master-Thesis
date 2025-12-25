@@ -8,8 +8,7 @@ from app.database.entities.experiment_entity import ExperimentEntity
 from app.database.entities.label_template import LLMLabelField, LabelTemplateEntity, LabelTemplateTruthProjection
 
 
-from app.database.entities.prompt_entity import PromptEntitiesDict
-from app.responses.get_experiments_response import ExperimentModelInformation, GetSampleUnitsReturnFormat
+from app.responses.get_experiments_response import ExperimentModelInformation, GetSampleUnitsLabelingFormatResponse
 from app.utils.logging_config import get_logger
 
 # Initialize logger for this module
@@ -56,7 +55,7 @@ class LabelTemplateService:
         return returnable_cluster_units
     
     @staticmethod
-    def convert_sample_cluster_units_return_format_labeling_format(cluster_unit_entities: List[ClusterUnitEntity], label_template_entity: LabelTemplateEntity) -> GetSampleUnitsReturnFormat:
+    def convert_sample_cluster_units_return_format_labeling_format(cluster_unit_entities: List[ClusterUnitEntity], label_template_entity: LabelTemplateEntity) -> GetSampleUnitsLabelingFormatResponse:
         
 
         label_template_entity._create_ground_truth_field()
@@ -73,7 +72,7 @@ class LabelTemplateService:
                 get_cluster_unit_repository().update(cluster_unit_entity.id, cluster_unit_entity)
 
         
-        sample_units_return_format_labeling: GetSampleUnitsReturnFormat = GetSampleUnitsReturnFormat.create_from_cluster_units_label_template_id(
+        sample_units_return_format_labeling: GetSampleUnitsLabelingFormatResponse = GetSampleUnitsLabelingFormatResponse.create_from_cluster_units_label_template_id(
             cluster_unit_entities=cluster_unit_entities,
             label_template_id=label_template_entity.id
         )
