@@ -10,7 +10,7 @@ import { LabelTemplateEntity } from '@/types/label-template';
 import { useToast } from '@/components/ui/use-toast';
 
 
-export interface ViewerContentProps {
+export interface ViewerContentClassifyProps {
   scraperClusterId: string | null;
   labelTemplateEntity?: LabelTemplateEntity | null;
   clusterUnitEntityExperimentData?: ExperimentAllPredictedData | null;
@@ -45,7 +45,7 @@ export function ViewerContentClassify({
   handleNext,
   setIsLoading,
   isLoading
-}: ViewerContentProps) {
+}: ViewerContentClassifyProps) {
 
   const { toast } = useToast()
 

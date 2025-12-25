@@ -538,6 +538,8 @@ def get_sample_units_standalone_format(query: GetSampleUnitsStandaloneFormat):
         return jsonify(error=f"no cluster units found for this query")
     cluster_unit_entities = ExperimentService().filter_cluster_units_predicted_experiments(cluster_unit_entities=cluster_unit_entities,
                                                                                            filter_label_template_id=query.filter_label_template_id)
+    cluster_unit_entities = ExperimentService().filter_cluster_units_ground_truth(cluster_unit_entities=cluster_unit_entities,
+                                                                                  filter_label_template_id=query.filter_label_template_id)
     label_template_entity = get_label_template_repository().find_by_id(query.filter_label_template_id)
     if not label_template_entity:
         return jsonify(error=f"label template entity is not found for id: {query.filter_label_template_id}")
