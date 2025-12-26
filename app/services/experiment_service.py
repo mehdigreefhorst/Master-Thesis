@@ -328,7 +328,7 @@ class ExperimentService:
                 ground_truth_value: bool = cluster_unit_entity.get_value_of_ground_truth_variable(label_template_id=label_template_entity.id, variable_name=prediction_category_name)
                 prediction_category_prediction_result.individual_prediction_truth_label_list.append(
                     PrevelanceUnitDistribution(
-                        runs_predicted_true=count_key,
+                        runs_predicted_true=count_value,
                         ground_truth=ground_truth_value))
                 if ground_truth_value:
                     prediction_category_prediction_result.sum_ground_truth += 1

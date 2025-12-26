@@ -33,8 +33,12 @@ class PredictionResult(BaseModel):
         return v
 
 
+class CombinedPredictionResult(PredictionResult):
+    
+
 class AggregateResult(BaseModel):
     labels: Dict[str, PredictionResult] = Field(default_factory=dict)
+    combined_labels: Dict[str, CombinedPredictionResult]
 
     @classmethod
     def field_names(cls) -> list[str]:

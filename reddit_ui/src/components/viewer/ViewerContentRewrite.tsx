@@ -1,14 +1,15 @@
 'use client';
 
-import { LabelTable } from '@/components/label/LabelTable';
 import { Button } from '@/components/ui/Button';
 import { ViewerSkeleton } from '@/components/ui/Skeleton';
-import type { ClusterUnitEntity, ExperimentAllPredictedData, ExperimentModelInformation } from '@/types/cluster-unit';
+import type { ExperimentAllPredictedData, ExperimentModelInformation } from '@/types/cluster-unit';
 import Link from 'next/link';
 import { ThreadFromUnit } from '../thread/ThreadFromUnit';
 import { LabelTemplateEntity } from '@/types/label-template';
 import { useToast } from '@/components/ui/use-toast';
-import { LabelTableTextLabels } from '../label/LabelTableTextLabels';
+
+// Import rewrite experiment cards component
+import { RewriteExperimentCards } from '../rewrite/RewriteExperimentCards';
 
 
 export interface ViewerContentRewriteProps {
@@ -28,21 +29,21 @@ export interface ViewerContentRewriteProps {
 }
 
 /**
- * Shared viewer component that displays cluster units with label comparison.
- * Can be configured with different data fetching strategies.
+ * Rewrite viewer component that displays cluster units with rewrite experiment outputs.
+ * Shows text generation results in a card-based layout.
  */
 export function ViewerContentRewrite({
   scraperClusterId,
   labelTemplateEntity,
   clusterUnitEntityExperimentData,
   allExperimentsModelInformation,
-  isLastClusterUnitEntity,  
+  isLastClusterUnitEntity,
   handleNext,
   setIsLoading,
   isLoading
 }: ViewerContentRewriteProps) {
 
-  const { toast } = useToast()
+  const { toast } = useToast();
 
 
   
@@ -71,41 +72,30 @@ export function ViewerContentRewrite({
   return (
     <div className="p-8 animate-[pageLoad_400ms_ease-out]">
       <div className="max-w-7xl mx-auto">
-        {/* Page Header */}
-        
-        
-
         {/* Thread Context */}
         <ThreadFromUnit clusterUnitEntity={clusterUnitEntityExperimentData.cluster_unit_enity} />
 
-        <LabelTableTextLabels
-          allExperimentsModelInformation={allExperimentsModelInformation}
-          clusterUnitEntityExperimentData={clusterUnitEntityExperimentData}
-          labelTemplateId={labelTemplateEntity?.id || ""}
-          
-        />
-        
+        {/* Rewrite Experiment Cards */}
+        <div className="mb-6">
+          <RewriteExperimentCards
+            allExperimentsModelInformation={allExperimentsModelInformation}
+            clusterUnitEntityExperimentData={clusterUnitEntityExperimentData}
+            labelTemplateId={labelTemplateEntity?.id || ""}
+          />
           <div className="mt-3 text-sm text-gray-600">
-            💬 = Click to view reasoning | ⚠️ = Inconsistent across runs | ✓ = All runs match
+            💬 = Click to view additional details
           </div>
-        
-
+        </div>
 
         {/* Action Buttons */}
         <div className="flex gap-3 flex-wrap">
           <Link href={`/experiments?scraper_cluster_id=${scraperClusterId}`}>
             <Button variant="primary">View Experiments</Button>
           </Link>
-          
+
           <Button variant="primary" onClick={handleNext} disabled={isLastClusterUnitEntity}>
             Next Sample →
           </Button>
-          {isLastClusterUnitEntity &&
-            <Button variant="primary" onClick={handleCompleteSampleLabeling} >
-              Complete Labeling
-            </Button>
-          }
-
         </div>
       </div>
     </div>
