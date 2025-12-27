@@ -7,15 +7,31 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { HeaderStep } from '@/components/layout/HeaderStep';
 import { SampleView } from '@/components/sample/SampleView';
 import { ExperimentsSearchBarResults } from '@/components/experiments/experimentsSearchBarResults';
-import { FilterExperimentType } from '@/types/experiment';
+import { FilterExperimentType, PromptCategory } from '@/types/experiment';
 
 function ExperimentsPageContent() {
   const searchParams = useSearchParams();
   const scraperClusterId = searchParams.get('scraper_cluster_id');
 
   const [canCreateExperiments, setCanCreateExperiments] = useState(false)
+  
+  let FilterExperimentType: FilterExperimentType = "classify_cluster_units"
 
-  const FilterExperimentType: FilterExperimentType = "classify_cluster_units"
+  const isValidFilterExperimentType = (
+    value: string | null
+  ): value is Exclude<FilterExperimentType, null> => {
+    return value !== null && [
+      'classify_cluster_units',
+      'rewrite_cluster_unit_standalone',
+      'summarize_prediction_notes'
+    ].includes(value);
+  };
+
+  const experimentTypeParam = searchParams.get("experiment_type");
+  if (isValidFilterExperimentType(experimentTypeParam)) {
+    FilterExperimentType = experimentTypeParam;
+    console.log("FilterExperimentType = ", FilterExperimentType);
+  }
 
   const [isLoading, setIsLoading] = useState(true);  
 
@@ -31,7 +47,7 @@ function ExperimentsPageContent() {
         <SampleView scraperClusterId={scraperClusterId ?? ""} setCanCreateExperiments={setCanCreateExperiments}/>
         
         
-        <ExperimentsSearchBarResults scraperClusterId={scraperClusterId} isLoading={isLoading} setIsLoading={setIsLoading} canCreateExperiments={canCreateExperiments} defaultFilterExperimentType={FilterExperimentType} />
+        <ExperimentsSearchBarResults scraperClusterId={scraperClusterId} isLoading={isLoading} setIsLoading={setIsLoading} canCreateExperiments={canCreateExperiments} defaultFilterExperimentType={FilterExperimentType} basePath='/experiments'/>
 
         
 

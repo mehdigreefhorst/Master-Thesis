@@ -1,31 +1,63 @@
 'use client';
 
-import { useSearchParams, useRouter } from 'next/navigation';
-import { ExperimentCreator } from '@/components/experiments/ExperimentCreator';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { PageHeader } from '@/components/layout/PageHeader';
 
-export default function EnrichPage() {
+import { HeaderStep } from '@/components/layout/HeaderStep';
+import { SampleView } from '@/components/sample/SampleView';
+import { ExperimentsSearchBarResults } from '@/components/experiments/experimentsSearchBarResults';
+import { FilterExperimentType } from '@/types/experiment';
+
+function EnrichPageContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const scraperClusterId = searchParams.get('scraper_cluster_id');
 
-  if (!scraperClusterId) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600 font-medium">No scraper cluster ID provided</p>
-        </div>
-      </div>
-    );
-  }
+  const [canCreateExperiments, setCanCreateExperiments] = useState(true)
+
+  const FilterExperimentType: FilterExperimentType = "rewrite_cluster_unit_standalone"
+
+  const [isLoading, setIsLoading] = useState(true);  
 
   return (
-    <ExperimentCreator
-      scraperClusterId={scraperClusterId}
-      experimentType="enrich"
-      promptCategory="rewrite_cluster_unit_standalone"
-      title="Create Enrichment Prompt"
-      onBack={() => router.push(`/dashboard?scraper_cluster_id=${scraperClusterId}`)}
-      helpText="💡 Tip: This prompt is for compressing conversation threads into summaries or standalone text. The expected output is a string (not a dictionary). Use variables like {conversation_thread} and {final_reddit_message} to enrich the final message with context from the thread."
-    />
+    <div className="p-8 animate-[pageLoad_400ms_ease-out]">
+      <div className="max-w-[95vw] mx-auto">
+        {/* Page Header */}
+
+        <HeaderStep 
+          title='Experiments Dashboard'
+          subtitle=''
+        />
+        {/* <SampleView scraperClusterId={scraperClusterId ?? ""} setCanCreateExperiments={setCanCreateExperiments}/> */}
+        
+        
+        <ExperimentsSearchBarResults scraperClusterId={scraperClusterId} isLoading={isLoading} setIsLoading={setIsLoading} canCreateExperiments={canCreateExperiments} defaultFilterExperimentType={FilterExperimentType} basePath='/enrich'/>
+
+        
+
+        
+      </div>
+    </div>
+  );
+}
+
+export default function ExperimentsPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-8">
+        <div className="max-w-[95vw] mx-auto">
+          <PageHeader title="Experiments Dashboard" className="mb-6" />
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-gray-600 font-medium">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    }>
+      
+      <EnrichPageContent />
+    </Suspense>
   );
 }

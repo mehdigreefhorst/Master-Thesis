@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 
 // Import rewrite experiment cards component
 import { RewriteExperimentCards } from '../rewrite/RewriteExperimentCards';
+import { PromptCategory } from '@/types/experiment';
 
 
 export interface ViewerContentRewriteProps {
@@ -19,6 +20,7 @@ export interface ViewerContentRewriteProps {
   allExperimentsModelInformation?: ExperimentModelInformation[]
   isLastClusterUnitEntity: boolean;
   handleNext?: () => void;
+  experimentType?: PromptCategory;
   /**
    * Base path for navigation (e.g., '/viewer' or '/viewer/sample')
    */
@@ -39,13 +41,16 @@ export function ViewerContentRewrite({
   allExperimentsModelInformation,
   isLastClusterUnitEntity,
   handleNext,
+  experimentType="rewrite_cluster_unit_standalone",
   setIsLoading,
   isLoading
 }: ViewerContentRewriteProps) {
 
   const { toast } = useToast();
 
+  const handleViewExperiments = () => {
 
+  }
   
 
   // Loading state
@@ -89,7 +94,7 @@ export function ViewerContentRewrite({
 
         {/* Action Buttons */}
         <div className="flex gap-3 flex-wrap">
-          <Link href={`/experiments?scraper_cluster_id=${scraperClusterId}`}>
+          <Link href={`/experiments?scraper_cluster_id=${scraperClusterId}&experiment_type=${experimentType}`}>
             <Button variant="primary">View Experiments</Button>
           </Link>
 

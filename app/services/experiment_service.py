@@ -517,7 +517,7 @@ class ExperimentService:
                 overall_accuracy = ExperimentService.calculate_overal_accuracy(prediction_metrics)
                 overall_kappa = ExperimentService.calculate_overall_consistency(prediction_metrics)
 
-                if experiment.aggregate_result.combined_labels:
+                if experiment.aggregate_result and experiment.aggregate_result.combined_labels:
                     combined_labels_prediction_metrics = ExperimentService.calculate_prediction_metrics_combined_labels(experiment, sample_size, user_threshold)
                     combined_labels_accuracy = ExperimentService.calculate_overal_accuracy(combined_labels_prediction_metrics)
                     combined_labels_kappa = ExperimentService.calculate_overall_consistency(combined_labels_prediction_metrics)

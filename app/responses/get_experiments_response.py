@@ -680,8 +680,8 @@ class GetExperimentsResponse(BaseModel):
     label_template_id: PyObjectId
     threshold_runs_true: Optional[int]
     total_samples: int
-    combined_labels_accuracy: Dict[str, float] = None
-    combined_labels_kappa: Dict[str, float] = None
+    combined_labels_accuracy: Optional[Dict[str, float]] = None
+    combined_labels_kappa: Optional[Dict[str, float]] = None
     combined_labels_prediction_metrics: Optional[List[PredictionMetric]] = None
     overall_accuracy: Optional[float] = None
     overall_kappa: Optional[float] = None

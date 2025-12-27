@@ -51,6 +51,9 @@ export interface ExperimentData {
   overallAccuracy: number;
   overallKappa: number;
   predictionMetrics: PredictionMetric[];
+  combinedLabelsAccuracy?: Record<string, number>; // Combined labels accuracy (optional)
+  combinedLabelsKappa?: Record<string, number>; // Combined labels kappa (optional)
+  combinedLabelsPredictionMetrics?: PredictionMetric[]; // Combined labels metrics (optional)
   runsPerUnit: 1 | 2 | 3 | 4 | 5;
   thresholdRunsTrue: 1 | 2 | 3 | 4 | 5;
   status: StatusType
@@ -316,6 +319,24 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
         />
       </div>
 
+      {/* Combined Labels Metrics - Only visible if available */}
+      {(experiment.combinedLabelsAccuracy || experiment.combinedLabelsKappa) && (
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          {experiment.combinedLabelsAccuracy && (
+            <MetricBar
+              label="Combined Accuracy"
+              value={Object.values(experiment.combinedLabelsAccuracy)[0] || 0}
+            />
+          )}
+          {experiment.combinedLabelsKappa && (
+            <MetricBar
+              label="Combined Kappa"
+              value={Object.values(experiment.combinedLabelsKappa)[0] || 0}
+            />
+          )}
+        </div>
+      )}
+
       {/* Token Statistics - Always visible if available */}
       {experiment.tokenStatistics && (
         <div className="mt-3 pt-3 border-t border-(--border)">
@@ -365,7 +386,11 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
       {/* Expandable Label Metrics */}
       {isExpanded && (
          <div className="mt-3 pt-3 border-t border-(--border) animate-[panelExpand_300ms_ease-out]">
-           <PredictionMetricVisualization metrics={experiment.predictionMetrics} runsPerUnit={experiment.runsPerUnit}/>
+           <PredictionMetricVisualization
+             metrics={experiment.predictionMetrics}
+             combinedMetrics={experiment.combinedLabelsPredictionMetrics}
+             runsPerUnit={experiment.runsPerUnit}
+           />
          </div>
         // JSON.stringify(experiment.predictionMetrics)
       )}

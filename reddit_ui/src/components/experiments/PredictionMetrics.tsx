@@ -19,18 +19,38 @@ export interface PredictionMetric {
 
 interface PredictionMetricVisualizationProps {
   metrics: PredictionMetric[];
+  combinedMetrics?: PredictionMetric[]; // Optional combined labels metrics
   runsPerUnit: 1 | 2 | 3 | 4 | 5;
   className?: string;
 }
 
 export const PredictionMetricVisualization: React.FC<PredictionMetricVisualizationProps> = ({
   metrics,
+  combinedMetrics,
   runsPerUnit,
   className = ''
 }) => {
+  // Combine metrics with combined metrics first (if available)
+  const allMetrics = combinedMetrics && combinedMetrics.length > 0
+    ? [...combinedMetrics, ...metrics]
+    : metrics;
+
   return (
     <div className={`space-y-3 ${className}`}>
-      {metrics.map((metric) => {
+      {/* Combined Labels Section Header */}
+      {combinedMetrics && combinedMetrics.length > 0 && (
+        <div className="mb-2 pb-2 border-b-2 border-(--border)">
+          <h3 className="text-sm font-bold text-(--foreground) uppercase tracking-wide">
+            Combined Labels Metrics
+          </h3>
+        </div>
+      )}
+
+      {allMetrics.map((metric, index) => {
+        // Show divider between combined and regular metrics
+        const isCombinedMetric = combinedMetrics && index < combinedMetrics.length;
+        const isFirstRegularMetric = combinedMetrics && index === combinedMetrics.length;
+        const showSectionDivider = isFirstRegularMetric;
         // Extract prevalence data (API returns {"True": 0.6} or {"False": 1.0})
         const prevalenceValue = metric.prevalence 
           ? Object.values(metric.prevalence)[0] * 100 
@@ -50,13 +70,23 @@ export const PredictionMetricVisualization: React.FC<PredictionMetricVisualizati
         });
 
         return (
-          <div
-            key={metric.labelName}
-            className="border-b border-(--border) pb-3 last:border-b-0 animate-[insightAppear_300ms_ease-out]"
-          >
-            <h4 className="text-sm font-semibold mb-2 text-foreground">
-              {metric.labelName.replace(/_/g, ' ')}
-            </h4>
+          <React.Fragment key={`${metric.labelName}-${index}`}>
+            {/* Section Divider between combined and regular metrics */}
+            {showSectionDivider && (
+              <div className="my-4 pt-3 border-t-2 border-(--border)">
+                <h3 className="text-sm font-bold text-(--foreground) uppercase tracking-wide mb-2">
+                  Individual Labels Metrics
+                </h3>
+              </div>
+            )}
+
+            <div
+              className="border-b border-(--border) pb-3 last:border-b-0 animate-[insightAppear_300ms_ease-out]"
+            >
+              <h4 className="text-sm font-semibold mb-2 text-foreground">
+                {metric.labelName.replace(/_/g, ' ')}
+                {isCombinedMetric && <span className="ml-2 text-xs text-(--muted-foreground)">(Combined)</span>}
+              </h4>
 
             <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
               {/* Left column: Metrics */}
@@ -97,6 +127,7 @@ export const PredictionMetricVisualization: React.FC<PredictionMetricVisualizati
               </div>
             </div>
           </div>
+          </React.Fragment>
         );
       })}
 

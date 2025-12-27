@@ -18,7 +18,8 @@ interface ExperimentsSearchBarResultsProps {
   isLoading: boolean;
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>
   canCreateExperiments: boolean;
-  defaultFilterExperimentType?: FilterExperimentType | null
+  defaultFilterExperimentType?: FilterExperimentType | null;
+  basePath?: string;
 }
 
 export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsProps> = ({
@@ -26,7 +27,8 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
   isLoading,
   setIsLoading,
   canCreateExperiments,
-  defaultFilterExperimentType = null
+  defaultFilterExperimentType = null,
+  basePath = "/experiments"
 }) => {
   const [currentLabelTemplateEntity, setCurrentLabelTemplateEntity] = useState<LabelTemplateEntity | null>(null);
   const [filterModel, setFilterModel] = useState<string>('all');
@@ -68,13 +70,13 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
 
   const handleNewExperiment = () => {
     if (scraperClusterId) {
-      router.push(`/experiments/create?scraper_cluster_id=${scraperClusterId}`);
+      router.push(`${basePath}/create?scraper_cluster_id=${scraperClusterId}`);
     }
   };
 
   const handleView = (experiment: ExperimentData) => {
       if (scraperClusterId) {
-        router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&experiment_id=${experiment.id}&label_template_ids=${experiment.labelTemplateId}`);
+        router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&experiment_id=${experiment.id}&label_template_ids=${experiment.labelTemplateId}&experiment_type=${experiment.experimentType}`);
       }
     };
 
@@ -172,6 +174,37 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       }
     }));
 
+    // Transform combined labels prediction metrics (same structure as regular metrics)
+    const combinedLabelsPredictionMetrics = exp.combined_labels_prediction_metrics
+      ? exp.combined_labels_prediction_metrics.map((pm: any) => ({
+          labelName: pm.prediction_category_name,
+          prevalence: pm.prevalence,
+          prevalenceCount: pm.prevalence_count,
+          totalSamples: pm.total_samples,
+          accuracy: pm.accuracy * 100,
+          certaintyDistribution: pm.prevelance_distribution,
+          confusionMatrix: {
+            tp: pm.confusion_matrix?.tp || 0,
+            fp: pm.confusion_matrix?.fp || 0,
+            fn: pm.confusion_matrix?.fn || 0,
+            tn: pm.confusion_matrix?.tn || 0
+          }
+        }))
+      : undefined;
+
+    // Transform combined labels accuracy and kappa
+    const combinedLabelsAccuracy = exp.combined_labels_accuracy
+      ? Object.fromEntries(
+          Object.entries(exp.combined_labels_accuracy).map(([key, value]) => [key, (value as number) * 100])
+        )
+      : undefined;
+
+    const combinedLabelsKappa = exp.combined_labels_kappa
+      ? Object.fromEntries(
+          Object.entries(exp.combined_labels_kappa).map(([key, value]) => [key, (value as number) * 100])
+        )
+      : undefined;
+
     // Transform token statistics if available
     const tokenStatistics = exp.token_statistics ? {
       total_successful_predictions: exp.token_statistics.total_successful_predictions || 0,
@@ -203,6 +236,9 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       overallAccuracy: (exp.overall_accuracy || 0 ) * 100, // Convert to percentage
       overallKappa: (exp.overall_kappa || 0) * 100, // Convert to percentage
       predictionMetrics: predictionMetrics,
+      combinedLabelsAccuracy: combinedLabelsAccuracy,
+      combinedLabelsKappa: combinedLabelsKappa,
+      combinedLabelsPredictionMetrics: combinedLabelsPredictionMetrics,
       runsPerUnit: exp.runs_per_unit,
       thresholdRunsTrue: exp.threshold_runs_true || 1,
       status: exp.status,
