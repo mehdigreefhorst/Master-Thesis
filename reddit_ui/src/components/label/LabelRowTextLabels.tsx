@@ -1,11 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ConsensusBar } from '../ui/ConsensusBar';
 import { ReasoningIcon } from '../ui/ReasoningIcon';
-import { Button, Input } from '../ui';
-import { clusterApi } from '@/lib/api';
-import { useAuthFetch } from '@/utils/fetch';
+
 import { useToast } from '@/components/ui/use-toast';
 import { LabelResult } from '@/types/cluster-unit';
 

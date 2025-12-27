@@ -364,9 +364,10 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
 
       {/* Expandable Label Metrics */}
       {isExpanded && (
-        <div className="mt-3 pt-3 border-t border-(--border) animate-[panelExpand_300ms_ease-out]">
-          <PredictionMetricVisualization metrics={experiment.predictionMetrics} runsPerUnit={experiment.runsPerUnit}/>
-        </div>
+         <div className="mt-3 pt-3 border-t border-(--border) animate-[panelExpand_300ms_ease-out]">
+           <PredictionMetricVisualization metrics={experiment.predictionMetrics} runsPerUnit={experiment.runsPerUnit}/>
+         </div>
+        // JSON.stringify(experiment.predictionMetrics)
       )}
     </Card>
   );

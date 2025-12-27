@@ -10,7 +10,7 @@ from app.database import get_experiment_repository, get_prompt_repository
 from app.database.entities.base_entity import PyObjectId
 from app.database.entities.cluster_entity import ClusterEntity
 from app.database.entities.cluster_unit_entity import ClusterUnitEntity, ClusterUnitEntityPredictedCategory, PredictionCategoryTokens, TokenUsageAttempt
-from app.database.entities.experiment_entity import ExperimentCost, ExperimentEntity, ExperimentTokenStatistics, PrevalenceDistribution, TokenUsage
+from app.database.entities.experiment_entity import ExperimentCost, ExperimentEntity, ExperimentTokenStatistics, PrevalenceDistribution, TokenUsage, LabelName, ValueCount, ValueKey
 from app.database.entities.filtering_entity import FilteringEntity
 from app.database.entities.label_template import LabelTemplateEntity
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
@@ -660,12 +660,12 @@ class ConfusionMatrix(BaseModel):
 
 class PredictionMetric(BaseModel):
     prediction_category_name: str
-    prevalence: float
-    prevalence_count: int # how often it is seen
+    prevalence_count: Dict[str, int] # how often it is seen
+    prevalence: Dict[str, float]
     total_samples: int # total samples in sample
     accuracy: float # accuracy metric prevelance relating to ground truth. Is dependend on threshold correct
     kappa: float
-    prevelance_distribution: PrevalenceDistribution
+    prevelance_distribution: Dict[ValueKey, Dict[ValueCount, int]] #PrevalenceDistribution
     confusion_matrix: ConfusionMatrix
     
 
@@ -885,7 +885,7 @@ class SingleUnitOneLabelAllExperiments(BaseModel):
     ground_truth: bool | str | None
     results: List[LabelResult | None] = Field(default_factory=list)
 
-LabelName = str
+
 class ExperimentAllPredictedData(BaseModel):
     """all experiment data for one cluster unit entity, formatted for user interface"""
     cluster_unit_enity: ClusterUnitEntity
@@ -979,7 +979,7 @@ class GetSampleUnitsLabelingFormatResponse(BaseModel):
                                                             
                                                             values=cluster_unit.get_label_values_single_experiment(label_name=label_name, 
                                                                                                                    experiment_id=experiment_model_information.experiment_id),
-                                                                                                                   
+
                                                             per_label_labels=cluster_unit.get_per_label_dict_single_experiment(experiment_id=experiment_model_information.experiment_id,
                                                                                                                                label_name=label_name,
                                                                                                                                per_label_detail_label_names=self.per_label_names))

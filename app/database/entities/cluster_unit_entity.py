@@ -7,9 +7,11 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 from app.database.entities.base_entity import BaseEntity, PyObjectId
-from app.database.entities.label_template import LabelTemplateEntity, LabelTemplateTruthProjection, LabelTemplateLLMProjection, ProjectionLabelField, labelName
+from app.database.entities.label_template import LabelTemplateEntity, LabelTemplateTruthProjection, LabelTemplateLLMProjection, LabelValueField, ProjectionLabelField, labelName
 from app.database.entities.post_entity import PostEntity, CommentEntity
 
+
+LabelName = str
 
 class ClusterUnitEntityCategory(BaseModel):
     """
@@ -52,6 +54,49 @@ class PredictionCategoryTokens(BaseModel):
     total_tokens_all_attempts: Dict = Field(default_factory=dict)  # Aggregate of all attempts
 
 
+class LabelPredictionCounter(BaseModel):
+    label_name: str
+    value_counter: Dict[str, int] = Field(default_factory=dict) # key is the value of the key such as True / "neutral" - the value is how often it was measured
+
+    def initialize_posssible_values(self, possible_values: List[str | bool | int]):
+        for possible_value in possible_values:
+            if not self.value_counter.get(str(possible_value)):
+                self.value_counter[str(possible_value)] = 0
+    
+    def add_label_value_field(self, label_value_field: LabelValueField):
+        if label_value_field.type == "boolean" or label_value_field.type == "category" or label_value_field.type == "integer":
+            print("label_value_field.value = ", label_value_field.value)
+            if isinstance(label_value_field.value, list):
+                print("we have a list type!")
+            self.value_counter[str(label_value_field.value)] = self.value_counter.get(label_value_field.value, 0) + 1
+    
+    def add_other_prediction_counter(self, prediction_counter: "LabelPredictionCounter"):
+        if self.label_name != prediction_counter.label_name:
+            raise Exception(f"We are trying to add predictionCounter of other label name {prediction_counter.label_name} to {self.label_name}")
+
+        for value_name, value_count in prediction_counter.value_counter.items():
+            self.value_counter[value_name] = self.value_counter.get(value_name, 0) + value_count
+
+
+class ClusterUnitPredictionCounter(BaseModel):
+    labels_prediction_counter: Dict[labelName, LabelPredictionCounter] = Field(default_factory=dict) # label_name as key
+
+    def add_prediction_counter(self, prediction_counter: LabelPredictionCounter):
+        if not self.labels_prediction_counter[prediction_counter.label_name]:
+            self.labels_prediction_counter[prediction_counter.label_name] = prediction_counter
+            return
+        
+        else:
+            self.labels_prediction_counter[prediction_counter.label_name].add_other_prediction_counter(prediction_counter)
+    
+    def add_label_template_projection(self, label_template_projection: LabelTemplateLLMProjection, combined_labels: Optional[Dict[str, List[LabelName]]] = None):
+        combined_values = list()
+        for label_name, llm_prediction_label_field in label_template_projection.values.items():
+            if not self.labels_prediction_counter.get(label_name):
+                self.labels_prediction_counter[label_name] = LabelPredictionCounter(label_name=label_name)
+            self.labels_prediction_counter[label_name].add_label_value_field(llm_prediction_label_field)
+
+
 class ClusterUnitEntityPredictedCategory(BaseModel):
     """
     Combines the clusterunit category and the prompt id that predicted the category
@@ -59,16 +104,15 @@ class ClusterUnitEntityPredictedCategory(BaseModel):
     experiment_id: PyObjectId
     predicted_categories: List[PredictionCategoryTokens]
 
-    def get_aggregate_runs_prediction_counter(self) -> Dict[str, int]:
-        """create aggregate prediction counter, of all runs of a single cluster unit where it is a dictionary. where each of the label names is the key. and value is count. 
-        works only for the boolean types"""
-        aggregate_prediction_counter = defaultdict(int)
+    def get_cluster_unit_prediction_counter(self, combined_labels: Optional[Dict[str, List[LabelName]]] = None) -> ClusterUnitPredictionCounter:
+        """create cluster_unit_prediction_counter, of all runs of a single cluster unit where it is a dictionary. where each of the label names is the key. and value is count. 
+        works only for the boolean and category types (also if int is category)"""
+        cluster_unit_prediction_counter: ClusterUnitPredictionCounter = ClusterUnitPredictionCounter()
         for prediction in self.predicted_categories:
-            prediction_counter = prediction.labels_prediction.get_prediction_counter()
-            for label_name, label_true_counter in prediction_counter.items():
-                aggregate_prediction_counter[label_name] += label_true_counter
+            cluster_unit_prediction_counter.add_label_template_projection(label_template_projection=prediction.labels_prediction, 
+                                                                          combined_labels=combined_labels)
         
-        return aggregate_prediction_counter
+        return cluster_unit_prediction_counter
     
     def get_label_template_id(self):
         return self.predicted_categories[0].labels_prediction.label_template_id
@@ -99,7 +143,8 @@ class ClusterUnitEntityPredictedCategory(BaseModel):
         values: List[str] = list()
         for predicted_category in self.predicted_categories:
             label_value = predicted_category.labels_prediction.values.get(label_name)
-            values.append(label_value.value)
+            if label_value is not None:
+                values.append(label_value.value)
         return values
 
 
@@ -201,11 +246,11 @@ class ClusterUnitEntity(BaseEntity):
         if not ground_truth:
             raise Exception("can't take value of ground truth that doesn't exist")
         
-        prediction_category = ground_truth.values.get(variable_name)
+        ground_truth_category = ground_truth.values.get(variable_name)
 
-        if not prediction_category:
-            raise Exception("can't take value of prediction category that doesn't exist")
-        return prediction_category.value
+        if not ground_truth_category:
+            raise Exception("can't take value of ground_truth_category that doesn't exist")
+        return ground_truth_category.value
     
 
     def get_experiment_ids(self, filter_label_template_id: Optional[str] = None) -> List[PyObjectId]:
@@ -244,10 +289,11 @@ class ClusterUnitEntity(BaseEntity):
         
         return per_label_dict
     
-    def get_label_values_single_experiment(self, label_name: str, experiment_id: PyObjectId) -> List[str | int | float | bool]:
+    def get_label_values_single_experiment(self, label_name: str, experiment_id: PyObjectId) -> List[str | int | float | bool] | None:
         label_values: List[str] = list()
         predicted_category = self.predicted_category.get(experiment_id)
         if not predicted_category:
             return label_values
         values = predicted_category.get_label_values(label_name=label_name)
-        return values
+        if values: 
+            return values

@@ -4,11 +4,11 @@ import { ConfusionMatrix } from './ConfusionMatrix';
 
 export interface PredictionMetric {
   labelName: string;
-  prevalence: number;
-  prevalenceCount: number;
+  prevalence: Record<string, number> | null;
+  prevalenceCount: Record<string, number>;
   totalSamples: number;
   accuracy: number;
-  certaintyDistribution: Record<1 | 2 | 3 | 4 | 5, number>;
+  certaintyDistribution: Record<string, Record<string, number>>; // ← Fixed: nested structure
   confusionMatrix: {
     tp: number;
     fp: number;
@@ -30,55 +30,75 @@ export const PredictionMetricVisualization: React.FC<PredictionMetricVisualizati
 }) => {
   return (
     <div className={`space-y-3 ${className}`}>
-      {metrics.map((metric) => (
-        <div
-          key={metric.labelName}
-          className="border-b border-(--border) pb-3 last:border-b-0 animate-[insightAppear_300ms_ease-out]"
-        >
-          <h4 className="text-sm font-semibold mb-2 text-foreground">
-            {metric.labelName.replace(/_/g, ' ')}
-          </h4>
+      {metrics.map((metric) => {
+        // Extract prevalence data (API returns {"True": 0.6} or {"False": 1.0})
+        const prevalenceValue = metric.prevalence 
+          ? Object.values(metric.prevalence)[0] * 100 
+          : 0;
+        const prevalenceCountValue = Object.values(metric.prevalenceCount)[0] || 0;
+        
+        // Extract certainty distribution for "True" predictions only
+        // If no "True" key exists, try "False" or use empty object
+        const trueCertainty = metric.certaintyDistribution?.True || 
+                              metric.certaintyDistribution?.False || 
+                              {};
+        
+        // Convert string keys to numbers for CertaintyBar
+        const certaintyForBar: Record<number, number> = {};
+        Object.entries(trueCertainty).forEach(([key, value]) => {
+          certaintyForBar[parseInt(key)] = value;
+        });
 
-          <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
-            {/* Left column: Metrics */}
-            <div className="space-y-1.5 text-xs">
-              <div className="flex justify-between">
-                <span className="text-(--muted-foreground)">Prevalence:</span>
-                <span className="font-semibold">
-                  {metric.prevalence.toFixed(0)}% ({metric.prevalenceCount}/{metric.totalSamples})
-                </span>
+        return (
+          <div
+            key={metric.labelName}
+            className="border-b border-(--border) pb-3 last:border-b-0 animate-[insightAppear_300ms_ease-out]"
+          >
+            <h4 className="text-sm font-semibold mb-2 text-foreground">
+              {metric.labelName.replace(/_/g, ' ')}
+            </h4>
+
+            <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
+              {/* Left column: Metrics */}
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-(--muted-foreground)">Prevalence:</span>
+                  <span className="font-semibold">
+                    {prevalenceValue.toFixed(0)}% ({prevalenceCountValue}/{metric.totalSamples})
+                  </span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-(--muted-foreground)">Accuracy:</span>
+                  <span className={`font-semibold ${metric.accuracy >= 90 ? 'text-(--success)' : metric.accuracy < 75 ? 'text-(--warning)' : ''}`}>
+                    {metric.accuracy >= 90 ? '✓' : metric.accuracy < 75 ? '⚠' : ''} {metric.accuracy.toFixed(0)}%
+                  </span>
+                </div>
+
+                <div>
+                  <div className="text-(--muted-foreground) mb-1">Certainty:</div>
+                  <CertaintyBar
+                    certaintyDistribution={certaintyForBar as Record<1 | 2 | 3 | 4 | 5, number>}
+                    runsPerUnit={runsPerUnit}
+                    total={prevalenceCountValue}
+                  />
+                </div>
               </div>
 
-              <div className="flex justify-between">
-                <span className="text-(--muted-foreground)">Accuracy:</span>
-                <span className={`font-semibold ${metric.accuracy >= 90 ? 'text-(--success)' : metric.accuracy < 75 ? 'text-(--warning)' : ''}`}>
-                  {metric.accuracy >= 90 ? '✓' : metric.accuracy < 75 ? '⚠' : ''} {metric.accuracy.toFixed(0)}%
-                </span>
-              </div>
-
+              {/* Right column: Confusion Matrix */}
               <div>
-                <div className="text-(--muted-foreground) mb-1">Certainty:</div>
-                <CertaintyBar
-                  certaintyDistribution={metric.certaintyDistribution}
-                  runsPerUnit={runsPerUnit}
-                  total={metric.prevalenceCount}
+                <div className="text-[9px] text-(--muted-foreground) mb-1 text-center">Confusion</div>
+                <ConfusionMatrix
+                  truePositive={metric.confusionMatrix.tp}
+                  falsePositive={metric.confusionMatrix.fp}
+                  falseNegative={metric.confusionMatrix.fn}
+                  trueNegative={metric.confusionMatrix.tn}
                 />
               </div>
             </div>
-
-            {/* Right column: Confusion Matrix */}
-            <div>
-              <div className="text-[9px] text-(--muted-foreground) mb-1 text-center">Confusion</div>
-              <ConfusionMatrix
-                truePositive={metric.confusionMatrix.tp}
-                falsePositive={metric.confusionMatrix.fp}
-                falseNegative={metric.confusionMatrix.fn}
-                trueNegative={metric.confusionMatrix.tn}
-              />
-            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       <div className="text-[10px] text-(--muted-foreground) pt-2 border-t border-(--border)">
         💡 Certainty: <span className="font-mono">▓</span> 5/{runsPerUnit} runs agree •

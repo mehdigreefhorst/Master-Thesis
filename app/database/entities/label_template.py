@@ -85,10 +85,40 @@ class LLMLabelField(LabelValueField):
             return isinstance(label_value, int)
         else:
             raise Exception("The types are not complete. THere is type that is not known")
+        
+    def create_prediction_counter(self) -> Dict[str, int]:
+        """gets the prediction counter for the possible values. All possible values have value =0, while the value that is predicted has 1"""
+        prediction_counter: Dict[str, int] = defaultdict(int)
+        if isinstance(self.possible_values, list):
+            for possible_value in self.possible_values:
+                if str(possible_value) == str(self.value):
+                    prediction_counter[str(self.value)] += 1
+                else:
+                    prediction_counter[str(self.value)] += 0
+
+        return prediction_counter
+        
 
 class ProjectionLabelField(LabelValueField):
     """this class is build with real data. This is very similar to the LLMLabelField. But then it has the truly predicted information from the LLM. Also is used for ground truth"""
     per_label_details: List[LabelValueField] = Field(default_factory=list)
+
+    # @model_validator(mode="after")
+    def verify_label_values(self):
+        if self.type == "boolean":
+            if not isinstance(self.value, bool):
+                raise Exception(f"Wrong value type! but it is type: {type(self.value)} and value = {self.value}")
+        elif self.type =="category":
+            if self.value not in self.possible_values:
+                raise Exception(f"value not part of possible values but it is type: {type(self.value)} and value = {self.value}")
+        elif self.type =="float":
+            if not isinstance(self.value, float):
+                raise Exception(f"Value must be of float type! but it is type: {type(self.value)} and value = {self.value}")
+        elif self.type == "integer":
+            if not isinstance(self.value, int):
+                raise Exception(f"value must of string type but it is type: {type(self.value)} and value = {self.value}")
+        return self
+        
 
 
 labelName= str
@@ -99,12 +129,17 @@ class LabelTemplateLLMProjection(BaseModel):
     experiment_id: PyObjectId
     values: Dict[labelName, ProjectionLabelField] = Field(default_factory=dict) # key is label_value.label name of a LabelTemplateLLMProjection
 
-    def get_prediction_counter(self) -> Dict[str, int]:
+    def get_prediction_counter(self) -> Dict[str, Dict[str, int]]:
         """create prediction counter, where it is a dictionary. where each of the variable names, of the boolean types, gets a 1 if true. and 0 if false"""
-        prediction_counter = defaultdict(int)
+        prediction_counter:  Dict[str, Dict[str, int]]  = dict()
+        defaultdict(defaultdict(int))
         for label_name, llm_prediction_label_field in self.values.items():
-            if llm_prediction_label_field.type == "boolean":
-                prediction_counter[label_name] += 1 if llm_prediction_label_field.value == True else 0
+            prediction_counter[label_name] = defaultdict(int)
+            label_type = llm_prediction_label_field.type
+            if label_type == "category" or label_type == "boolean"  or label_type == "integer":
+                label_value = str(llm_prediction_label_field.value)
+                
+                prediction_counter[label_name][label_value] += 1
         
         return prediction_counter
     
@@ -362,6 +397,8 @@ class LabelTemplateEntity(BaseEntity):
         for label in self.labels:
             label_prediction_dict = input_dict.pop(label.label)
             value_label = label_prediction_dict.pop("value")
+
+
             per_label_value_fields = list()
             for per_label in self.llm_prediction_fields_per_label:
                 per_label_value = label_prediction_dict.pop(per_label.label)

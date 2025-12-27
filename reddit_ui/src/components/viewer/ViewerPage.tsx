@@ -61,11 +61,14 @@ export default function ViewerPage(
       try {
         setIsLoading(true);
         console.log('Fetching sample cluster units for scraper cluster:', scraperClusterId);
+        console.log("experimentType = ", experimentType)
+        console.log('experimentType === "classify_cluster_units" = ', experimentType === "classify_cluster_units")
         let sampleUnitsLabelingFormatResponseAPI: GetSampleUnitsLabelingFormatResponse
         if (experimentType === "classify_cluster_units"){
           sampleUnitsLabelingFormatResponseAPI = await experimentApi.getSampleUnitsLabelingFormat(authFetch, scraperClusterId, currentLabelTemplateEntity.id);
 
         } else {
+          
           sampleUnitsLabelingFormatResponseAPI = await experimentApi.getSampleUnitsStandaloneFormat(authFetch, scraperClusterId, currentLabelTemplateEntity.id)
 
         }
@@ -104,6 +107,8 @@ export default function ViewerPage(
       if (!labelTemplateEntity) {
         sampleUnitsLabelingFormatResponseAPI = null;
       } else {
+        console.log("experimentType = ", experimentType)
+        console.log('experimentType === "classify_cluster_units" = ', experimentType === "classify_cluster_units")
 
         if (experimentType === "classify_cluster_units"){
           sampleUnitsLabelingFormatResponseAPI = await experimentApi.getSampleUnitsLabelingFormat(authFetch, scraperClusterId, labelTemplateEntity.id);

@@ -181,6 +181,7 @@ export const LabelRow: React.FC<LabelRowProps> = ({
                 <div className="flex-1">
                   <ConsensusBar
                     value={result.count_match_ground_truth}
+                    predictedValues={result.values}
                     groundTruth={newGroundTruth}
                     total={result.total_runs}
                   />

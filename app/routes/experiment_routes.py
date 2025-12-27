@@ -86,7 +86,7 @@ def get_experiment_instances(query: GetExperiments) -> List[GetExperimentsRespon
 
     if not sample_entity:
         return jsonify(f"Scraper cluster entity: {scraper_cluster_entity.id} with sample_id: {scraper_cluster_entity.sample_id} is not findable")        
-
+    experiment_entities = [experiment_entities[0]]
     returnable_instances = ExperimentService.convert_experiment_entities_for_user_interface(experiment_entities, sample_entity, query.user_threshold)
     return jsonify(returnable_instances), 200
 
@@ -222,8 +222,8 @@ def continue_experiment(query: ExperimentId):
     if not experiment_entity:
         return jsonify(error=f"No experiment entity found for experiment id : {query.experiment_id}"), 404
     
-    if experiment_entity.status == StatusType.Ongoing or experiment_entity.status == StatusType.Completed:
-        return jsonify(error=f"The experiment is already {experiment_entity.status}, no ability to continue")
+    # if experiment_entity.status == StatusType.Ongoing or experiment_entity.status == StatusType.Completed:
+    #     return jsonify(error=f"The experiment is already {experiment_entity.status}, no ability to continue")
     label_template_entity = get_label_template_repository().find_by_id(experiment_entity.label_template_id)
     if not label_template_entity:
         return jsonify(error=f"label_template_entity not found for id = {experiment_entity.label_template_id}"), 400
@@ -592,6 +592,8 @@ def get_sample_units_labeling_format(query: GetSampleUnitsLabelingFormat):
     
 
     cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_enity.sample_cluster_unit_ids)
+    print(cluster_unit_entities[0].model_dump_json(indent=4))
+    print("cluster unit id =", cluster_unit_entities[0].id)
 
     cluster_unit_entities = ExperimentService().filter_cluster_units_predicted_experiments(cluster_unit_entities=cluster_unit_entities,
                                                                                            filter_label_template_id=query.filter_label_template_id)

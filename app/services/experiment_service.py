@@ -12,9 +12,9 @@ from collections import defaultdict
 import math
 
 from pydantic import BaseModel
-from app.database.entities.cluster_unit_entity import ClusterUnitEntityPredictedCategory, PredictionCategoryTokens, ClusterUnitEntity, ClusterUnitEntityCategory, TokenUsageAttempt
+from app.database.entities.cluster_unit_entity import ClusterUnitPredictionCounter, ClusterUnitEntityPredictedCategory, PredictionCategoryTokens, ClusterUnitEntity, ClusterUnitEntityCategory, TokenUsageAttempt
 from app.database import get_cluster_repository, get_cluster_unit_repository, get_experiment_repository, get_filtering_repository, get_sample_repository
-from app.database.entities.experiment_entity import ExperimentEntity, PredictionResult, PrevelanceUnitDistribution
+from app.database.entities.experiment_entity import ExperimentEntity, LabelName, PredictionResult, PrevelanceUnitDistribution, ValueCount
 from app.database.entities.label_template import LabelTemplateEntity
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
@@ -307,39 +307,53 @@ class ExperimentService:
     @staticmethod
     def convert_total_predicted_into_aggregate_results(cluster_unit_entities: List[ClusterUnitEntity], 
                                                        experiment_entity: ExperimentEntity,
-                                                       label_template_entity: LabelTemplateEntity) -> int:
-        """:TODO currently it expects that the format of the predicted categories is True or False. For other variable types make the implementation"""
+                                                       label_template_entity: LabelTemplateEntity) -> ExperimentEntity:
+        """Coonverts the experiment into aggrate results. Measures how often it is correct in its prediction and how often it is not"""
         
         prevelance_distribution_list_all_entities = []
         for cluster_unit_entity in cluster_unit_entities:
             if cluster_unit_entity.predicted_category is None:
                 raise Exception(f"We cannot calculate the predicted category if this category is None, an issue must be there \n experiment_id: {experiment_entity.id} \n cluster_unit_entity: {cluster_unit_entity.id}")
-            prediction_counter_single_unit = ExperimentService.create_prediction_counter_from_cluster_unit(cluster_unit_entity, experiment_entity)
+            prediction_counter_single_unit: ClusterUnitPredictionCounter = ExperimentService.create_prediction_counter_from_cluster_unit(cluster_unit_entity=cluster_unit_entity, experiment_entity=experiment_entity, combined_labels=label_template_entity.combined_labels)
             # Below we go over the possible categories, and how often they have been counted. Then we find the corresponding variable in aggregate results
             # Then we increase the counter of aggregate results with 1. This allows us to track how many runs have predicted that label.
-
-            for prediction_category_name, count_value in prediction_counter_single_unit.items():
-                prediction_category_prediction_result: PredictionResult = experiment_entity.get_label_aggregate_result(prediction_category_name)
-                count_key = str(count_value)  # Convert to string for MongoDB compatibility
-                prediction_category_prediction_result.prevelance_distribution[count_key] = prediction_category_prediction_result.prevelance_distribution.get(count_key, 0) + 1
-
-                # Now we add the ground truth to the prediction result as a counter
-                print("prediction_category_name = ", prediction_category_name)
+            if label_template_entity.combined_labels:
+                prediction_is_ground_truth_combined_labels: Dict[str, bool] = {combined_label_name: False for combined_label_name in label_template_entity.combined_labels.keys()}
+                prediction_predicted_true_combined_labels_min_count: Dict[str, int] = {combined_label_name: 0 for combined_label_name in label_template_entity.combined_labels.keys()}
+            for prediction_category_name, label_prediction_counter in prediction_counter_single_unit.labels_prediction_counter.items():
                 ground_truth_value: bool = cluster_unit_entity.get_value_of_ground_truth_variable(label_template_id=label_template_entity.id, variable_name=prediction_category_name)
-                prediction_category_prediction_result.individual_prediction_truth_label_list.append(
-                    PrevelanceUnitDistribution(
-                        runs_predicted_true=count_value,
-                        ground_truth=ground_truth_value))
-                if ground_truth_value:
-                    prediction_category_prediction_result.sum_ground_truth += 1
+                experiment_entity.insert_label_prediction_counter(label_prediction_counter, ground_truth_value)
+                
+
+                # Only execute the combined labels logic if combined labels is set and 
+                if label_template_entity.combined_labels:
+                    for combined_label_name, combined_label_labels in label_template_entity.combined_labels.items():
+                        if prediction_category_name in combined_label_labels:
+                            
+                            if ground_truth_value:
+                                prediction_is_ground_truth_combined_labels[combined_label_name] = True
+
+                            # only if true is predicted, at least number of thresholds of runs must have true to become combined labels true
+                            # :TODO only works for booleans, make all categories and int! 
+                            if label_prediction_counter.value_counter.get(str(True), 0) >= prediction_predicted_true_combined_labels_min_count.get(combined_label_name, 0):
+                                prediction_predicted_true_combined_labels_min_count[combined_label_name] = label_prediction_counter.value_counter.get(str(True), 0)
+            if label_template_entity.combined_labels:
+                
+                experiment_entity.aggregate_result.insert_combined_labels_unit_prediction(
+                    list(label_template_entity.combined_labels.keys()),
+                    prediction_is_ground_truth_combined_labels,
+                    prediction_predicted_true_combined_labels_min_count)
+                        
+                
+
         return experiment_entity
 
 
     @staticmethod
-    def create_prediction_counter_from_cluster_unit(cluster_unit_entity: ClusterUnitEntity, experiment_entity: ExperimentEntity) -> Dict[str, int]:
+    def create_prediction_counter_from_cluster_unit(cluster_unit_entity: ClusterUnitEntity, experiment_entity: ExperimentEntity, combined_labels: Optional[Dict[str, List[LabelName]]] = None) -> ClusterUnitPredictionCounter:
         """counts how often each of the classes in the prediction category are true accross the runs of the prediction.
         Works in a way that allows for changing of the prediction category variables or naming"""
-        return cluster_unit_entity.predicted_category[experiment_entity.id].get_aggregate_runs_prediction_counter()
+        return cluster_unit_entity.predicted_category[experiment_entity.id].get_cluster_unit_prediction_counter(combined_labels=combined_labels)
 
 
 
@@ -533,36 +547,42 @@ class ExperimentService:
         return [experiment.model_dump() for experiment in returnable_experiments]
     
     @staticmethod
-    def calculate_overal_accuracy(prediction_metrics: List[PredictionMetric]) -> float:
+    def calculate_overal_accuracy(prediction_metrics: List[PredictionMetric] | None) -> float | None:
         """Takes the accuracy of each prediction_metric, weights it according to its prevelance. And combines the accuracies"""
+        if not prediction_metrics:
+            return None
         combined_accuracy = 0
         for prediction_metric in prediction_metrics:
-            combined_accuracy += prediction_metric.accuracy * prediction_metric.prevalence_count
+            combined_accuracy += prediction_metric.accuracy #* prediction_metric.prevalence_count
         
-        combined_prevalance = sum([prediction_metric.prevalence_count for prediction_metric in prediction_metrics])
-        if combined_prevalance:
-            combined_accuracy /= combined_prevalance
-        return combined_accuracy
+        # combined_prevalance = sum([prediction_metric.prevalence_count for prediction_metric in prediction_metrics])
+        # if combined_prevalance:
+        #     combined_accuracy /= combined_prevalance
+        return combined_accuracy / len(prediction_metrics)
     
 
     @staticmethod
-    def calculate_overall_consistency(prediction_metrics: List[PredictionMetric]) -> float:
+    def calculate_overall_consistency(prediction_metrics: List[PredictionMetric] | None) -> float | None:
         """Takes the consistency of each prediction_metric, weights it according to its prevelance. And combines the consistency"""
         combined_kappa = 0
+        if not prediction_metrics:
+            return None
         for prediction_metric in prediction_metrics:
-            combined_kappa += prediction_metric.kappa * prediction_metric.prevalence_count
+            combined_kappa += prediction_metric.kappa #* prediction_metric.prevalence_count
         
-        combined_prevalance = sum([prediction_metric.prevalence_count for prediction_metric in prediction_metrics])
-        if combined_prevalance:
-            combined_kappa /= combined_prevalance
-        return combined_kappa
+        # combined_prevalance = sum([prediction_metric.prevalence_count for prediction_metric in prediction_metrics])
+        # if combined_prevalance:
+        #     combined_kappa /= combined_prevalance
+        return combined_kappa / len(prediction_metrics)
     
     
     @staticmethod
     def calculate_prediction_metrics(experiment_entity: ExperimentEntity,
                                      sample_entity: SampleEntity,
-                                     user_threshold: Optional[float] = None) -> List[PredictionMetric]:
+                                     user_threshold: Optional[float] = None) -> List[PredictionMetric] | None:
         total_prediction_metrics: PredictionMetric = []
+        if experiment_entity.aggregate_result is None:
+            return None
         for prediction_result_variable_name in experiment_entity.aggregate_result.labels:
             
             prediction_metric = ExperimentService.calculate_single_prediction_metric(experiment_entity=experiment_entity,
@@ -576,19 +596,21 @@ class ExperimentService:
             
     
     @staticmethod
-    def calculate_total_times_predicted(prediction_result: PredictionResult):
+    def calculate_total_times_predicted(prediction_result: PredictionResult) -> Dict[str, int]:
         """
         calculates how often an LLM predicted this category to be true from the prevelance dict e.g.
-        {"3": 120, "2": 40, "1": 10, "0": 100}
+        {"True": {"3": 120, "2": 40, "1": 10, "0": 100}, "False":  {"3": 120, "2": 40, "1": 10, "0": 100}}
         becomes 3 *120 + 2 * 40 + 1 * 10 + 0 * 100 = 450 times LLM model predicted true
+        {"True": 450, "False": 120}
 
         the max is number_of_runs * sample_size
         """
-        total_times_predicted = 0
-        for runs_predicted_true_count, occurences in prediction_result.prevelance_distribution.items():
-            total_times_predicted += int(runs_predicted_true_count) * int(occurences)
-        
-        return total_times_predicted
+        total_times_predicted: Dict[str, int] = defaultdict(int)
+        for value_key, prevelance_dict in prediction_result.prevelance_distribution.items():
+            for runs_predicted_true_count, occurences in prevelance_dict.items():
+                total_times_predicted[str(value_key)] += int(runs_predicted_true_count) * int(occurences)
+            
+            return total_times_predicted
     
     @staticmethod
     def get_user_threshold(experiment_entity: ExperimentEntity,user_threshold: Optional[float] = None ):
@@ -612,7 +634,9 @@ class ExperimentService:
         formatted_user_threshold = ExperimentService.get_user_threshold(experiment_entity=experiment_entity, user_threshold=user_threshold)
         prediction_result: PredictionResult = experiment_entity.aggregate_result.labels.get(prediction_result_variable_name)
         total_times_predicted = ExperimentService.calculate_total_times_predicted(prediction_result)
+
         total_sample_runs = sample_entity.sample_size * experiment_entity.runs_per_unit
+        prevelance = {value_key: times_predicted/total_sample_runs for value_key, times_predicted in total_times_predicted.items()}
         
         confusion_matrix = ExperimentService.calculate_confusion_matrix(prediction_result=prediction_result,
                                                                         user_threshold=formatted_user_threshold,
@@ -620,7 +644,7 @@ class ExperimentService:
                                                
         prediction_metric = PredictionMetric(prediction_category_name=prediction_result_variable_name, 
                                               prevalence_count=total_times_predicted,
-                                              prevalence=total_times_predicted/total_sample_runs,
+                                              prevalence=prevelance,
                                               total_samples=total_sample_runs,
                                               accuracy=confusion_matrix.get_accuracy(),
                                               kappa=confusion_matrix.get_cohens_kappa(),
@@ -638,15 +662,27 @@ class ExperimentService:
         false_positives = 0
         false_negatives= 0
         for prediction_cluster_unit in prediction_result.individual_prediction_truth_label_list:
-            predicted_true = True if prediction_cluster_unit.runs_predicted_true >= user_threshold else False 
-            if predicted_true and prediction_cluster_unit.ground_truth:
-                true_positives += 1
-            elif predicted_true and not prediction_cluster_unit.ground_truth:
-                false_positives += 1
-            elif not predicted_true and not prediction_cluster_unit.ground_truth:
-                true_negatives += 1
+            # :TODO here should change the confusion matrix for categories with 3+ categories. if we would like a 3x3 confusion matrix
+            if str(prediction_cluster_unit.value_key) == str(True):
+                # the threshold only works for labels with true of false values
+                if prediction_cluster_unit.runs_predicted >= user_threshold:
+                  predicted_val = True
+                else:
+                    predicted_val = False
+            elif str(prediction_cluster_unit.value_key) == str(False):
+                predicted_val = False
             else:
+                predicted_val = None
+
+            if predicted_val == True and prediction_cluster_unit.is_ground_truth == True:
+                true_positives += 1
+            elif predicted_val == False and prediction_cluster_unit.is_ground_truth == True:
                 false_negatives += 1
+            elif predicted_val == True and prediction_cluster_unit.is_ground_truth == False:
+                false_positives += 1
+            elif predicted_val == False and prediction_cluster_unit.is_ground_truth == False:
+                true_negatives += 1
+                
         
         return ConfusionMatrix(
             tp=true_positives,

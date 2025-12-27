@@ -1,44 +1,82 @@
 
 
 from enum import Enum
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 import re
 
 from pydantic import BaseModel, Field, field_validator
 from app.database.entities.base_entity import BaseEntity, PyObjectId
-from app.database.entities.cluster_unit_entity import TokenUsageAttempt
+from app.database.entities.cluster_unit_entity import ClusterUnitPredictionCounter, LabelPredictionCounter, TokenUsageAttempt
 from app.database.entities.openrouter_data_entity import Pricing
 from app.database.entities.prompt_entity import PromptCategory
 from app.utils.types import StatusType
 
 
+LabelName = str
+
+ValueKey = str # The value for example True in string format
+ValueCount = str # How often the value has been predicted
+
 PrevalenceDistribution = Dict[str, int]  # Keys must be strings for MongoDB compatibility
 class PrevelanceUnitDistribution(BaseModel):
     """keeps track of individual predictions, how often it was labeled true. and whether the groun_truth is true"""
-    runs_predicted_true: int
-    ground_truth: bool
+    value_key: Optional[ValueKey] = None
+    runs_predicted: int
+    is_ground_truth: bool
+
+
 
 class PredictionResult(BaseModel):
-    prevelance_distribution: PrevalenceDistribution = Field(default_factory=dict)  # e.g. {"3": 120, "2": 40, "1": 10, "0": 100} -> Key is number of cluster units with the specific runs that have scored true
+    prevelance_distribution: Dict[ValueKey, Dict[ValueCount, int]] = Field(default_factory=dict)  # e.g. {"3": 120, "2": 40, "1": 10, "0": 100} -> Key is number of cluster units with the specific runs that have scored true
     individual_prediction_truth_label_list: List[PrevelanceUnitDistribution] = Field(default_factory=list)
     sum_ground_truth: int = 0
 
-    @field_validator('prevelance_distribution')
-    @classmethod
-    def validate_numeric_keys(cls, v: Dict[str, int]) -> Dict[str, int]:
-        """Ensure all keys are numeric strings"""
-        for key in v.keys():
-            if not re.match(r'^\d+$', key):
-                raise ValueError(f"Dictionary keys must be numeric strings, got: {key}")
-        return v
-
-
-class CombinedPredictionResult(PredictionResult):
+    # @field_validator('prevelance_distribution')
+    # @classmethod
+    # def validate_numeric_keys(cls, v: Dict[str, int]) -> Dict[str, int]:
+    #     """Ensure all keys are numeric strings"""
+    #     for key in v.keys():
+    #         if not re.match(r'^\d+$', key):
+    #             raise ValueError(f"Dictionary keys must be numeric strings, got: {key}")
+    #     return v
     
+    def insert_cluster_unit_label_prediction_counter(self, cluster_unit_label_prediction_counter: LabelPredictionCounter, ground_truth_value: Any):
+        
+        for value_key, value_count in cluster_unit_label_prediction_counter.value_counter.items():
+            value_key = str(value_key)
+            value_count = str(value_count)
+            if not self.prevelance_distribution.get(value_key):
+               self.prevelance_distribution[value_key] = dict()
+            
+            self.prevelance_distribution[value_key][value_count] = self.prevelance_distribution[value_key].get(value_count, 0) + 1
+
+            if str(value_key) == str(ground_truth_value):
+                prediction_is_ground_truth = True
+            else:
+                prediction_is_ground_truth = False
+            
+            self.individual_prediction_truth_label_list.append(
+                PrevelanceUnitDistribution(value_key=value_key, 
+                                           runs_predicted=value_count, 
+                                           is_ground_truth= prediction_is_ground_truth)
+            )
+            if prediction_is_ground_truth:
+                self.sum_ground_truth += 1
+
+
+class CombinedPredictionResult(BaseModel):
+    individual_prediction_truth_label_list: List[PrevelanceUnitDistribution] = Field(default_factory=list)
+
+    def insert_combined_label_prediction_ground_truth(self, combined_min_true_count: bool, is_combined_ground_truth: bool):
+       new_prevelance_unit = PrevelanceUnitDistribution(value_key=str(True),
+                                                        runs_predicted=combined_min_true_count,
+                                                        ground_truth_value=is_combined_ground_truth,
+                                                        is_ground_truth=is_combined_ground_truth)
+       self.individual_prediction_truth_label_list.append(new_prevelance_unit)
 
 class AggregateResult(BaseModel):
-    labels: Dict[str, PredictionResult] = Field(default_factory=dict)
-    combined_labels: Dict[str, CombinedPredictionResult]
+    labels: Dict[LabelName, PredictionResult] = Field(default_factory=dict)
+    combined_labels: Dict[str, CombinedPredictionResult] = Field(default_factory=dict)
 
     @classmethod
     def field_names(cls) -> list[str]:
@@ -49,6 +87,24 @@ class AggregateResult(BaseModel):
             self.labels[label_name] = PredictionResult()
         
         return self.labels.get(label_name)
+    
+
+    
+    def insert_combined_labels_unit_prediction(self,  
+                                               combined_label_names: List[str],
+                                               prediction_is_ground_truth_combined_labels: Dict[str, bool],
+                                               prediction_predicted_true_combined_labels_min_count: Dict[str, int]):
+        for combined_label_name in combined_label_names:
+            if self.combined_labels.get(combined_label_name) is None:
+                self.combined_labels[combined_label_name] = CombinedPredictionResult()
+            
+            combined_min_true_count = prediction_predicted_true_combined_labels_min_count.get(combined_label_name, 0)
+            is_combined_ground_truth = prediction_is_ground_truth_combined_labels.get(combined_label_name, False)
+            self.combined_labels.get(combined_label_name).insert_combined_label_prediction_ground_truth(
+                combined_min_true_count=combined_min_true_count,
+                is_combined_ground_truth=is_combined_ground_truth)
+
+    
         
     
 
@@ -124,6 +180,16 @@ class ExperimentEntity(BaseEntity):
             self.aggregate_result = AggregateResult(labels=dict())
         
         return self.aggregate_result.get_label_prediction_result(label_name)
+    
+    def insert_label_prediction_counter(self, label_prediction_counter: LabelPredictionCounter, ground_truth_value: Any):
+        prediction_counter = self.get_label_aggregate_result(label_prediction_counter.label_name)
+        prediction_counter.insert_cluster_unit_label_prediction_counter(label_prediction_counter, ground_truth_value)
+        
+
+
+
+        
+        
 
 
     def calculate_and_set_total_cost(self) -> float:
