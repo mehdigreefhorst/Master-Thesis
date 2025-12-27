@@ -159,11 +159,11 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
     // Transform prediction_metrics to match frontend PredictionMetric interface
     const predictionMetrics = (exp.prediction_metrics || []).map((pm: any) => ({
       labelName: pm.prediction_category_name,
-      prevalence: pm.prevalence * 100, // Convert to percentage
-      prevalenceCount: pm.prevalence_count,
+      prevalence: pm.prevalence, // Keep as Record<string, number> (e.g., {"True": 0.6})
+      prevalenceCount: pm.prevalence_count, // Keep as Record<string, number> (e.g., {"True": 150})
       totalSamples: pm.total_samples,
       accuracy: pm.accuracy * 100, // Convert to percentage
-      certaintyDistribution:pm.prevelance_distribution,
+      certaintyDistribution: pm.prevelance_distribution,
       confusionMatrix: {
         tp: pm.confusion_matrix?.tp || 0,
         fp: pm.confusion_matrix?.fp || 0,

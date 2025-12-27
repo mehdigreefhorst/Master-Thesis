@@ -660,12 +660,12 @@ class ConfusionMatrix(BaseModel):
 
 class PredictionMetric(BaseModel):
     prediction_category_name: str
-    prevalence_count: Dict[str, int] # how often it is seen
-    prevalence: Dict[str, float]
+    prevalence_count: Optional[Dict[str, int]] = None # how often it is seen
+    prevalence: Optional[Dict[str, float]] = None
     total_samples: int # total samples in sample
     accuracy: float # accuracy metric prevelance relating to ground truth. Is dependend on threshold correct
     kappa: float
-    prevelance_distribution: Dict[ValueKey, Dict[ValueCount, int]] #PrevalenceDistribution
+    prevelance_distribution: Optional[Dict[ValueKey, Dict[ValueCount, int]]] = None #PrevalenceDistribution
     confusion_matrix: ConfusionMatrix
     
 
@@ -680,6 +680,9 @@ class GetExperimentsResponse(BaseModel):
     label_template_id: PyObjectId
     threshold_runs_true: Optional[int]
     total_samples: int
+    combined_labels_accuracy: Dict[str, float] = None
+    combined_labels_kappa: Dict[str, float] = None
+    combined_labels_prediction_metrics: Optional[List[PredictionMetric]] = None
     overall_accuracy: Optional[float] = None
     overall_kappa: Optional[float] = None
     prediction_metrics: Optional[List[PredictionMetric]] = None

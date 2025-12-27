@@ -1,5 +1,6 @@
 
 
+from collections import defaultdict
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
 import re
@@ -25,9 +26,19 @@ class PrevelanceUnitDistribution(BaseModel):
     is_ground_truth: bool
 
 
+class CombinedPredictionResult(BaseModel):
+    individual_prediction_truth_label_list: List[PrevelanceUnitDistribution] = Field(default_factory=list)
+
+    def insert_combined_label_prediction_ground_truth(self, combined_min_true_count: bool, is_combined_ground_truth: bool):
+       new_prevelance_unit = PrevelanceUnitDistribution(value_key=str(True),
+                                                        runs_predicted=combined_min_true_count,
+                                                        ground_truth_value=is_combined_ground_truth,
+                                                        is_ground_truth=is_combined_ground_truth)
+       self.individual_prediction_truth_label_list.append(new_prevelance_unit)
+
 
 class PredictionResult(BaseModel):
-    prevelance_distribution: Dict[ValueKey, Dict[ValueCount, int]] = Field(default_factory=dict)  # e.g. {"3": 120, "2": 40, "1": 10, "0": 100} -> Key is number of cluster units with the specific runs that have scored true
+    prevelance_distribution: Dict[ValueKey, Dict[ValueCount, int]] = Field(default_factory=dict)  # e.g. {"True": {"3": 120, "2": 40, "1": 10, "0": 100}} -> Key is number of cluster units with the specific runs that have scored true
     individual_prediction_truth_label_list: List[PrevelanceUnitDistribution] = Field(default_factory=list)
     sum_ground_truth: int = 0
 
@@ -63,16 +74,29 @@ class PredictionResult(BaseModel):
             if prediction_is_ground_truth:
                 self.sum_ground_truth += 1
 
+    @classmethod
+    def from_combined_prediction_result(cls, combined_predition_result: CombinedPredictionResult):
+        """creates the prediction result from the combined prediction result."""
+        prevelance_distribution: Dict[ValueKey, Dict[ValueCount, int]] = dict()
+        sum_ground_truth = 0
+        for combined_prediction in combined_predition_result.individual_prediction_truth_label_list:
+            if combined_prediction.is_ground_truth:
+                sum_ground_truth += 1
+            if prevelance_distribution.get(str(combined_prediction.value_key)) is None:
+                prevelance_distribution[str(combined_prediction.value_key)] = defaultdict(int)
+            
+            prevelance_distribution[str(combined_prediction.value_key)][str(combined_prediction.runs_predicted)] += 1
+        
+        return cls(
+            prevelance_distribution=prevelance_distribution,
+            individual_prediction_truth_label_list=combined_predition_result.individual_prediction_truth_label_list,
+            sum_ground_truth=sum_ground_truth
+        )
+            
 
-class CombinedPredictionResult(BaseModel):
-    individual_prediction_truth_label_list: List[PrevelanceUnitDistribution] = Field(default_factory=list)
 
-    def insert_combined_label_prediction_ground_truth(self, combined_min_true_count: bool, is_combined_ground_truth: bool):
-       new_prevelance_unit = PrevelanceUnitDistribution(value_key=str(True),
-                                                        runs_predicted=combined_min_true_count,
-                                                        ground_truth_value=is_combined_ground_truth,
-                                                        is_ground_truth=is_combined_ground_truth)
-       self.individual_prediction_truth_label_list.append(new_prevelance_unit)
+
+
 
 class AggregateResult(BaseModel):
     labels: Dict[LabelName, PredictionResult] = Field(default_factory=dict)
@@ -94,6 +118,7 @@ class AggregateResult(BaseModel):
                                                combined_label_names: List[str],
                                                prediction_is_ground_truth_combined_labels: Dict[str, bool],
                                                prediction_predicted_true_combined_labels_min_count: Dict[str, int]):
+        
         for combined_label_name in combined_label_names:
             if self.combined_labels.get(combined_label_name) is None:
                 self.combined_labels[combined_label_name] = CombinedPredictionResult()
@@ -103,6 +128,10 @@ class AggregateResult(BaseModel):
             self.combined_labels.get(combined_label_name).insert_combined_label_prediction_ground_truth(
                 combined_min_true_count=combined_min_true_count,
                 is_combined_ground_truth=is_combined_ground_truth)
+            
+            
+        
+        
 
     
         

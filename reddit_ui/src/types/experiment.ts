@@ -121,6 +121,9 @@ export interface GetExperimentsResponse {
   label_template_id: string;
   threshold_runs_true?: 1 | 2 | 3 | 4 | 5;
   total_samples: number;
+  combined_labels_accuracy?: number;
+  combined_labels_kappa?: number;
+  combined_labels_prediction_metrics?: PredictionMetric[];
   overall_accuracy?: number;
   overall_kappa?: number;
   prediction_metrics?: PredictionMetric[];

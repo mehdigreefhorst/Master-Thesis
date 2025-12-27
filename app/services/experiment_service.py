@@ -343,6 +343,7 @@ class ExperimentService:
                     list(label_template_entity.combined_labels.keys()),
                     prediction_is_ground_truth_combined_labels,
                     prediction_predicted_true_combined_labels_min_count)
+        
                         
                 
 
@@ -496,13 +497,15 @@ class ExperimentService:
 
     @staticmethod
     def convert_experiment_entities_for_user_interface(experiment_entities: List[ExperimentEntity], 
-                                                       sample_entity: SampleEntity,
+                                                       sample_size: int,
                                                        user_threshold: Optional[float] = None) -> List[GetExperimentsResponse]:
         """user threshold, is the minimum number of occurences out of the runs to be correct in order for the prediction to be accepted
         for example 2/3 runs need to be correct or 3/3 runs need to be correct. Or 3/5 depending on the runs taken. """
         returnable_experiments = []
         sorted_experiment_entities = sorted(experiment_entities, key=lambda x: x.created_at, reverse=False)
-
+        combined_labels_prediction_metrics = None
+        combined_labels_accuracy = None
+        combined_labels_kappa = None
         for index, experiment in enumerate(sorted_experiment_entities):
             print("experiment status = ", experiment.status)
             if experiment.status != StatusType.Completed:
@@ -510,9 +513,14 @@ class ExperimentService:
                 overall_accuracy = None
                 overall_kappa = None
             elif experiment.experiment_type == PromptCategory.Classify_cluster_units:
-                prediction_metrics = ExperimentService.calculate_prediction_metrics(experiment, sample_entity, user_threshold)
+                prediction_metrics = ExperimentService.calculate_prediction_metrics(experiment, sample_size, user_threshold)
                 overall_accuracy = ExperimentService.calculate_overal_accuracy(prediction_metrics)
                 overall_kappa = ExperimentService.calculate_overall_consistency(prediction_metrics)
+
+                if experiment.aggregate_result.combined_labels:
+                    combined_labels_prediction_metrics = ExperimentService.calculate_prediction_metrics_combined_labels(experiment, sample_size, user_threshold)
+                    combined_labels_accuracy = ExperimentService.calculate_overal_accuracy(combined_labels_prediction_metrics)
+                    combined_labels_kappa = ExperimentService.calculate_overall_consistency(combined_labels_prediction_metrics)
             elif experiment.experiment_type == PromptCategory.Rewrite_cluster_unit_standalone:
                 prediction_metrics = None
                 overall_accuracy = None
@@ -527,10 +535,13 @@ class ExperimentService:
                                                          model=experiment.model_id,
                                                          prompt_id=experiment.prompt_id,
                                                          created=experiment.created_at,
-                                                         total_samples=sample_entity.sample_size,
+                                                         total_samples=sample_size,
                                                          overall_accuracy=overall_accuracy,
                                                          overall_kappa=overall_kappa,
                                                          prediction_metrics=prediction_metrics,
+                                                         combined_labels_prediction_metrics=combined_labels_prediction_metrics,
+                                                         combined_labels_accuracy=combined_labels_accuracy,
+                                                         combined_labels_kappa=combined_labels_kappa,
                                                          runs_per_unit=experiment.runs_per_unit,
                                                          label_template_id=experiment.label_template_id,
                                                          threshold_runs_true=experiment.threshold_runs_true,
@@ -578,21 +589,39 @@ class ExperimentService:
     
     @staticmethod
     def calculate_prediction_metrics(experiment_entity: ExperimentEntity,
-                                     sample_entity: SampleEntity,
+                                     sample_size: int,
                                      user_threshold: Optional[float] = None) -> List[PredictionMetric] | None:
-        total_prediction_metrics: PredictionMetric = []
+        total_prediction_metrics: List[PredictionMetric] = list()
         if experiment_entity.aggregate_result is None:
             return None
-        for prediction_result_variable_name in experiment_entity.aggregate_result.labels:
+        for prediction_result_variable_name, prediction_result in experiment_entity.aggregate_result.labels.items():
             
             prediction_metric = ExperimentService.calculate_single_prediction_metric(experiment_entity=experiment_entity,
-                                                                                     prediction_result_variable_name=prediction_result_variable_name,
-                                                                                     sample_entity=sample_entity,
+                                                                                     prediction_result=prediction_result,
+                                                                                     prediction_result_name=prediction_result_variable_name,
+                                                                                     sample_size=sample_size,
                                                                                      user_threshold=user_threshold)
             
             total_prediction_metrics.append(prediction_metric)
         
         return total_prediction_metrics
+    
+    def calculate_prediction_metrics_combined_labels(experiment_entity: ExperimentEntity,
+                                                     sample_size: int,
+                                                     user_threshold: Optional[float] = None) -> List[PredictionMetric] | None:
+        """calculates the prediction metric from the combined labels"""
+        total_prediction_metrics: List[PredictionMetric] = list()
+        if experiment_entity.aggregate_result.combined_labels is None:
+            return None
+        for combined_prediction_name, combined_prediction_result in experiment_entity.aggregate_result.combined_labels.items():
+            prediction_result: PredictionResult = PredictionResult.from_combined_prediction_result(combined_prediction_result)
+            prediction_metric = ExperimentService.calculate_single_prediction_metric(experiment_entity=experiment_entity,
+                                                                                     prediction_result=prediction_result,
+                                                                                     prediction_result_name=combined_prediction_name,
+                                                                                     sample_size=sample_size,
+                                                                                     user_threshold=user_threshold)
+            
+            total_prediction_metrics.append(prediction_metric)
             
     
     @staticmethod
@@ -627,22 +656,22 @@ class ExperimentService:
 
     @staticmethod
     def calculate_single_prediction_metric(experiment_entity: ExperimentEntity, 
-                                           prediction_result_variable_name: str,
-                                           sample_entity: SampleEntity,
+                                           prediction_result: PredictionResult,
+                                           prediction_result_name: str,
+                                           sample_size: int,
                                            user_threshold: Optional[float] = None) -> PredictionMetric:
         """calculates everything that is needed for the prediction metric to be created and returns that"""
         formatted_user_threshold = ExperimentService.get_user_threshold(experiment_entity=experiment_entity, user_threshold=user_threshold)
-        prediction_result: PredictionResult = experiment_entity.aggregate_result.labels.get(prediction_result_variable_name)
         total_times_predicted = ExperimentService.calculate_total_times_predicted(prediction_result)
 
-        total_sample_runs = sample_entity.sample_size * experiment_entity.runs_per_unit
+        total_sample_runs = sample_size * experiment_entity.runs_per_unit
         prevelance = {value_key: times_predicted/total_sample_runs for value_key, times_predicted in total_times_predicted.items()}
         
         confusion_matrix = ExperimentService.calculate_confusion_matrix(prediction_result=prediction_result,
                                                                         user_threshold=formatted_user_threshold,
         )
                                                
-        prediction_metric = PredictionMetric(prediction_category_name=prediction_result_variable_name, 
+        prediction_metric = PredictionMetric(prediction_category_name=prediction_result_name, 
                                               prevalence_count=total_times_predicted,
                                               prevalence=prevelance,
                                               total_samples=total_sample_runs,
