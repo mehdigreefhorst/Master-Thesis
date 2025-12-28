@@ -83,7 +83,6 @@ def get_experiment_instances(query: GetExperiments) -> List[GetExperimentsRespon
         return jsonify(f"Scraper cluster entity: {scraper_cluster_entity.id} is missing a sample entity id")
     
     sample_entity = get_sample_repository().find_by_id(scraper_cluster_entity.sample_id)
-
     if not sample_entity:
         return jsonify(f"Scraper cluster entity: {scraper_cluster_entity.id} with sample_id: {scraper_cluster_entity.sample_id} is not findable")        
     returnable_instances = ExperimentService.convert_experiment_entities_for_user_interface(experiment_entities, sample_entity.sample_size, query.user_threshold)

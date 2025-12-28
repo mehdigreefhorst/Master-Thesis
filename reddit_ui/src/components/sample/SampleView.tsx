@@ -93,7 +93,8 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
 
   const handleViewSample = () => {
     if (sample && scraperClusterId) {
-      router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&sample_id=${sample.id}`);
+      const labelTemplateIds = Object.keys(sample.sample_label_template_labeled_status).join(',');
+      router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&sample_id=${sample.id}&label_template_ids=${labelTemplateIds}`);
     }
   };
 

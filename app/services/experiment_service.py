@@ -622,6 +622,8 @@ class ExperimentService:
                                                                                      user_threshold=user_threshold)
             
             total_prediction_metrics.append(prediction_metric)
+        
+        return total_prediction_metrics
             
     
     @staticmethod

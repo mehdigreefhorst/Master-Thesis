@@ -192,19 +192,6 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
         }))
       : undefined;
 
-    // Transform combined labels accuracy and kappa
-    const combinedLabelsAccuracy = exp.combined_labels_accuracy
-      ? Object.fromEntries(
-          Object.entries(exp.combined_labels_accuracy).map(([key, value]) => [key, (value as number) * 100])
-        )
-      : undefined;
-
-    const combinedLabelsKappa = exp.combined_labels_kappa
-      ? Object.fromEntries(
-          Object.entries(exp.combined_labels_kappa).map(([key, value]) => [key, (value as number) * 100])
-        )
-      : undefined;
-
     // Transform token statistics if available
     const tokenStatistics = exp.token_statistics ? {
       total_successful_predictions: exp.token_statistics.total_successful_predictions || 0,
@@ -236,8 +223,8 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       overallAccuracy: (exp.overall_accuracy || 0 ) * 100, // Convert to percentage
       overallKappa: (exp.overall_kappa || 0) * 100, // Convert to percentage
       predictionMetrics: predictionMetrics,
-      combinedLabelsAccuracy: combinedLabelsAccuracy,
-      combinedLabelsKappa: combinedLabelsKappa,
+      combinedLabelsAccuracy: (exp.combined_labels_accuracy || 0) * 100,
+      combinedLabelsKappa: (exp.combined_labels_kappa || 0 ) * 100,
       combinedLabelsPredictionMetrics: combinedLabelsPredictionMetrics,
       runsPerUnit: exp.runs_per_unit,
       thresholdRunsTrue: exp.threshold_runs_true || 1,

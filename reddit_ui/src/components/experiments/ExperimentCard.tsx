@@ -51,8 +51,8 @@ export interface ExperimentData {
   overallAccuracy: number;
   overallKappa: number;
   predictionMetrics: PredictionMetric[];
-  combinedLabelsAccuracy?: Record<string, number>; // Combined labels accuracy (optional)
-  combinedLabelsKappa?: Record<string, number>; // Combined labels kappa (optional)
+  combinedLabelsAccuracy?: number; // Combined labels accuracy (optional)
+  combinedLabelsKappa?: number // Combined labels kappa (optional)
   combinedLabelsPredictionMetrics?: PredictionMetric[]; // Combined labels metrics (optional)
   runsPerUnit: 1 | 2 | 3 | 4 | 5;
   thresholdRunsTrue: 1 | 2 | 3 | 4 | 5;
@@ -318,20 +318,20 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
           value={experiment.overallKappa}
         />
       </div>
-
+      
       {/* Combined Labels Metrics - Only visible if available */}
       {(experiment.combinedLabelsAccuracy || experiment.combinedLabelsKappa) && (
         <div className="grid grid-cols-2 gap-3 mb-3">
           {experiment.combinedLabelsAccuracy && (
             <MetricBar
               label="Combined Accuracy"
-              value={Object.values(experiment.combinedLabelsAccuracy)[0] || 0}
+              value={(experiment.combinedLabelsAccuracy)|| 0}
             />
           )}
           {experiment.combinedLabelsKappa && (
             <MetricBar
               label="Combined Kappa"
-              value={Object.values(experiment.combinedLabelsKappa)[0] || 0}
+              value={experiment.combinedLabelsKappa || 0}
             />
           )}
         </div>
