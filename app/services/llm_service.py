@@ -154,11 +154,24 @@ class LLMService:
         return text[json_start: json_end]
     
     @staticmethod
+    def get_between_get_between_apestrophs(text: str):
+        """gets the text that is between the `` {} ```"""
+        pattern_start = "```"
+        json_start = text.find(pattern_start)  + len(pattern_start) 
+        if text.find(pattern_start) == -1:
+          return text
+        pattern_end = "```"
+        json_end = text.find(pattern_end, json_start)
+        return text[json_start: json_end]
+    
+    @staticmethod
     def load_response_output_message_as_dict(response):
         """there are several ways LLM's commonly make mistakes in generating json output. """
         response_output_message = LLMService().get_output_message_from_llm_response(response)
         if "```json" in response_output_message:
             response_output_message = LLMService().get_between_json(response_output_message)
+        elif "```" in response_output_message:
+            response_output_message = LLMService().get_between_get_between_apestrophs(response_output_message)
 
         response_dict = json.loads(response_output_message)
         return response_dict

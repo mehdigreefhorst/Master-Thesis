@@ -67,6 +67,7 @@ class LabelPredictionCounter(BaseModel):
         if label_value_field.type == "boolean" or label_value_field.type == "category" or label_value_field.type == "integer":
             print("label_value_field.value = ", label_value_field.value)
             if isinstance(label_value_field.value, list):
+                raise Exception("LLM predicted List!")
                 print("we have a list type!")
             self.value_counter[str(label_value_field.value)] = self.value_counter.get(label_value_field.value, 0) + 1
     
@@ -240,6 +241,20 @@ class ClusterUnitEntity(BaseEntity):
             subreddit=subreddit,
             includes_media=comment_entity.has_media()
         )
+    
+    def initialize_ground_truth(self, label_template_entity: LabelTemplateEntity) -> bool:
+        """initializes the ground truth based on the llm truth projectio nof LabelTempalteEntity
+        Returns True if created new one, thus if ground truth didn't exist"""
+        if self.ground_truth is None:
+            self.ground_truth = dict()
+        
+        if self.ground_truth.get(label_template_entity.id) is None:
+            
+            self.ground_truth[label_template_entity.id] = label_template_entity.ground_truth_field.model_copy()
+            return True
+        
+        return False
+      
     
     def get_value_of_ground_truth_variable(self, label_template_id: PyObjectId, variable_name: str):
         ground_truth = self.ground_truth.get(label_template_id)

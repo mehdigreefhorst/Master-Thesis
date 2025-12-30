@@ -61,7 +61,7 @@ export function ViewerContentClassify({
   if (!clusterUnitEntityExperimentData || !allExperimentsModelInformation) {
     return (
       <div className="p-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[120rem] mx-auto">
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
             <h2 className="text-lg font-semibold text-yellow-800 mb-2">No Data Found</h2>
             <p className="text-yellow-600">Could not find cluster unit with ID: Not found </p>
@@ -75,7 +75,7 @@ export function ViewerContentClassify({
 
   return (
     <div className="p-8 animate-[pageLoad_400ms_ease-out]">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-[120rem] mx-auto">
         {/* Page Header */}
         
         

@@ -6,6 +6,7 @@ from pymongo import UpdateOne
 from app.database.base_repository import BaseRepository
 from app.database.entities.base_entity import PyObjectId
 from app.database.entities.cluster_unit_entity import ClusterUnitEntity, ClusterUnitEntityPredictedCategory
+from app.utils import utc_timestamp
 from app.utils.logging_config import get_logger
 
 
@@ -78,6 +79,16 @@ class ClusterUnitRepository(BaseRepository[ClusterUnitEntity]):
 
         return self.collection.update_one(filter, update)
     
+
+    def delete_predicted_category(self, cluster_unit_entity_ids: List[PyObjectId], experiment_id: PyObjectId):
+        filter = {"_id": {"$in": cluster_unit_entity_ids}}
+        
+        # check if the predicted category even 
+        deleted_result =  self.collection.update_many(
+            filter,
+            {"$unset": { f"predicted_category.{experiment_id}": ""}}
+        )
+        return deleted_result.modified_count
 
     def insert_many_predicted_categories(
         self,
@@ -181,3 +192,39 @@ class ClusterUnitRepository(BaseRepository[ClusterUnitEntity]):
         result = self.collection.delete_many(filter)
         logger.info(f"[delete_many_by_cluster_enity_id] Deleted {result.deleted_count} cluster units for cluster_entity_id={cluster_entity_id}")
         return result
+
+    def update_many_cluster_units(self, cluster_units: List[ClusterUnitEntity]):
+        """
+        Update multiple cluster unit entities in a single bulk operation.
+
+        Args:
+            cluster_units: List of ClusterUnitEntity objects to update
+
+        Returns:
+            Number of documents modified
+        """
+        if not cluster_units:
+            logger.warning("No cluster units provided to update_many_cluster_units")
+            return 0
+
+        # Build bulk update operations
+        bulk_ops = []
+        current_time = utc_timestamp()
+
+        for unit in cluster_units:
+            # Get entity data and remove _id
+            update_data = {k: v for k, v in unit.dump_for_database().items() if k != "_id"}
+            # Add updated_at timestamp
+            update_data["updated_at"] = current_time
+
+            bulk_ops.append(
+                UpdateOne(
+                    {"_id": unit.id},
+                    {"$set": update_data}
+                )
+            )
+
+        # Execute bulk write
+        result = self.collection.bulk_write(bulk_ops, ordered=False)
+        logger.info(f"Updated {result.modified_count} cluster units in bulk operation")
+        return result.modified_count

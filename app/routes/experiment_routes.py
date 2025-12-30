@@ -279,10 +279,14 @@ def delete_experiment(query: ExperimentId):
     current_user = get_user_repository().find_by_id(user_id)
     if not current_user:
         return jsonify(error="No such user"), 401
-    
+
     experiment_entity = get_experiment_repository().find_by_id(query.experiment_id)
+    cluster_unit_entity_ids = ExperimentService().get_input_cluster_unit_entities_from_expertiment(experiment_entity=experiment_entity, only_return_ids=True)
+    modified_count = get_cluster_unit_repository().delete_predicted_category(cluster_unit_entity_ids=cluster_unit_entity_ids, 
+                                                            experiment_id=experiment_entity.id)
+    return jsonify(message=f"Succesfully deleted {modified_count} experiments with id = {experiment_entity.id}"), 200
     if experiment_entity.status == StatusType.Initialized:
-        modified_count = get_experiment_repository().delete(experiment_entity.id).modified_count
+        #modified_count = get_experiment_repository().delete(experiment_entity.id).modified_count
         return jsonify(message=f"Succesfully deleted {modified_count} experiments with id = {experiment_entity.id}"), 200
 
     else:

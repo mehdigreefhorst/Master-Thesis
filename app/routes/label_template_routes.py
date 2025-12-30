@@ -3,6 +3,8 @@
 from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.database import get_cluster_unit_repository, get_label_template_repository, get_sample_repository, get_user_repository
+from app.services.experiment_service import ExperimentService
+from app.services.label_template_service import LabelTemplateService
 from app.utils.api_validation import validate_query_params, validate_request_body
 from app.requests.label_template_requests import AddLabelTemplateToSampleRequest, UpdateCombinedLabels, CreateLabelTemplateRequest, GetLabelTemplateRequest, UpdateOneShotExampleRequest
 from app.database.entities.label_template import LabelTemplateEntity
@@ -70,6 +72,9 @@ def add_to_sample(body: AddLabelTemplateToSampleRequest):
         return jsonify(f"sample_id: {body.sample_entity_id} is not findable")     
 
     sample_entity.add_remove_label_template(action=body.action, label_template_id=body.label_template_id)
+    cluster_unit_entities = ExperimentService().get_cluster_units_from_sample_entity(sample_id=sample_entity.id)
+    LabelTemplateService.create_ground_truth_cluster_unit_entities(cluster_unit_entities=cluster_unit_entities,
+                                                                   label_template_entity=label_template_entity)
     
     get_sample_repository().update(sample_entity.id, sample_entity)
 

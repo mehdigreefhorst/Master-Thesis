@@ -55,6 +55,20 @@ class LabelTemplateService:
         return returnable_cluster_units
     
     @staticmethod
+    def create_ground_truth_cluster_unit_entities(cluster_unit_entities: List[ClusterUnitEntity], label_template_entity: LabelTemplateEntity) -> int:
+        updated_count = 0
+        label_template_entity._create_ground_truth_field()
+        get_label_template_repository().update(label_template_entity.id, label_template_entity)
+
+        for cluster_unit_entity in cluster_unit_entities:
+            created_ground_truth = cluster_unit_entity.initialize_ground_truth(label_template_entity=label_template_entity)
+            if created_ground_truth:
+                updated_count += 1
+        logger.info(f"created a total of {updated_count} grund truths for label_template_entity because it wasn't yet added to the cluster unit ground truths")
+        get_cluster_unit_repository().update_many_cluster_units(cluster_unit_entities)
+        return updated_count
+    
+    @staticmethod
     def convert_sample_cluster_units_return_format_labeling_format(cluster_unit_entities: List[ClusterUnitEntity], label_template_entity: LabelTemplateEntity) -> GetSampleUnitsLabelingFormatResponse:
         
 

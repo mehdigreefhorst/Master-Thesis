@@ -24,6 +24,9 @@ class LabelValueField(BaseModel):
         if isinstance(self.value, list) and len(self.value) == 1:
             self.value = self.value[0]
             
+
+        elif isinstance(self.value, list) and len(self.value) >= 1:
+            raise Exception(f"label = {self.label}, has value: {self.value}, thus incorrect because type: {self.type}")
         else:
             self.value = self.value
         return self
@@ -103,7 +106,7 @@ class ProjectionLabelField(LabelValueField):
     """this class is build with real data. This is very similar to the LLMLabelField. But then it has the truly predicted information from the LLM. Also is used for ground truth"""
     per_label_details: List[LabelValueField] = Field(default_factory=list)
 
-    # @model_validator(mode="after")
+    @model_validator(mode="after")
     def verify_label_values(self):
         if self.type == "boolean":
             if not isinstance(self.value, bool):
@@ -128,6 +131,7 @@ class LabelTemplateLLMProjection(BaseModel):
     label_template_id: PyObjectId
     experiment_id: PyObjectId
     values: Dict[labelName, ProjectionLabelField] = Field(default_factory=dict) # key is label_value.label name of a LabelTemplateLLMProjection
+    is_verified: bool = False
 
     def get_prediction_counter(self) -> Dict[str, Dict[str, int]]:
         """create prediction counter, where it is a dictionary. where each of the variable names, of the boolean types, gets a 1 if true. and 0 if false"""
@@ -391,26 +395,39 @@ class LabelTemplateEntity(BaseEntity):
         return json.dumps(self.labels_llm_prompt_response_format, indent=4)
     
     def from_prediction(self, llm_response_dict: Dict, experiment_id: PyObjectId) -> LabelTemplateLLMProjection:
-        """creates an instance of LabelInstance, from the dictionary that was created by an LLM"""
+        """creates an instance of LabelInstance, from the dictionary that was created by an LLM
+        raises exception when the wrong value"""
         label_prediction_instance = LabelTemplateLLMProjection(label_template_id=self.id, experiment_id=experiment_id)
         input_dict = deepcopy(llm_response_dict)
         for label in self.labels:
-            label_prediction_dict = input_dict.pop(label.label)
-            value_label = label_prediction_dict.pop("value")
-
-
-            per_label_value_fields = list()
-            for per_label in self.llm_prediction_fields_per_label:
-                per_label_value = label_prediction_dict.pop(per_label.label)
-                # :TODO here you should add a check, to see if the per label field is for every variable. If we set it that per label fields can be optional for some
-                per_label_value_fields.append(LabelValueField(label=per_label.label, value=per_label_value, type=per_label.type))
-
-            if label_prediction_dict:
-                raise Exception(f"the label_prediction_dict should be empty! BUt it is not. label_prediction_dict = {label_prediction_dict}")
-            label_value_per_label_field = ProjectionLabelField(label=label.label, value=value_label, type=label.type, per_label_details=per_label_value_fields)
+            label_value_per_label_field = self.create_projection_label_field_from_single_parameter_dict(input_dict=input_dict,
+                                                                                                        label=label)
             label_prediction_instance.values[label.label] =  label_value_per_label_field
         
+
+        
         return label_prediction_instance
+    
+
+    def create_projection_label_field_from_single_parameter_dict(self, input_dict: Dict, label: LLMLabelField) -> ProjectionLabelField:
+        """creates a ProjectionLabelField instance of a single parameter"""
+        label_prediction_dict = input_dict.pop(label.label)
+        value_label = label_prediction_dict.pop("value")
+
+        print("label_value_field.value = ", value_label)
+
+        per_label_value_fields = list()
+        for per_label in self.llm_prediction_fields_per_label:
+            per_label_value = label_prediction_dict.pop(per_label.label)
+            # :TODO here you should add a check, to see if the per label field is for every variable. If we set it that per label fields can be optional for some
+            per_label_value_fields.append(LabelValueField(label=per_label.label, value=per_label_value, type=per_label.type))
+
+        if label_prediction_dict:
+            raise Exception(f"the label_prediction_dict should be empty! BUt it is not. label_prediction_dict = {label_prediction_dict}")
+        label_value_per_label_field = ProjectionLabelField(label=label.label, value=value_label, type=label.type, per_label_details=per_label_value_fields)
+        return label_value_per_label_field
+
+
 
     def is_ground_truth_value_part_of_label(self, label_name: str, label_value):
         """check if the ground truth to add is of the correct """

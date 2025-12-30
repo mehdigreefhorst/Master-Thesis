@@ -81,6 +81,9 @@ class ApplicationTester:
     # ---------- public HTTP helpers ----------
     def post(self, path: str, json_data: Dict):
         return self._request("POST", path, json=json_data)
+    
+    def delete(self, path: str, json_data: Dict):
+        return self._request("DELETE", path, json=json_data)
 
     def get(self, path: str, search_params=None):
         return self._request("GET", path, params=search_params)

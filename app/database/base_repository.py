@@ -107,6 +107,25 @@ class BaseRepository[T: BaseEntity]:
 
         filter = self._soft_delete_filter({"_id": id})
         return self.collection.update_one(filter, {"$set": to_update})
+    
+    def update_many(self, filter: Dict[str, Any], to_update: Mapping[str, Any] | T) -> UpdateResult:
+        """
+        Updates multiple documents matching the filter.
+
+        Args:
+            filter: MongoDB filter to match documents
+            to_update: Dictionary of fields to update, or an entity instance
+
+        Returns:
+            UpdateResult with information about the operation
+        """
+        if isinstance(to_update, BaseEntity):  # Cannot do 'isinstance(..., T)' so we use BaseEntity instead.
+            to_update = dict(to_update.dump_for_database())
+            del to_update["_id"]
+        to_update["updated_at"] = utc_timestamp()
+
+        filter_with_soft_delete = self._soft_delete_filter(filter)
+        return self.collection.update_many(filter_with_soft_delete, {"$set": to_update})
 
     def delete(self, id: PyObjectId) -> UpdateResult:
         return self.update(id, {"deleted_at": utc_timestamp()})

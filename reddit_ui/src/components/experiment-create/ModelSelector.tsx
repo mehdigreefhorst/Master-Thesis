@@ -150,6 +150,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const renderFooter = () => (
     <Link
       href="/models"
+      target="_blank"
+      rel="noopener noreferrer"
       className="flex items-center justify-center gap-2 text-sm text-blue-600 hover:text-blue-700 transition-colors py-2"
     >
       <ExternalLink className="w-4 h-4" />

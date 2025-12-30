@@ -23,6 +23,7 @@ interface LabelRowProps {
   results: (LabelResult | null)[]; // null means no data (—)
   handleClusterUnitGroundTruthUpdate: (category: string, newValue: boolean | string | number) => void;
   clusterUnitEntityId?: string | null;
+  isScrollMode?: boolean;
   className?: string;
 }
 
@@ -34,6 +35,7 @@ export const LabelRow: React.FC<LabelRowProps> = ({
   results,
   handleClusterUnitGroundTruthUpdate,
   clusterUnitEntityId,
+  isScrollMode = false,
   className = ''
 }) => {
   const { toast } = useToast();
@@ -142,11 +144,17 @@ export const LabelRow: React.FC<LabelRowProps> = ({
   }
 
   return (
-    <tr className={`hover:bg-(--muted) ${className}`}>
-      <td className="p-4 border-b border-(--border) text-sm">
-        <strong>{labelName}</strong>
+    <tr className={`hover:bg-gray-50 ${className}`}>
+      <td
+        className="p-4 border-b border-gray-200 text-sm bg-white sticky left-0 z-10"
+        style={isScrollMode ? { minWidth: '200px', width: '200px' } : { width: '15%' }}
+      >
+        <strong className="block truncate" title={labelName}>{labelName}</strong>
       </td>
-      <td className="border-b border-(--border) text-center text-xl px-4">
+      <td
+        className="border-b border-gray-200 text-center text-xl px-4 bg-white"
+        style={isScrollMode ? { minWidth: '100px', width: '100px' } : { width: '10%' }}
+      >
         {shouldShowInput ? (
           <Input
             type="text"
@@ -172,13 +180,17 @@ export const LabelRow: React.FC<LabelRowProps> = ({
         )}
       </td>
       {results.map((result, index) => (
-        <td key={index} className={`p-4 border-b border-(--border) ${newGroundTruth && result && result.count_match_ground_truth !== result.total_runs ? "bg-amber-200": ""} `}>
+        <td
+          key={index}
+          className={`p-1 border-b border-gray-200 ${newGroundTruth && result && result.count_match_ground_truth !== result.total_runs ? "bg-amber-200": ""}`}
+          style={isScrollMode ? { minWidth: '300px', width: '25%' } : {}}
+        >
           {result === null ? (
             <div className="text-center text-gray-400">—</div>
           ) : (
             <div className="flex flex-col gap-2 w-full min-w-0">
               <div className="flex items-center gap-2">
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <ConsensusBar
                     value={result.count_match_ground_truth}
                     predictedValues={result.values}
@@ -187,17 +199,19 @@ export const LabelRow: React.FC<LabelRowProps> = ({
                   />
                   {JSON.stringify(result.count_match_ground_truth)}
                 </div>
-                <span className="text-sm font-semibold">
-                  {result.count_match_ground_truth}/{result.total_runs || 3}
-                </span>
-                {result.per_label_labels && (
-                  <span
-                    className="inline-block cursor-pointer text-xl transition-transform duration-200 hover:scale-110 hover:rotate-6"
-                    onClick={() => toggleOpen(index)}
-                  >
-                    💬
+                <div className='flex flex-col'>
+                  <span className="text-sm font-semibold whitespace-nowrap">
+                    {result.count_match_ground_truth}/{result.total_runs || 3}
                   </span>
-                )}
+                  {result.per_label_labels && (
+                    <span
+                      className="inline-block cursor-pointer text-xl transition-transform duration-200 hover:scale-110 hover:rotate-6 flex-shrink-0"
+                      onClick={() => toggleOpen(index)}
+                    >
+                      💬
+                    </span>
+                  )}
+                </div>
               </div>
               <ReasoningIcon per_label_labels={result.per_label_labels} setIsOpen={() => toggleOpen(index)} isOpen={openStates[index]}/>
 

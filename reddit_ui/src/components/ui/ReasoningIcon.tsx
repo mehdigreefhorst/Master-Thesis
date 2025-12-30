@@ -26,7 +26,7 @@ export const ReasoningIcon: React.FC<ReasoningIconProps> = ({
       </span>
       {isOpen && (
         <div
-          className="w-full bg-(--muted) border border-(--border) rounded-(--radius) p-4 animate-[panelExpand_300ms_ease-out] cursor-pointer hover:bg-[oklch(0.94_0_0)] transition-colors wrap-break-word whitespace-normal"
+          className="w-full bg-(--muted) border border-(--border) rounded-(--radius) p-1 animate-[panelExpand_300ms_ease-out] cursor-pointer hover:bg-[oklch(0.94_0_0)] transition-colors wrap-break-word whitespace-normal"
           onClick={() => setIsOpen(!isOpen)}
         >
           {per_label_labels && Object.entries(per_label_labels).map(([per_label, per_label_value_runs])=> (
