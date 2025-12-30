@@ -11,7 +11,6 @@ export const InfoTooltip: React.FC<InfoTooltipProps> = ({ text, className = '' }
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
-  console.log("tooltip text = ", text)
 
   useEffect(() => {
     if (isVisible && triggerRef.current) {

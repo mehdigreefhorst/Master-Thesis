@@ -178,7 +178,7 @@ def create_experiment(body: CreateExperiment):
     else:
         raise Exception(f"unknown input type is given! type = {body.input_type}")
 
-    logger.info("body.model_id = ", body.model_id)
+    logger.info(f"body.model_id = {body.model_id}")
     model_pricing = get_openrouter_data_repository().find_pricing_of_model(model_id=body.model_id)
 
     experiment_entity = ExperimentEntity(user_id=user_id,
@@ -284,13 +284,12 @@ def delete_experiment(query: ExperimentId):
     cluster_unit_entity_ids = ExperimentService().get_input_cluster_unit_entities_from_expertiment(experiment_entity=experiment_entity, only_return_ids=True)
     modified_count = get_cluster_unit_repository().delete_predicted_category(cluster_unit_entity_ids=cluster_unit_entity_ids, 
                                                             experiment_id=experiment_entity.id)
-    return jsonify(message=f"Succesfully deleted {modified_count} experiments with id = {experiment_entity.id}"), 200
-    if experiment_entity.status == StatusType.Initialized:
-        #modified_count = get_experiment_repository().delete(experiment_entity.id).modified_count
+    if experiment_entity.status == StatusType.Initialized or query.force_deletion:
+        modified_count = get_experiment_repository().delete(experiment_entity.id).modified_count
         return jsonify(message=f"Succesfully deleted {modified_count} experiments with id = {experiment_entity.id}"), 200
 
     else:
-        return jsonify(error=f"experiment_id {experiment_entity.id} wrong statusType, must be Initialized -> NOT {experiment_entity.status}"), 400
+        return jsonify(error=f"experiment_id {experiment_entity.id} wrong statusType, must be Initialized -> NOT {experiment_entity.status} set query: force_deletion=True, if must be deleted"), 400
 
 @experiment_bp.route("/parse_prompt", methods=["POST"])
 @validate_request_body(ParsePrompt)

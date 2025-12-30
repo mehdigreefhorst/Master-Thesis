@@ -238,3 +238,7 @@ class ExperimentEntity(BaseEntity):
         self.experiment_cost = experiment_cost
         return experiment_cost.total
     
+
+    def reset_aggregate_result(self):
+        """sets the aggregate result to None"""
+        self.aggregate_result = AggregateResult()

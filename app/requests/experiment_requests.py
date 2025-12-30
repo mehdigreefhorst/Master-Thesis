@@ -37,6 +37,7 @@ class UpdateExperimentThreshold(BaseModel):
 
 class ExperimentId(BaseModel):
     experiment_id: PyObjectId
+    force_deletion: Optional[bool] = False
 
 
 class ParsePrompt(BaseModel):

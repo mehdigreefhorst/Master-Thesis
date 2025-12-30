@@ -373,15 +373,23 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({
         variant: 'destructive',
       });
     }
-    if (!scraperClusterId || !selectedModelInfo) {
+    if (!scraperClusterId) {
       return toast({
         title: 'Error',
         description: 'No scraper cluster ID is available!',
         variant: 'destructive',
       });
     }
+    if (!selectedModelInfo) {
+      return toast({
+        title: 'Error',
+        description: 'No model selected!',
+        variant: 'destructive',
+      });
+    }
 
     if (!selectedLabelTemplateId) {
+      console.log("selectedLabelTemplateId. = ", selectedLabelTemplateId)
       return toast({
         title: 'Error',
         description: 'No label template is selected!',
@@ -392,7 +400,7 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({
     if (!selectedInputEntity) {
       return toast({
         title: 'Error',
-        description: 'No selectedInputEntity is selected!',
+        description: 'No Input Source is selected!',
         variant: 'destructive',
       });
     }

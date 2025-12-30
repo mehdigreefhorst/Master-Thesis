@@ -311,6 +311,7 @@ class ExperimentService:
         """Coonverts the experiment into aggrate results. Measures how often it is correct in its prediction and how often it is not"""
         
         prevelance_distribution_list_all_entities = []
+        experiment_entity.reset_aggregate_result()
         for cluster_unit_entity in cluster_unit_entities:
             if cluster_unit_entity.predicted_category is None:
                 raise Exception(f"We cannot calculate the predicted category if this category is None, an issue must be there \n experiment_id: {experiment_entity.id} \n cluster_unit_entity: {cluster_unit_entity.id}")
@@ -374,6 +375,7 @@ class ExperimentService:
         experiment_entity: ExperimentEntity
     ) -> None:
         """
+        Only uses the newly done cluster units. It adds to the existing body
         Calculate comprehensive token statistics across all predictions in the experiment.
         This captures:
         - Total tokens used (including all retries)
@@ -423,8 +425,8 @@ class ExperimentService:
             total_cost = 0
 
         # Store in experiment entity
-        experiment_entity.token_statistics.total_successful_predictions = total_successful_predictions
-        experiment_entity.token_statistics.total_failed_attempts = total_failed_attempts
+        experiment_entity.token_statistics.total_successful_predictions += total_successful_predictions
+        experiment_entity.token_statistics.total_failed_attempts += total_failed_attempts
 
         logger.info(f"Token Statistics for Experiment ", extra={'extra_fields': {"experiment_entity": experiment_entity.id} })
         logger.info(f"  Experiment cost spend = {total_cost}$")

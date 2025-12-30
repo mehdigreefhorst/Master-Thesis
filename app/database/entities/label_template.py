@@ -40,7 +40,7 @@ class LLMLabelField(LabelValueField):
     def add_possible_values(self):
         if not self.possible_values:
             if self.type == "boolean":
-                self.possible_values = [True, False]
+                self.possible_values = [False, True]
             elif self.type == "integer":
                 self.possible_values = f"insert {self.label} here as a {self.type}!"
             elif self.type == "float":
@@ -99,7 +99,7 @@ class LLMLabelField(LabelValueField):
                 else:
                     prediction_counter[str(self.value)] += 0
 
-        return prediction_counter
+        return prediction_counter        
         
 
 class ProjectionLabelField(LabelValueField):
