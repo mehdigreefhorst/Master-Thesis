@@ -115,6 +115,8 @@ export interface GetExperimentsResponse {
   id: string;
   name: string;
   model: string;
+  input_type: string;
+  input_id: string;
   prompt_id: string;
   created: string | Date;  // Can be string from API or Date after parsing
   runs_per_unit: 1 | 2 | 3 | 4 | 5;
@@ -130,6 +132,7 @@ export interface GetExperimentsResponse {
   reasoning_effort: ReasoningEffort;
   token_statistics?: ExperimentTokenStatistics;
   experiment_cost?: ExperimentCost;
+  prediction_errors?: string[];
   status: StatusType;
   experiment_type: PromptCategory;
 

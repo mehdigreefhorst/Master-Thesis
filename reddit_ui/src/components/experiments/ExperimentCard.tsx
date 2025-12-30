@@ -46,6 +46,9 @@ export interface ExperimentData {
   id: string;
   name: string;
   model_id: string;
+  input_id: string;
+  input_type: string;
+  prompt_id: string;
   created: string;
   totalSamples: number;
   overallAccuracy: number;
@@ -60,6 +63,7 @@ export interface ExperimentData {
   reasoningEffort: ReasoningEffort
   tokenStatistics?: TokenStatistics;
   experimentCost?: ExperimentCost;
+  predictionErrors?: string[] | null
   labelTemplateId: string;
   experimentType: PromptCategory
 }
@@ -341,6 +345,45 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
       {experiment.tokenStatistics && (
         <div className="mt-3 pt-3 border-t border-(--border)">
           <TokenStatsDisplay stats={experiment.tokenStatistics} />
+        </div>
+      )}
+
+      {/* Prediction Errors - Only visible if errors exist */}
+      {experiment.predictionErrors && experiment.predictionErrors.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-(--border)">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <span className="text-base">⚠️</span> Prediction Errors
+              </h4>
+              <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs">
+                {experiment.predictionErrors.length} errors
+              </span>
+            </div>
+
+            {/* Collapsible Error List */}
+            <details className="group">
+              <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-1">
+                <span className="group-open:rotate-90 transition-transform">▶</span>
+                View error details
+              </summary>
+              <div className="mt-3 space-y-2 text-xs max-h-60 overflow-y-auto">
+                {experiment.predictionErrors.map((error, index) => (
+                  <div
+                    key={index}
+                    className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded p-2"
+                  >
+                    <div className="font-medium text-red-900 dark:text-red-100 mb-1">
+                      Error {index + 1}
+                    </div>
+                    <div className="text-red-700 dark:text-red-300 font-mono text-xs whitespace-pre-wrap break-words">
+                      {error}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </details>
+          </div>
         </div>
       )}
 

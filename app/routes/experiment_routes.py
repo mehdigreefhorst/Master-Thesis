@@ -320,7 +320,7 @@ def parse_prompt(body: ParsePrompt):
     if not label_template_entity:
         return jsonify(error=f"label_template_entity not found for id = {body.label_template_id}"), 400
     
-    parsed_prompt = ExperimentService.parse_classification_prompt(cluster_unit_entity, prompt_entity, label_template_entity)
+    parsed_prompt = ExperimentService.parse_prompt_cluster_unit(cluster_unit_entity, prompt_entity, label_template_entity)
 
     return jsonify(parsed_prompt), 200
 

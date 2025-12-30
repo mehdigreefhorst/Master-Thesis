@@ -33,6 +33,7 @@ class LabelValueField(BaseModel):
 
 
 class LLMLabelField(LabelValueField):
+    """first value of possible_values is picked as default value if none are given"""
     explanation: str # explanation of what the variable does
     possible_values: List | str = [] # e.g. [positive, neutral, negative]  | leave empty if all values are acceptable. 
 

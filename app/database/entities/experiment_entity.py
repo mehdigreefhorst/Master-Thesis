@@ -101,6 +101,8 @@ class PredictionResult(BaseModel):
 class AggregateResult(BaseModel):
     labels: Dict[LabelName, PredictionResult] = Field(default_factory=dict)
     combined_labels: Dict[str, CombinedPredictionResult] = Field(default_factory=dict)
+    errors: Optional[List[str]] = None
+
 
     @classmethod
     def field_names(cls) -> list[str]:
@@ -128,7 +130,14 @@ class AggregateResult(BaseModel):
             self.combined_labels.get(combined_label_name).insert_combined_label_prediction_ground_truth(
                 combined_min_true_count=combined_min_true_count,
                 is_combined_ground_truth=is_combined_ground_truth)
+
+    def insert_errors(self, errors: Optional[List[str]] = None):
+        """inserts the errors of a list of errors coming from a cluster unit entity prediction. """
+        if self.errors is None:
+            self.errors = list()
             
+        if errors:
+            self.errors.extend(errors)
             
         
         

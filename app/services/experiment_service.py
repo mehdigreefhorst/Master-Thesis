@@ -252,7 +252,7 @@ class ExperimentService:
         if all_attempts_token_usage is None:
             all_attempts_token_usage = []
 
-        parsed_prompt = ExperimentService.parse_classification_prompt(cluster_unit_entity, prompt_entity, label_template_entity)
+        parsed_prompt = ExperimentService.parse_prompt_cluster_unit(cluster_unit_entity, prompt_entity, label_template_entity)
         single_prediction_format.insert_input_prompt(parsed_prompt)
         single_prediction_format.insert_system_prompt(prompt_entity.system_prompt)
         # Make the LLM call
@@ -316,6 +316,8 @@ class ExperimentService:
             if cluster_unit_entity.predicted_category is None:
                 raise Exception(f"We cannot calculate the predicted category if this category is None, an issue must be there \n experiment_id: {experiment_entity.id} \n cluster_unit_entity: {cluster_unit_entity.id}")
             prediction_counter_single_unit: ClusterUnitPredictionCounter = ExperimentService.create_prediction_counter_from_cluster_unit(cluster_unit_entity=cluster_unit_entity, experiment_entity=experiment_entity, combined_labels=label_template_entity.combined_labels)
+            prediction_erros = cluster_unit_entity.get_errors_single_experiment(experiment_id=experiment_entity.id)
+            experiment_entity.aggregate_result.insert_errors(prediction_erros)
             # Below we go over the possible categories, and how often they have been counted. Then we find the corresponding variable in aggregate results
             # Then we increase the counter of aggregate results with 1. This allows us to track how many runs have predicted that label.
             if label_template_entity.combined_labels:
@@ -437,7 +439,7 @@ class ExperimentService:
         logger.info(f"  Tokens from retries: {experiment_entity.token_statistics.tokens_from_retries}")
 
     @staticmethod
-    def parse_classification_prompt(cluster_unit_entity: ClusterUnitEntity, prompt_entity: PromptEntity, label_template_entity: LabelTemplateEntity):
+    def parse_prompt_cluster_unit(cluster_unit_entity: ClusterUnitEntity, prompt_entity: PromptEntity, label_template_entity: LabelTemplateEntity):
         # if not prompt_entity.category == PromptCategory.Classify_cluster_units:
         #     raise Exception("The prompt is of the wrong type!!!")
         prompt = prompt_entity.prompt
@@ -536,6 +538,8 @@ class ExperimentService:
             experiment_response = GetExperimentsResponse(id=experiment.id,
                                                          name=f"{experiment.model_id} V{index}",
                                                          model=experiment.model_id,
+                                                         input_type=experiment.input_type,
+                                                         input_id=experiment.input_id,
                                                          prompt_id=experiment.prompt_id,
                                                          created=experiment.created_at,
                                                          total_samples=sample_size,

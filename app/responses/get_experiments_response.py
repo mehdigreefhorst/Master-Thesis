@@ -674,6 +674,8 @@ class GetExperimentsResponse(BaseModel):
     id: str
     name: str
     model: str
+    input_type: str
+    input_id: str
     prompt_id: str
     created: datetime
     runs_per_unit: int
@@ -689,6 +691,7 @@ class GetExperimentsResponse(BaseModel):
     reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh", "auto"]
     token_statistics: Optional[ExperimentTokenStatistics] = None
     experiment_cost: Optional[ExperimentCost] = None
+    prediction_errors: Optional[List[str]] = None
     status: StatusType
     experiment_type: PromptCategory
 
@@ -724,6 +727,11 @@ class SinglePredictionOutputFormat(BaseModel):
             self.error = list()
 
         self.error.append(error_message)
+
+    def get_errors(self) -> List[str] | None:
+        if self.error is None:
+            return None
+        return self.error
     
     def insert_parsed_categories(self, parsed_categories: PredictionCategoryTokens):
         self.parsed_categories = parsed_categories
@@ -760,6 +768,7 @@ class SinglePredictionOutputFormat(BaseModel):
 class GroupedPredictionOutputFormat(BaseModel):
     cluster_unit_entity: ClusterUnitEntity
     predictions: List[SinglePredictionOutputFormat]
+    errors: Optional[List[str]] = None
 
     def all_predictions_successfull(self):
         for prediction in self.predictions:
@@ -774,6 +783,17 @@ class GroupedPredictionOutputFormat(BaseModel):
         if not self.all_predictions_successfull():
             return None
         return [prediction.parsed_categories for prediction in self.predictions]
+    
+    def get_errors(self) -> List[str] | None:
+        errors: List[str] = list()
+        errors_nested = [prediction.get_errors() for prediction in self.predictions]
+        for error_nest in errors_nested:
+            if isinstance(error_nest, list):
+                for error in error_nest:
+                    errors.append(error)
+        
+        if errors:
+            return errors
         
 
     def create_set_predicted_category(self, experiment_entity: ExperimentEntity) -> ClusterUnitEntityPredictedCategory:
@@ -782,7 +802,8 @@ class GroupedPredictionOutputFormat(BaseModel):
         
         cluster_unit_predicted_category = ClusterUnitEntityPredictedCategory(
                 experiment_id=experiment_entity.id,
-                predicted_categories=self.get_parsed_categories()
+                predicted_categories=self.get_parsed_categories(),
+                errors=self.get_errors()
                 )
         
         if self.cluster_unit_entity.predicted_category is None:

@@ -104,6 +104,7 @@ class ClusterUnitEntityPredictedCategory(BaseModel):
     """
     experiment_id: PyObjectId
     predicted_categories: List[PredictionCategoryTokens]
+    errors: Optional[List[str]] = None # The errors generated during prediction for this experiment, in this cluster unit
 
     def get_cluster_unit_prediction_counter(self, combined_labels: Optional[Dict[str, List[LabelName]]] = None) -> ClusterUnitPredictionCounter:
         """create cluster_unit_prediction_counter, of all runs of a single cluster unit where it is a dictionary. where each of the label names is the key. and value is count. 
@@ -147,6 +148,10 @@ class ClusterUnitEntityPredictedCategory(BaseModel):
             if label_value is not None:
                 values.append(label_value.value)
         return values
+    
+    def get_errors(self) -> List[str] | None:
+        return self.errors
+        
 
 
 
@@ -312,3 +317,11 @@ class ClusterUnitEntity(BaseEntity):
         values = predicted_category.get_label_values(label_name=label_name)
         if values: 
             return values
+    
+
+    def get_errors_single_experiment(self, experiment_id: PyObjectId) -> List[str] | None:
+        predicted_category = self.predicted_category.get(experiment_id)
+        if predicted_category is None:
+            return None
+        
+        return predicted_category.get_errors()

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthFetch } from '@/utils/fetch';
 import { experimentApi, modelsApi } from '@/lib/api';
@@ -52,11 +52,31 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  // Get query params for input entity
-  const sampleId = searchParams.get('sample_id');
-  const filteringId = searchParams.get('filtering_id');
-  const clusterId = searchParams.get('cluster_id');
+  console.log(searchParams)
+
+  // Get query params for input entity (old format)
+  const sampleIdFromUrl = searchParams.get('sample_id');
+  const filteringIdFromUrl = searchParams.get('filtering_id');
+  const clusterIdFromUrl = searchParams.get('cluster_id');
   const sampleOnly = searchParams.get('sample_only') !== 'false';
+
+  // Get query params for experiment configuration (URL-decoded)
+  const modelIdParam = searchParams.get('model_id') ? decodeURIComponent(searchParams.get('model_id')!) : null;
+  console.log("searchParams= ", searchParams)
+  console.log("modelIdParam (decoded)= ", modelIdParam)
+  const promptIdParam = searchParams.get('prompt_id');
+  const labelTemplateIdParam = searchParams.get('label_template_id');
+  const inputTypeParam = searchParams.get('input_type') as 'sample' | 'filtering' | 'cluster' | null;
+  const inputIdParam = searchParams.get('input_id');
+  const runsPerUnitParam = searchParams.get('runs_per_unit');
+  const thresholdParam = searchParams.get('threshold');
+  const reasoningEffortParam = searchParams.get('reasoning_effort') as ReasoningEffortType | null;
+
+  // Map unified input_type + input_id to specific params for InputEntitySelector
+  // This supports both old format (sample_id/filtering_id/cluster_id) and new format (input_type + input_id)
+  const sampleId = inputTypeParam === 'sample' && inputIdParam ? inputIdParam : sampleIdFromUrl;
+  const filteringId = inputTypeParam === 'filtering' && inputIdParam ? inputIdParam : filteringIdFromUrl;
+  const clusterId = inputTypeParam === 'cluster' && inputIdParam ? inputIdParam : clusterIdFromUrl;
 
   // Input entity state
   const [selectedInputEntity, setSelectedInputEntity] = useState<InputEntityDisplay | undefined>();
@@ -98,6 +118,9 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({
   const [showTestModal, setShowTestModal] = useState(false);
   const [createdExperimentId, setCreatedExperimentId] = useState<string | null>(null);
 
+  // Track if we've loaded initial params from URL
+  const hasLoadedInitialParams = useRef(false);
+
   // Selector items
   const runsPerUnitItems: SelectorItem[] = [1, 2, 3, 4, 5].map((n) => ({
     id: String(n),
@@ -123,6 +146,24 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({
   const selectedRunsItem = runsPerUnitItems.find((item) => item.value === runsPerUnit) || null;
   const selectedThresholdItem = thresholdItems.find((item) => item.value === thresholdRunsPerUnits) || null;
   const selectedReasoningEffortItem = reasoningEffortItems.find((item) => item.value === reasoningEffort) || null;
+
+  // Helper function to update URL query parameters
+  const updateURLParams = (params: Record<string, string | number | undefined | null>) => {
+    const currentParams = new URLSearchParams(window.location.search);
+
+    // Update or remove parameters
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        currentParams.set(key, String(value));
+      } else {
+        currentParams.delete(key);
+      }
+    });
+
+    // Update URL without page reload
+    const newUrl = `${window.location.pathname}?${currentParams.toString()}`;
+    window.history.replaceState({}, '', newUrl);
+  };
 
   // Fetch sample units on mount
   useEffect(() => {
@@ -183,6 +224,112 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({
 
     fetchPrompts();
   }, [authFetch]);
+
+  // Load URL query parameters when data is ready (only once)
+  useEffect(() => {
+    // Don't load if we've already loaded initial params
+    if (hasLoadedInitialParams.current) return;
+
+    // Wait for data to be loaded
+    if (availableModels.length === 0 || prompts.length === 0) return;
+
+    console.log('Loading initial params from URL...');
+    console.log('Available models:', availableModels.map(m => m.id));
+    console.log('Available prompts:', prompts.map(p => p.id));
+
+    // Load model from URL (decoded)
+    if (modelIdParam) {
+      const model = availableModels.find((m) => m.id === modelIdParam);
+      if (model) {
+        console.log('Found matching model:', model.id);
+        setSelectedModelInfo(model);
+      } else {
+        console.warn('No matching model found for:', modelIdParam);
+      }
+    }
+
+    // Load prompt from URL
+    if (promptIdParam) {
+      const prompt = prompts.find((p) => p.id === promptIdParam);
+      if (prompt) {
+        console.log('Found matching prompt:', prompt.id);
+        handlePromptSelect(promptIdParam);
+      } else {
+        console.warn('No matching prompt found for:', promptIdParam);
+      }
+    }
+
+    // Load label template from URL
+    if (labelTemplateIdParam) {
+      console.log('Setting label template:', labelTemplateIdParam);
+      setSelectedLabelTemplateId(labelTemplateIdParam);
+    }
+
+    // Load input type from URL
+    if (inputTypeParam) {
+      console.log('Setting input type:', inputTypeParam);
+      setInputEntityType(inputTypeParam);
+    }
+
+    // Load runs per unit from URL
+    if (runsPerUnitParam) {
+      const runs = parseInt(runsPerUnitParam, 10);
+      if (!isNaN(runs) && runs >= 1 && runs <= 5) {
+        console.log('Setting runs per unit:', runs);
+        setRunsPerUnit(runs);
+      }
+    }
+
+    // Load threshold from URL
+    if (thresholdParam) {
+      const threshold = parseInt(thresholdParam, 10);
+      if (!isNaN(threshold) && threshold >= 1 && threshold <= 5) {
+        console.log('Setting threshold:', threshold);
+        setThresholdRunsPerUnit(threshold);
+      }
+    }
+
+    // Load reasoning effort from URL
+    if (reasoningEffortParam) {
+      console.log('Setting reasoning effort:', reasoningEffortParam);
+      setReasoningEffort(reasoningEffortParam);
+    }
+
+    // Mark that we've loaded initial params
+    hasLoadedInitialParams.current = true;
+    console.log('Finished loading initial params from URL');
+  }, [availableModels, prompts]);
+
+  // Sync URL query parameters when state changes
+  // IMPORTANT: Only sync after we've loaded initial params to avoid wiping them out
+  useEffect(() => {
+    // Don't sync until we've loaded initial params from URL
+    if (!hasLoadedInitialParams.current) {
+      console.log('Skipping URL sync - waiting for initial params to load');
+      return;
+    }
+
+    console.log('Syncing state to URL params');
+    updateURLParams({
+      model_id: selectedModelInfo?.id,
+      prompt_id: selectedPromptId,
+      label_template_id: selectedLabelTemplateId,
+      input_type: inputEntityType,
+      input_id: selectedInputEntity?.id,
+      runs_per_unit: runsPerUnit,
+      threshold: thresholdRunsPerUnits,
+      reasoning_effort: reasoningEffort,
+    });
+  }, [
+    selectedModelInfo,
+    selectedPromptId,
+    selectedLabelTemplateId,
+    inputEntityType,
+    selectedInputEntity,
+    runsPerUnit,
+    thresholdRunsPerUnits,
+    reasoningEffort,
+  ]);
 
   // Auto-parse prompt when cluster unit or prompt changes
   const autoParsePrompt = async () => {

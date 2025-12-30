@@ -81,8 +81,25 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
     };
 
     const handleClone = (experiment: ExperimentData) => {
-      console.log('Clone experiment:', experiment.id);
-      // TODO: Open clone experiment dialog
+      if (!scraperClusterId) return;
+
+      // Build query parameters from the experiment
+      const queryParams = new URLSearchParams({
+        scraper_cluster_id: scraperClusterId,
+      });
+
+      // Add optional parameters if they exist
+      if (experiment.model_id) queryParams.set('model_id', experiment.model_id);
+      if (experiment.prompt_id) queryParams.set('prompt_id', experiment.prompt_id);
+      if (experiment.input_type) queryParams.set('input_type', experiment.input_type);
+      if (experiment.input_id) queryParams.set('input_id', experiment.input_id);
+      if (experiment.labelTemplateId) queryParams.set('label_template_id', experiment.labelTemplateId);
+      if (experiment.runsPerUnit) queryParams.set('runs_per_unit', String(experiment.runsPerUnit));
+      if (experiment.thresholdRunsTrue) queryParams.set('threshold', String(experiment.thresholdRunsTrue));
+      if (experiment.reasoningEffort) queryParams.set('reasoning_effort', experiment.reasoningEffort);
+
+      // Navigate to create page with query parameters
+      router.push(`${basePath}/create?${queryParams.toString()}`);
     };
 
     const handleFilterSelect = (experiment: ExperimentData) => {
@@ -218,6 +235,9 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       id: exp.id,
       name: exp.name,
       model_id: exp.model,
+      input_type: exp.input_type,
+      input_id: exp.input_id,
+      prompt_id: exp.prompt_id,
       created: new Date(exp.created).toLocaleDateString(),
       totalSamples: exp.total_samples,
       overallAccuracy: (exp.overall_accuracy || 0 ) * 100, // Convert to percentage
@@ -232,6 +252,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       reasoningEffort: exp.reasoning_effort,
       tokenStatistics: tokenStatistics,
       experimentCost: exp.experiment_cost,
+      predictionErrors: exp.prediction_errors,
       labelTemplateId: exp.label_template_id,
       experimentType: exp.experiment_type
     };
