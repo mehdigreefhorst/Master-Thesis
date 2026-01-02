@@ -720,6 +720,8 @@ class SinglePredictionOutputFormat(BaseModel):
     parsed_categories: Optional[PredictionCategoryTokens] = None
     all_attempts_token_usage: Optional[List[TokenUsageAttempt]] = None
     tokens_used: Optional[Dict] = None
+    cluster_unit_entity: ClusterUnitEntity
+    run_index: int
 
     def insert_error(self, error_message: str):
         if self.error is None:

@@ -77,7 +77,7 @@ def get_experiment_instances(query: GetExperiments) -> List[GetExperimentsRespon
         if test_results:
             logger.error(f"DEBUG: First experiment ID: {test_results[0].id}")
             logger.error(f"DEBUG: Queried experiment_ids: {query.experiment_ids}")
-        return jsonify(error=f"nothing found! Tried with filter: {filter}"), 400
+        return jsonify([]), 200
     
     if not scraper_cluster_entity.sample_id:
         return jsonify(f"Scraper cluster entity: {scraper_cluster_entity.id} is missing a sample entity id")
@@ -410,7 +410,8 @@ def create_sample(body: CreateSample) -> SampleEntity:
     
     sample_cluster_unit_ids = ClusterPrepService().get_cluster_unit_ids_for_sample(picked_posts_cluster_unit_ids=body.picked_posts_cluster_unit_ids,
                                                                 sample_size=body.sample_size,
-                                                                cluster_entity=cluster_entity)
+                                                                cluster_entity=cluster_entity,
+                                                                smart_sampling= body.smart_sampling)
     if isinstance(sample_cluster_unit_ids, Response):
         return sample_cluster_unit_ids
 
@@ -418,7 +419,7 @@ def create_sample(body: CreateSample) -> SampleEntity:
 
     sample_entity = SampleEntity(user_id=user_id,
                                  picked_post_cluster_unit_ids=body.picked_posts_cluster_unit_ids,
-                                 sample_size=body.sample_size,
+                                 sample_size=len(sample_cluster_unit_ids),
                                  sample_cluster_unit_ids=sample_cluster_unit_ids
                                  )
     
@@ -720,6 +721,8 @@ def test_prediction(body: TestPrediction) -> PredictionsGroupedOutputFormat:
         cluster_unit_entities_remain = get_cluster_unit_repository().find_many_by_ids(body.cluster_unit_ids)
 
     max_concurrent = 100
+    label_template_entity.labels_llm_prompt_response_format = label_template_entity.create_labels_llm_prompt_response_format_field()
+    get_label_template_repository().update(label_template_entity.id, label_template_entity)
     try:
         
         test_predictions = asyncio.run(ExperimentService.test_predictions(

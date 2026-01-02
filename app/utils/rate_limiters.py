@@ -64,6 +64,7 @@ class OpenRouterRateLimiter:
         self.config = config
         self.request_times = deque()
         self._lock = None  # Will be lazily initialized in the correct event loop
+        self._lock_loop = None  # Track which event loop the lock belongs to
 
         # Metrics
         self.total_requests = 0
@@ -79,19 +80,26 @@ class OpenRouterRateLimiter:
     @property
     def lock(self):
         """Lazy initialization of lock to ensure it's created in the correct event loop"""
-        if self._lock is None:
-            try:
-                # Get current event loop - if this succeeds, we're in a running loop
-                asyncio.get_running_loop()
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # No running loop, create lock anyway
+            if self._lock is None:
                 self._lock = asyncio.Lock()
-            except RuntimeError:
-                # No running loop, create lock anyway (will be recreated when needed)
-                self._lock = asyncio.Lock()
+            return self._lock
+
+        # Check if we're in a different event loop than when the lock was created
+        if self._lock is None or self._lock_loop is not current_loop:
+            self._lock = asyncio.Lock()
+            self._lock_loop = current_loop
+            logger.debug(f"Created new lock for event loop {id(current_loop)}")
+
         return self._lock
 
     def reset_lock(self):
         """Reset the lock - useful when entering a new event loop"""
         self._lock = None
+        self._lock_loop = None
     
     async def acquire(self) -> float:
         """

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
+import { Button } from '@/components/ui/Button';
 import type { LLMLabelField, LLMLabelFieldType } from '@/types/label-template';
 
 interface LabelFieldCardProps {
@@ -32,20 +33,28 @@ export function LabelFieldCard({ label, index, onUpdate, onRemove, title }: Labe
     }
   };
 
+  const handleLabelTypeChange = (newType: string) => {
+    onUpdate('type', newType as LLMLabelFieldType);
+  };
+
   return (
     <div className="border-2 border-gray-300 rounded-lg p-4 hover:border-blue-400 transition-colors bg-white">
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-semibold text-gray-900">{title}</h3>
-        <button
+        <Button
           type="button"
           onClick={onRemove}
-          className="text-red-600 hover:text-red-800 font-semibold transition-colors"
+          variant="invisible"
+          px="px-3"
+          py="py-1"
+          size="sm"
+          className="text-red-600 hover:text-red-800"
         >
           Remove
-        </button>
+        </Button>
       </div>
 
-      <div className="space-y-4 w-full flex flex-grow justif-between gap-1">
+      <div className="space-y-4 w-full flex grow justify-between gap-1">
         <div className='flex-2'>
             <Input
             label="Label Name *"
@@ -70,7 +79,7 @@ export function LabelFieldCard({ label, index, onUpdate, onRemove, title }: Labe
           </label>
           <select
             value={label.type}
-            onChange={(e) => onUpdate('type', e.target.value as LLMLabelFieldType)}
+            onChange={(e) => handleLabelTypeChange(e.target.value)}
             className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-all"
           >
             <option value="string">String</option>
@@ -90,18 +99,21 @@ export function LabelFieldCard({ label, index, onUpdate, onRemove, title }: Labe
               <input
                 type="text"
                 value={possibleValueInput}
-                onChange={(e) => setPossibleValueInput(e.target.value)}
+                onChange={(e) => setPossibleValueInput(e.target.value) }
                 onKeyDown={handleKeyDown}
                 className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-all"
                 placeholder="e.g., positive"
               />
-              <button
+              <Button
                 type="button"
                 onClick={addPossibleValue}
-                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold transition-colors"
+                variant="primary"
+                px="px-6"
+                py="py-3"
+                className="bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700"
               >
                 Add
-              </button>
+              </Button>
             </div>
             <div className="flex flex-wrap gap-2">
               {label.possible_values.map((value, i) => (

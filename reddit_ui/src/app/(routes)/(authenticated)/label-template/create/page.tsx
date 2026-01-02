@@ -123,6 +123,12 @@ export default function CreateLabelTemplatePage() {
   const updateLabel = (index: number, field: keyof LLMLabelField, value: any) => {
     const newLabels = [...labels];
     newLabels[index] = { ...newLabels[index], [field]: value };
+
+    // Clear possible_values when type changes to non-category
+    if (field === 'type' && value !== 'category') {
+      newLabels[index] = { ...newLabels[index], possible_values: [] };
+    }
+
     setLabels(newLabels);
   };
 
@@ -130,6 +136,12 @@ export default function CreateLabelTemplatePage() {
   const updatePerLabelField = (index: number, field: keyof LLMLabelField, value: any) => {
     const newFields = [...perLabelFields];
     newFields[index] = { ...newFields[index], [field]: value };
+
+    // Clear possible_values when type changes to non-category
+    if (field === 'type' && value !== 'category') {
+      newFields[index] = { ...newFields[index], possible_values: [] };
+    }
+
     setPerLabelFields(newFields);
   };
 
@@ -365,14 +377,17 @@ export default function CreateLabelTemplatePage() {
         <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-gray-200">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-gray-900">Labels *</h2>
-            <button
+            <Button
               type="button"
               onClick={addLabel}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+              variant="primary"
+              px="px-4"
+              py="py-2"
+              className="flex items-center gap-2"
             >
               <span className="text-xl">+</span>
               Add Label
-            </button>
+            </Button>
           </div>
 
           {labels.length === 0 ? (
@@ -404,14 +419,17 @@ export default function CreateLabelTemplatePage() {
                 Optional: Additional fields to capture for each label (e.g., reasoning, confidence)
               </p>
             </div>
-            <button
+            <Button
               type="button"
               onClick={addPerLabelField}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold"
+              variant="primary"
+              px="px-4"
+              py="py-2"
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 border-purple-600 hover:border-purple-700"
             >
               <span className="text-xl">+</span>
               Add Field
-            </button>
+            </Button>
           </div>
 
           {perLabelFields.length === 0 ? (

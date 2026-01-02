@@ -64,6 +64,8 @@ class CreateSample(BaseModel):
     scraper_cluster_id: PyObjectId
     picked_posts_cluster_unit_ids: List[PyObjectId]
     sample_size: int
+    smart_sampling: bool #  smart sampling requires a all of the parent units to also be present in the sample 
+
 
 
 class GetSampleUnits(BaseModel):

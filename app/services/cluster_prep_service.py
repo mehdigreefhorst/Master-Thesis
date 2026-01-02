@@ -1,7 +1,7 @@
 
 
 import random
-from typing import List, Literal
+from typing import List, Literal, Optional, Set
 
 from flask import Response, jsonify
 from app.database.entities.base_entity import PyObjectId
@@ -66,7 +66,8 @@ class ClusterPrepService:
     @staticmethod
     def start_preparing_clustering(scraper_cluster_entity: ScraperClusterEntity, media_strategy_skip_type: MediaStrategySkipType) -> int:
         """Converts the found posts into cluster units. It checks whether a post is already converted, if so it skips it
-        normally this is never the case, but happened frequently during testing. Also if it goes wrong, we can restart it so it is good to have"""
+        normally this is never the case, but happened frequently during testing. Also if it goes wrong, we can restart it so it is good to have
+        """
         logger.info(f"[start_preparing_clustering] Starting for scraper_cluster_id={scraper_cluster_entity.id}, media_strategy={media_strategy_skip_type}")
 
         cluster_entity = ClusterPrepService.get_or_create_cluster_entity(scraper_cluster_entity, media_strategy_skip_type)
@@ -309,8 +310,9 @@ class ClusterPrepService:
         """
 
     @staticmethod
-    def get_cluster_unit_ids_for_sample(picked_posts_cluster_unit_ids: List[PyObjectId], sample_size: int, cluster_entity: ClusterEntity) -> List[PyObjectId] | Response:
-        """gets all the cluster unit ids from the database. set sample_size = -1, to take everything"""
+    def get_cluster_unit_ids_for_sample(picked_posts_cluster_unit_ids: List[PyObjectId], sample_size: int, cluster_entity: ClusterEntity, smart_sampling: bool) -> List[PyObjectId] | Response:
+        """gets all the cluster unit ids from the database. set sample_size = -1, to take everything
+        smart sampling makes sure that sample units are accompanied by the parent units"""
         selected_cluster_units = get_cluster_unit_repository().find_many_by_ids(picked_posts_cluster_unit_ids)
         selected_cluster_unit_post_ids = [cluster_unit.post_id for cluster_unit in selected_cluster_units]
 
@@ -330,7 +332,39 @@ class ClusterPrepService:
             return cluster_unit_ids_with_corresponding_post_id
         sample_cluster_unit_ids = random.sample(cluster_unit_ids_with_corresponding_post_id, sample_size)
         # randomly select body.sample_size cluster units from here. 
+        if smart_sampling:
+            return ClusterPrepService().sample_threads_cluster_units(cluster_unit_entity_ids=sample_cluster_unit_ids, sample_size=sample_size)
         return sample_cluster_unit_ids
+    
+
+    @staticmethod
+    def retrieve_cluster_unit_ids_thread(cluster_unit_entity_id: PyObjectId, current_unit_ids: Optional[List[PyObjectId]] = None) -> List[PyObjectId]:
+        if current_unit_ids is None:
+            current_unit_ids = list()
+        cluster_unit_entity = get_cluster_unit_repository().find_by_id(cluster_unit_entity_id)
+        current_unit_ids.append(cluster_unit_entity.id)
+        if cluster_unit_entity.replied_to_cluster_unit_id:
+            return ClusterPrepService().retrieve_cluster_unit_ids_thread(cluster_unit_entity_id=cluster_unit_entity.replied_to_cluster_unit_id,
+                                                                         current_unit_ids=current_unit_ids)
+        else:
+            return current_unit_ids
+        
+
+        
+    
+    @staticmethod
+    def sample_threads_cluster_units(cluster_unit_entity_ids: List[PyObjectId], sample_size: int) -> List[PyObjectId]:
+        """finds the thread of the cluster_unit_entity ids until we reach the sample_size. So that List of unit ids, that are part of a thread, at least no missing parent units"""
+        output_cluster_unit_entity_ids: Set[PyObjectId] = set()
+        for cluster_unit_entity_id in cluster_unit_entity_ids:
+            cluster_unit_entity_ids_with_parent_ids: List[PyObjectId] = ClusterPrepService().retrieve_cluster_unit_ids_thread(cluster_unit_entity_id=cluster_unit_entity_id)
+            output_cluster_unit_entity_ids.update(cluster_unit_entity_ids_with_parent_ids)
+            if len(output_cluster_unit_entity_ids) >= sample_size:
+                return output_cluster_unit_entity_ids
+
+            
+    
+    
 
 
 

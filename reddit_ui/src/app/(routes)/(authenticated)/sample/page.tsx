@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { clusterApi, experimentApi, scraperApi } from '@/lib/api';
 import { HeaderStep } from '@/components/layout/HeaderStep';
 import type { KeywordSearches } from '@/types/scraper-cluster';
-import { Modal } from '@/components/ui/Modal';
+import { SampleSizeModal } from '@/components/modals/SampleSizeModal';
 import { useToast } from '@/components/ui/use-toast';
 
 interface GetClusterUnitsResponse {
@@ -35,7 +35,6 @@ function SampleSelectorPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSampleModal, setShowSampleModal] = useState(false);
-  const [sampleSize, setSampleSize] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasInitializedSubreddits, setHasInitializedSubreddits] = useState(false);
   const [hasInitializedKeywords, setHasInitializedKeywords] = useState(false);
@@ -248,20 +247,13 @@ function SampleSelectorPageContent() {
   };
 
   // Handle sample submission
-  const handleSubmitSample = async () => {
+  const handleSubmitSample = async (sampleSize: number, smartSampling: boolean) => {
     if (!scraperClusterId) {
-      alert('Missing scraper cluster ID');
-      return;
-    }
-
-    const sampleSizeNum = parseInt(sampleSize);
-    if (isNaN(sampleSizeNum) || sampleSizeNum <= 0) {
-      alert('Please enter a valid sample size');
-      return;
-    }
-
-    if (sampleSizeNum > maxSampleSize) {
-      alert(`Sample size cannot be larger than the total number of comments (${maxSampleSize})`);
+      toast({
+        title: "Error",
+        description: "Missing scraper cluster ID",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -273,7 +265,8 @@ function SampleSelectorPageContent() {
         authFetch,
         scraperClusterId,
         selectedIds,
-        sampleSizeNum
+        sampleSize,
+        smartSampling
       );
 
       toast({
@@ -282,7 +275,8 @@ function SampleSelectorPageContent() {
         variant: "success"
       });
 
-      // Navigate to prompts page after successful submission
+      // Close modal and navigate
+      setShowSampleModal(false);
       router.push(`/experiments?scraper_cluster_id=${scraperClusterId}`);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to create sample';
@@ -631,60 +625,14 @@ function SampleSelectorPageContent() {
       )}
 
       {/* Sample Size Modal */}
-      {/* Cluster Preparation Modal */}
-      <Modal isOpen={showSampleModal} showCloseButton={false} blurBackground={true}>
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Configure Sample Size
-            </h2>
-            <p className="text-gray-600 mb-6">
-              You have selected <span className="font-semibold text-gray-900">{selectedPosts.size}</span> {selectedPosts.size === 1 ? 'post' : 'posts'} with a total of <span className="font-semibold text-gray-900">{maxSampleSize}</span> {maxSampleSize === 1 ? 'comment' : 'comments'}.
-              Enter the sample size for your experiment.
-            </p>
-
-            <div className="mb-6">
-              <label htmlFor="sampleSize" className="block text-sm font-medium text-gray-700 mb-2">
-                Sample Size (Number of Comments)
-              </label>
-              <input
-                id="sampleSize"
-                type="number"
-                min="1"
-                max={maxSampleSize}
-                value={sampleSize}
-                onChange={(e) => setSampleSize(e.target.value)}
-                placeholder={`Enter a number (max: ${maxSampleSize})`}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                disabled={isSubmitting}
-              />
-              <p className="mt-2 text-sm text-gray-500">
-                The sample will be randomly selected from comments in your chosen posts.
-              </p>
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setShowSampleModal(false);
-                  setSampleSize('');
-                }}
-                disabled={isSubmitting}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleSubmitSample}
-                disabled={isSubmitting || !sampleSize}
-                className="flex-1"
-              >
-                {isSubmitting ? 'Creating Sample...' : 'Create Sample'}
-              </Button>
-            </div>
-        </div>
-      </Modal>
+      <SampleSizeModal
+        isOpen={showSampleModal}
+        selectedPostsCount={selectedPosts.size}
+        maxSampleSize={maxSampleSize}
+        isSubmitting={isSubmitting}
+        onClose={() => setShowSampleModal(false)}
+        onSubmit={handleSubmitSample}
+      />
       
     </div>
   );

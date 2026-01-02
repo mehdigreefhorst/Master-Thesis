@@ -109,7 +109,8 @@ class ExperimentService:
             Includes retry logic with exponential backoff and comprehensive token tracking.
             """
             all_attempts_token_usage: List[TokenUsageAttempt] = []  # Track all attempts for token accounting
-            single_prediction_format = SinglePredictionOutputFormat()
+            single_prediction_format = SinglePredictionOutputFormat(cluster_unit_entity=cluster_unit_entity,
+                                                                    run_index=run_index)
 
             async with semaphore:  # Limit concurrent connections
                 for attempt in range(max_retries):
@@ -765,7 +766,8 @@ class ExperimentService:
         cluster_unit_entities = get_cluster_unit_repository().find_many_by_ids(sample_entity.sample_cluster_unit_ids)
 
         if not cluster_unit_entities or not len(cluster_unit_entities) == len(sample_entity.sample_cluster_unit_ids):
-            raise Exception(f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id}")
+            print()
+            raise Exception(f"not all Cluster unit ids are found cannot be found for sample: {sample_entity.id} \n len(cluster_unit_entities) = {len(cluster_unit_entities)} len(sample_entity.sample_cluster_unit_ids) = {len(sample_entity.sample_cluster_unit_ids)}")
 
         return cluster_unit_entities
 

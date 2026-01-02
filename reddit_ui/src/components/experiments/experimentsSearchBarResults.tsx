@@ -276,7 +276,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
         setIsLoading(true);
         setError(null);
         const experiments = await experimentApi.getExperiments(authFetch, scraperClusterId, undefined, globalThreshold);
-
+        
         // Transform backend data to ExperimentData format
         const transformedData: ExperimentData[] = experiments.map(transformExperimentData);
 

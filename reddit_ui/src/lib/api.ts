@@ -452,14 +452,16 @@ export const experimentApi = {
     authFetch: ReturnType<typeof useAuthFetch>,
     scraperClusterId: string,
     pickedPostsClusterUnitIds: string[],
-    sampleSize: number
+    sampleSize: number,
+    smartSampling: boolean
   ) {
     const data = await authFetch('/experiment/create_sample', {
       method: 'POST',
       body: {
         scraper_cluster_id: scraperClusterId,
         picked_posts_cluster_unit_ids: pickedPostsClusterUnitIds,
-        sample_size: sampleSize
+        sample_size: sampleSize,
+        smart_sampling: smartSampling
       }
     });
 
@@ -664,7 +666,7 @@ export const experimentApi = {
     userThreshold?: number | null,
     filterExperimentType?: 'classify_cluster_units' | 'rewrite_cluster_unit_standalone' | 'summarize_prediction_notes' | null,
     filterLabelTemplateIds?: string[] | null 
-  ): Promise<GetExperimentsResponse[]> {
+  ): Promise<GetExperimentsResponse[]>{
     if (experimentIds) {
       console.log("experimentIds = ", experimentIds.toString())
     }
