@@ -28,9 +28,11 @@ export default function ViewerPage(
   const [currentClusterUnitExperimentData, setCurrentClusterUnitExperimentData] = useState<ExperimentAllPredictedData | null>(null);
   const [sampleUnitsLabelingFormatResponse, setSampleUnitsLabelingFormatResponse] = useState<GetSampleUnitsLabelingFormatResponse | null>(null)
   const [isLastClusterUnitEntity, setIsLastClusterUnitEntity] = useState<boolean>(false);
+  const [isFirstClusterUnitEntity, setIsFirstClusterUnitEntity] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const searchParams = useSearchParams();
   const scraperClusterId = searchParams.get('scraper_cluster_id');
+  const unitIndexParam = searchParams.get('unit_index');
 
   // Get unique prompt IDs (models)
   // const [clusterUnits, setClusterUnits] = useState<ClusterUnitEntity[]>([]);
@@ -39,7 +41,8 @@ export default function ViewerPage(
 
   // Track what we've already fetched to prevent duplicate requests
   const fetchedRef = useRef<string | null>(null);
-  
+  const hasAppliedQueryIndex = useRef<boolean>(false);
+
   const getClusterUnitExperimentData = (index: number) => {
     if (!sampleUnitsLabelingFormatResponse) return null
 
@@ -51,7 +54,7 @@ export default function ViewerPage(
       if (!currentLabelTemplateEntity) return;
 
       // Create a unique key for this fetch
-      const fetchKey = `${scraperClusterId}`;
+      const fetchKey = `${scraperClusterId}-${currentLabelTemplateEntity.id}`;
 
       // Skip if we've already fetched this data
       if (fetchedRef.current === fetchKey) {
@@ -66,6 +69,8 @@ export default function ViewerPage(
         let sampleUnitsLabelingFormatResponseAPI: GetSampleUnitsLabelingFormatResponse
         if (experimentType === "classify_cluster_units"){
           sampleUnitsLabelingFormatResponseAPI = await experimentApi.getSampleUnitsLabelingFormat(authFetch, scraperClusterId, currentLabelTemplateEntity.id);
+          console.log("sampleUnitsLabelingFormatResponseAPI = ")
+          console.log(sampleUnitsLabelingFormatResponseAPI)
 
         } else {
           
@@ -74,11 +79,23 @@ export default function ViewerPage(
         }
         console.log('Sample cluster units response:', sampleUnitsLabelingFormatResponseAPI);
         setSampleUnitsLabelingFormatResponse(sampleUnitsLabelingFormatResponseAPI)
-        
+
+        // Check if there's a unit_index in the query params (only apply once per fetch)
+        let initialIndex = 0;
+        if (!hasAppliedQueryIndex.current && unitIndexParam !== null) {
+          const parsedIndex = parseInt(unitIndexParam, 10);
+          if (!isNaN(parsedIndex) && parsedIndex >= 0 && parsedIndex < sampleUnitsLabelingFormatResponseAPI.experiment_unit_data.length) {
+            initialIndex = parsedIndex;
+          }
+          hasAppliedQueryIndex.current = true;
+        }
 
         //setClusterUnits(cluster_unit_entities);
-        setCurrentClusterUnitExperimentData(sampleUnitsLabelingFormatResponseAPI.experiment_unit_data[0])
+        setCurrentClusterUnitExperimentData(sampleUnitsLabelingFormatResponseAPI.experiment_unit_data[initialIndex])
+        setCurrentUnitIndex(initialIndex)
         setTotalClusterUnits(sampleUnitsLabelingFormatResponseAPI.experiment_unit_data.length)
+        setIsFirstClusterUnitEntity(initialIndex === 0)
+        setIsLastClusterUnitEntity(initialIndex >= sampleUnitsLabelingFormatResponseAPI.experiment_unit_data.length - 1)
         fetchedRef.current = fetchKey; // Mark as fetched
       } catch (error) {
         console.error('Error fetching cluster units:', error);
@@ -95,8 +112,30 @@ export default function ViewerPage(
     loadClusterUnits();
   }, [scraperClusterId, currentLabelTemplateEntity, authFetch])
 
+  // Helper function to update URL query parameters
+  const updateURLWithIndex = (index: number) => {
+    if (!scraperClusterId) return;
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('scraper_cluster_id', scraperClusterId);
+    params.set('unit_index', index.toString());
+
+    const unitData = getClusterUnitExperimentData(index);
+    if (unitData) {
+      params.set('cluster_unit_entity_id', unitData.cluster_unit_enity.id);
+    }
+
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
   const handleChangeCurrentLabelTemplateEntity = async (labelTemplateEntity: LabelTemplateEntity | null) => {
     if (!scraperClusterId) return;
+
+    // Check if this is initial load (no template set yet) vs changing templates
+    const isInitialLoad = currentLabelTemplateEntity === null;
+
+    // Reset the query index application flag when changing templates
+    hasAppliedQueryIndex.current = false;
 
     try {
       setIsLoading(true);
@@ -118,8 +157,22 @@ export default function ViewerPage(
 
         }
 
-        currentClusterUnit = sampleUnitsLabelingFormatResponseAPI.experiment_unit_data[0];
+        // Determine initial index - preserve query param on initial load, reset to 0 on template change
+        let initialIndex = 0;
+        if (isInitialLoad && unitIndexParam !== null) {
+          const parsedIndex = parseInt(unitIndexParam, 10);
+          if (!isNaN(parsedIndex) && parsedIndex >= 0 && parsedIndex < sampleUnitsLabelingFormatResponseAPI.experiment_unit_data.length) {
+            initialIndex = parsedIndex;
+          }
+        }
+
+        currentClusterUnit = sampleUnitsLabelingFormatResponseAPI.experiment_unit_data[initialIndex];
         totalClusterUnits = sampleUnitsLabelingFormatResponseAPI.experiment_unit_data.length;
+
+        // Set the current unit index
+        setCurrentUnitIndex(initialIndex);
+        setIsFirstClusterUnitEntity(initialIndex === 0);
+        setIsLastClusterUnitEntity(initialIndex >= totalClusterUnits - 1);
       }
 
       console.log('Sample cluster units response:', sampleUnitsLabelingFormatResponseAPI);
@@ -129,6 +182,17 @@ export default function ViewerPage(
       setCurrentClusterUnitExperimentData(currentClusterUnit);
       setTotalClusterUnits(totalClusterUnits);
       setCurrentLabelTemplateEntity(labelTemplateEntity);
+
+      // Only update URL if we're changing templates (not initial load)
+      if (labelTemplateEntity && !isInitialLoad) {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('scraper_cluster_id', scraperClusterId);
+        params.set('unit_index', '0');
+        if (currentClusterUnit) {
+          params.set('cluster_unit_entity_id', currentClusterUnit.cluster_unit_enity.id);
+        }
+        router.push(`?${params.toString()}`, { scroll: false });
+      }
 
       toast({
         title: "Success",
@@ -148,41 +212,39 @@ export default function ViewerPage(
   }
 
   // Navigation handlers
-    const handlePrevious = () => {
-      if (!sampleUnitsLabelingFormatResponse || currentUnitIndex <= 0) return;
-      
-      const newIndex = currentUnitIndex - 1 
-      setCurrentUnitIndex(newIndex)
+  const handlePrevious = () => {
+    if (!sampleUnitsLabelingFormatResponse || currentUnitIndex <= 0) return;
 
-      
-  
-      const prevUnit = getClusterUnitExperimentData(newIndex);
-      if (!prevUnit) return null
-      const params = new URLSearchParams();
-      params.set('scraper_cluster_id', scraperClusterId!);
-      params.set('cluster_unit_entity_id', prevUnit.cluster_unit_enity.id);
-      setCurrentClusterUnitExperimentData(prevUnit)
-  
-      setIsLastClusterUnitEntity(currentUnitIndex >= totalClusterUnits)
-  
-      // router.push(`${basePath}?${params.toString()}`);
-    };
-  
-    const handleNext = () => {
-      if (!sampleUnitsLabelingFormatResponse || currentUnitIndex >= sampleUnitsLabelingFormatResponse.experiment_unit_data.length - 1) return;
-      const newIndex = currentUnitIndex + 1
-      const nextUnit = getClusterUnitExperimentData(newIndex);
-      if (!nextUnit) return null
-      setCurrentUnitIndex(newIndex)
-      const params = new URLSearchParams();
-      params.set('scraper_cluster_id', scraperClusterId!);
-      params.set('cluster_unit_entity_id', nextUnit.cluster_unit_enity.id);
-      setCurrentClusterUnitExperimentData(nextUnit)
-  
-      setIsLastClusterUnitEntity(currentUnitIndex >= totalClusterUnits-2)
-  
-      // router.push(`${basePath}?${params.toString()}`);
-    };
+    const newIndex = currentUnitIndex - 1;
+    const prevUnit = getClusterUnitExperimentData(newIndex);
+    if (!prevUnit) return;
+
+    // Update state
+    setCurrentUnitIndex(newIndex);
+    setCurrentClusterUnitExperimentData(prevUnit);
+    setIsFirstClusterUnitEntity(newIndex === 0);
+    setIsLastClusterUnitEntity(newIndex >= totalClusterUnits - 1);
+
+    // Update URL query parameters
+    updateURLWithIndex(newIndex);
+  };
+
+  const handleNext = () => {
+    if (!sampleUnitsLabelingFormatResponse || currentUnitIndex >= sampleUnitsLabelingFormatResponse.experiment_unit_data.length - 1) return;
+
+    const newIndex = currentUnitIndex + 1;
+    const nextUnit = getClusterUnitExperimentData(newIndex);
+    if (!nextUnit) return;
+
+    // Update state
+    setCurrentUnitIndex(newIndex);
+    setCurrentClusterUnitExperimentData(nextUnit);
+    setIsFirstClusterUnitEntity(false);
+    setIsLastClusterUnitEntity(newIndex >= totalClusterUnits - 1);
+
+    // Update URL query parameters
+    updateURLWithIndex(newIndex);
+  };
 
   const handleCompleteSampleLabeling = async () => {
     if (!scraperClusterId || !currentLabelTemplateEntity) return;
@@ -302,10 +364,12 @@ export default function ViewerPage(
           labelTemplateEntity={currentLabelTemplateEntity}
           clusterUnitEntityExperimentData={currentClusterUnitExperimentData}
           allExperimentsModelInformation={sampleUnitsLabelingFormatResponse?.all_experiments_model_information}
+          isFirstClusterUnitEntity={isFirstClusterUnitEntity}
           isLastClusterUnitEntity={isLastClusterUnitEntity}
           handleUpdateGroundTruth={handleUpdateGroundTruth}
           labelsPossibleValues={sampleUnitsLabelingFormatResponse?.labels_possible_values}
           handleCompleteSampleLabeling={handleCompleteSampleLabeling}
+          handlePrevious={handlePrevious}
           handleNext={handleNext}
           setIsLoading={setIsLoading}
           isLoading={isLoading}          

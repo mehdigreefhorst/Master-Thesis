@@ -63,18 +63,15 @@ class PostEntity (RedditBaseEntity):
     title: str
     subreddit: str # subreddit where the post was made in
     send_replies: bool # shows whether the author has send replies to the comments received
-
     permalink: str # e.g. '/r/deaf/comments/1mg82a6/is_there_a_polite_way_to_decline_signing/'   | this is used to retrieve the comments
     is_video: bool = False # Not trustworthy to detect video. If youtube video is embedded, it still says false
+    preview: Optional[Dict] = None
     media: Optional[Dict] = None
     media_embed: Optional[Dict] = None
     secure_media: Optional[Dict] = None
     secure_media_embed: Optional[Dict] = None
     url: str = ""
     upvote_ratio: float = None
-
-
-
     comments: List[CommentEntity]
 
     def has_media(self) -> bool:
@@ -89,6 +86,8 @@ class PostEntity (RedditBaseEntity):
         elif self.media_embed:
             return True
         elif self.secure_media_embed:
+            return True
+        elif self.preview:
             return True
         
         return False

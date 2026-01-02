@@ -538,8 +538,7 @@ class ExperimentService:
             experiment_response = GetExperimentsResponse(id=experiment.id,
                                                          name=f"{experiment.model_id} V{index}",
                                                          model=experiment.model_id,
-                                                         input_type=experiment.input_type,
-                                                         input_id=experiment.input_id,
+                                                         input=experiment.input,
                                                          prompt_id=experiment.prompt_id,
                                                          created=experiment.created_at,
                                                          total_samples=sample_size,
@@ -555,6 +554,7 @@ class ExperimentService:
                                                          reasoning_effort=experiment.reasoning_effort,
                                                          token_statistics=experiment.token_statistics,
                                                          experiment_cost=experiment.experiment_cost,
+                                                         errors=experiment.get_experiment_errors(),
                                                          status=experiment.status,
                                                          experiment_type=experiment.experiment_type)
             
@@ -772,16 +772,16 @@ class ExperimentService:
     @staticmethod
     def get_input_cluster_unit_entities_from_expertiment(experiment_entity: ExperimentEntity, only_return_ids: Optional[bool]=False) -> List[ClusterUnitEntity] | List[PyObjectId]:
         """if only_returns_ids is True, return only the ids of the cluster units"""
-        if experiment_entity.input_type == "sample":
+        if experiment_entity.input.input_type == "sample":
         
-            cluster_unit_entities = ExperimentService().get_cluster_units_from_sample_entity(experiment_entity.input_id, only_return_ids)
+            cluster_unit_entities = ExperimentService().get_cluster_units_from_sample_entity(experiment_entity.input.input_id, only_return_ids)
 
-        elif experiment_entity.input_type == "filtering":
+        elif experiment_entity.input.input_type == "filtering":
             
-            filtering_entity = get_filtering_repository().find_by_id(experiment_entity.input_id)
+            filtering_entity = get_filtering_repository().find_by_id(experiment_entity.input.input_id)
 
             if not filtering_entity:
-                raise Exception(f"No filtering entity with id = {experiment_entity.input_id} is findable")
+                raise Exception(f"No filtering entity with id = {experiment_entity.input.input_id} is findable")
             
             if not filtering_entity.output_cluster_unit_ids:
                 raise Exception(f"missing output_cluster_unit_entities_ids for filtering entity id = {filtering_entity.id}")
@@ -794,22 +794,22 @@ class ExperimentService:
             if not cluster_unit_entities or not len(cluster_unit_entities) == len(filtering_entity.output_cluster_unit_ids):
                 raise Exception(f"not all Cluster unit ids are found cannot be found for filtering entity in experiment: {experiment_entity.id}")
 
-        elif experiment_entity.input_type == "cluster":
+        elif experiment_entity.input.input_type == "cluster":
             
-            cluster_entity = get_cluster_repository().find_by_id(experiment_entity.input_id)
+            cluster_entity = get_cluster_repository().find_by_id(experiment_entity.input.input_id)
             if not cluster_entity:
-                raise Exception(f"There is no cluster entity found, id = {experiment_entity.input_id}")
+                raise Exception(f"There is no cluster entity found, id = {experiment_entity.input.input_id}")
             
             if only_return_ids:
-                cluster_unit_entities = get_cluster_unit_repository().find_ids({"cluster_entity_id": experiment_entity.input_id})
+                cluster_unit_entities = get_cluster_unit_repository().find_ids({"cluster_entity_id": experiment_entity.input.input_id})
             else:
-                cluster_unit_entities = get_cluster_unit_repository().find({"cluster_entity_id": experiment_entity.input_id})
+                cluster_unit_entities = get_cluster_unit_repository().find({"cluster_entity_id": experiment_entity.input.input_id})
             
             if not cluster_unit_entities:
                 raise Exception(f"Cluster unit ids are not found cannot be found for cluster entity in experiment: {experiment_entity.id}")
 
         else:
-            raise Exception(f"unknown input type is given! type = {experiment_entity.input_type}")
+            raise Exception(f"unknown input type is given! type = {experiment_entity.input.input_type}")
 
         return cluster_unit_entities
     
@@ -818,7 +818,8 @@ class ExperimentService:
     def filter_cluster_units_predicted_experiments(cluster_unit_entities: List[ClusterUnitEntity], filter_label_template_id: Optional[str] = None, filter_experiment_type: Optional[PromptCategory] = None) -> List[ClusterUnitEntity]:
         if filter_experiment_type is None and filter_label_template_id is None:
             return cluster_unit_entities
-        
+        if cluster_unit_entities[0].predicted_category is None:
+            return cluster_unit_entities
         experiment_ids = list({experiment_id for cluster_unit in cluster_unit_entities for experiment_id in cluster_unit.predicted_category.keys()})
         experiment_entities = get_experiment_repository().find_many_by_ids(experiment_ids)
 

@@ -94,7 +94,7 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
   const handleViewSample = () => {
     if (sample && scraperClusterId) {
       const labelTemplateIds = Object.keys(sample.sample_label_template_labeled_status).join(',');
-      router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&sample_id=${sample.id}&label_template_ids=${labelTemplateIds}`);
+      router.push(`/viewer/sample?unit_index=0&scraper_cluster_id=${scraperClusterId}&sample_id=${sample.id}&label_template_ids=${labelTemplateIds}`);
     }
   };
 
@@ -102,7 +102,7 @@ export const SampleView: React.FC<SampleViewProps> = React.memo(({
     if (sample && scraperClusterId) {
       // Pass all selected label template IDs as comma-separated string
       const labelTemplateIds = Object.keys(sample.sample_label_template_labeled_status).join(',');
-      router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&sample_id=${sample.id}&label_template_ids=${labelTemplateIds}`);
+      router.push(`/viewer/sample?unit_index=0&scraper_cluster_id=${scraperClusterId}&sample_id=${sample.id}&label_template_ids=${labelTemplateIds}`);
     }
   };
 

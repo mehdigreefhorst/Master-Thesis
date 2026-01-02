@@ -94,9 +94,6 @@ export interface ExperimentEntity {
   input_type: ExperimentInputType;
   experiment_type: PromptCategory;
   label_template_id: string;
-  label_template_labels: string[];
-  labels_possible_values: Record<string, (string[] | boolean[] | number[])>;
-  label_template_per_label_labels: string[];
   model_id: string;
   model_pricing?: Pricing;
   experiment_cost?: ExperimentCost;
@@ -110,13 +107,19 @@ export interface ExperimentEntity {
   updated_at?: Date;
 }
 
+export interface ExperimentInput {
+  input_type: string;
+  input_id: string;
+}
+
 // Response from GET /experiment endpoint (matches backend GetExperimentsResponse)
 export interface GetExperimentsResponse {
   id: string;
   name: string;
   model: string;
   input_type: string;
-  input_id: string;
+
+  input: ExperimentInput;
   prompt_id: string;
   created: string | Date;  // Can be string from API or Date after parsing
   runs_per_unit: 1 | 2 | 3 | 4 | 5;
@@ -132,7 +135,7 @@ export interface GetExperimentsResponse {
   reasoning_effort: ReasoningEffort;
   token_statistics?: ExperimentTokenStatistics;
   experiment_cost?: ExperimentCost;
-  prediction_errors?: string[];
+  errors?: string[];
   status: StatusType;
   experiment_type: PromptCategory;
 

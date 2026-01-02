@@ -132,7 +132,6 @@ class LabelTemplateLLMProjection(BaseModel):
     label_template_id: PyObjectId
     experiment_id: PyObjectId
     values: Dict[labelName, ProjectionLabelField] = Field(default_factory=dict) # key is label_value.label name of a LabelTemplateLLMProjection
-    is_verified: bool = False
 
     def get_prediction_counter(self) -> Dict[str, Dict[str, int]]:
         """create prediction counter, where it is a dictionary. where each of the variable names, of the boolean types, gets a 1 if true. and 0 if false"""

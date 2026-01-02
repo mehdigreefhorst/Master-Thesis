@@ -173,10 +173,10 @@ class ClusterUnitEntity(BaseEntity):
     created_utc: int
     thread_path_text: List[str] | None # the text of posts full prior thread (post -> comment -> reply --> ...) up until the current comment
     thread_path_author: List[str] = [] # the author of posts full prior thread (post -> comment -> reply --> ...) up until the current comment
-    enriched_comment_thread_text: str | None # what the LLM made from the thread path text & text
     predicted_category: Optional[Dict[PyObjectId, ClusterUnitEntityPredictedCategory]] = None # experiment_id: PyObjectId as key
     ground_truth: Optional[Dict[PyObjectId, LabelTemplateTruthProjection]]  = None # The key is the label_template_id, value is the ground truth field
     text: str # the author's individual text contribution to reddit
+    enriched_comment_thread_text: str | None # what the LLM made from the thread path text & text
     total_nested_replies: Optional[int] = None # Total nr of replies on the post summed up, replies to replies also count
     subreddit: str
     includes_media: Optional[bool] = None
@@ -275,6 +275,8 @@ class ClusterUnitEntity(BaseEntity):
 
     def get_experiment_ids(self, filter_label_template_id: Optional[str] = None) -> List[PyObjectId]:
         """gets the experiment_ids that the user has particpated in for a specific label_template_id"""
+        if not self.predicted_category:
+            return []
         if filter_label_template_id is None:
 
             return [experiment_id for experiment_id in self.predicted_category.keys()]

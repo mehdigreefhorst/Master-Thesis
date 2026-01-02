@@ -189,7 +189,7 @@ class FilteringService:
     @staticmethod
     def get_cluster_units_experiment_entities(experiment_entities: List[ExperimentEntity]) -> List[ClusterUnitEntity]:
         """gets the cluster units from the experiment_entities that are its input """
-        experiment_input_ids_types = list({(experiment.input_id, experiment.input_type) for experiment in experiment_entities})
+        experiment_input_ids_types = list({(experiment.input.input_id, experiment.input.input_type) for experiment in experiment_entities})
         cluster_unit_entity_dict: Dict[str, List[ClusterUnitEntity]] = dict()
         for input_id, input_type in experiment_input_ids_types:
             cluster_unit_entities, _ = FilteringService().get_input_cluster_units(input_id=input_id,

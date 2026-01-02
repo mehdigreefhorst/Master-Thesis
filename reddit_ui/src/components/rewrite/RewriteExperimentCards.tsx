@@ -47,15 +47,19 @@ export const RewriteExperimentCards: React.FC<RewriteExperimentCardsProps> = ({
 
   return (
     <div className={className}>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="flex gap-4 overflow-x-auto pb-4">
         {allExperimentsModelInformation.map((experiment, experimentIndex) => {
           const modelColor = getModelColor(experiment.model_id);
           const modelIcon = getModelIcon(experiment.model_id);
 
+          // Check if errors exist for this experiment
+          const experimentErrors = clusterUnitEntityExperimentData?.errors?.[experiment.experiment_id];
+          const hasErrors = experimentErrors && experimentErrors.errors.length > 0;
+
           return (
             <Card
               key={experimentIndex}
-              className={`border-2 ${modelColor} hover:shadow-lg transition-shadow overflow-hidden`}
+              className={`border-2 ${modelColor} hover:shadow-lg transition-shadow overflow-hidden flex-shrink-0 w-80`}
             >
               {/* Card Header */}
               <div className="p-4 border-b-2 border-current bg-white">
@@ -69,6 +73,23 @@ export const RewriteExperimentCards: React.FC<RewriteExperimentCardsProps> = ({
                     <div className="text-xs text-gray-600">Version: {experiment.version}</div>
                   )}
                 </div>
+
+                {/* Error Toggle */}
+                {hasErrors && (
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-xs text-red-600 hover:text-red-800 list-none flex items-center gap-1">
+                      <span>▶</span>
+                      Errors ({experimentErrors.errors.length})
+                    </summary>
+                    <div className="mt-2 bg-red-50 border border-red-200 rounded p-2 max-h-32 overflow-y-auto">
+                      {experimentErrors.errors.map((error: string, errorIdx: number) => (
+                        <div key={errorIdx} className="text-xs text-red-700 mb-1 pb-1 border-b border-red-200 last:border-b-0">
+                          {error}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
               </div>
 
               {/* Card Body - Labels and Runs */}

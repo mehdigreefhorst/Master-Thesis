@@ -2,6 +2,7 @@ import React from 'react';
 
 interface ThreadTargetProps {
   username: string;
+  clusterUnitType: "post" | "comment"
   content: string;
   label?: string;
   className?: string;
@@ -9,6 +10,7 @@ interface ThreadTargetProps {
 
 export const ThreadTarget: React.FC<ThreadTargetProps> = ({
   username,
+  clusterUnitType,
   content,
   label = '⭐ ANALYZING THIS REPLY',
   className = ''
@@ -19,7 +21,7 @@ export const ThreadTarget: React.FC<ThreadTargetProps> = ({
         {label}
       </div>
       <div className="text-sm">
-        → <span className="font-semibold">{username}</span> replied:
+        → <span className="font-semibold">{username}</span> {clusterUnitType === "post" ? "Wrote" : "replied"}:
       </div>
       <div className="text-sm">{content}</div>
     </div>

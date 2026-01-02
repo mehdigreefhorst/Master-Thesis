@@ -7,7 +7,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 import random
 
 from app.database import get_cluster_repository, get_cluster_unit_repository, get_experiment_repository, get_filtering_repository, get_label_template_repository, get_openrouter_data_repository, get_prompt_repository, get_sample_repository, get_scraper_cluster_repository, get_user_repository
-from app.database.entities.experiment_entity import ExperimentEntity
+from app.database.entities.experiment_entity import ExperimentEntity, ExperimentInput
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.database.entities.scraper_cluster_entity import StageStatus
@@ -184,8 +184,7 @@ def create_experiment(body: CreateExperiment):
     experiment_entity = ExperimentEntity(user_id=user_id,
                                          scraper_cluster_id=scraper_cluster_entity.id,
                                          prompt_id=prompt_entity.id,
-                                         input_id=body.input_id,
-                                         input_type=body.input_type,
+                                         input=ExperimentInput(input_id=body.input_id, input_type=body.input_type),
                                          experiment_type=prompt_entity.category,
                                          label_template_id= label_template_entity.id,
                                          model_id= body.model_id,
@@ -247,7 +246,7 @@ def continue_experiment(query: ExperimentId):
     experiment_entity.status = StatusType.Ongoing
 
     if not cluster_unit_entities:
-        return jsonify(error=f"not all Cluster unit ids are found cannot be found for experiment {experiment_entity.id} for input_type = {experiment_entity.input_type} & input_id = {experiment_entity.input_id}"), 400
+        return jsonify(error=f"not all Cluster unit ids are found cannot be found for experiment {experiment_entity.id} for input_type = {experiment_entity.input.input_type} & input_id = {experiment_entity.input.input_id}"), 400
 
     try:
 
@@ -524,15 +523,16 @@ def get_sample_units_standalone_format(query: GetSampleUnitsStandaloneFormat):
         return jsonify(error=f"Could not find experiment entities with label_template_id : {query.filter_label_template_id}")
     
     experiment_entities_types = list({experiment.experiment_type for experiment in experiment_entities})
+    print("experiment_entities_types = ", len(experiment_entities_types))
     if not len(experiment_entities_types) == 1:
         return jsonify(error=f"We have too many experiment entities or too few -> AMOUNT = {len(experiment_entities)}")
     
     if experiment_entities_types[0] == PromptCategory.Classify_cluster_units:
         return jsonify(error= f"Experiment entities have the wrong Prompt Category. CANNOT BE a classifying experiment type")
     
-    experiment_input_ids = list({experiment.input_id for experiment in experiment_entities})
-    if not len(experiment_input_ids) == 1:
-        return jsonify(error=f"too many input types are used for this!")
+    # experiment_input_ids = list({experiment.input_id for experiment in experiment_entities})
+    # if not len(experiment_input_ids) == 1:
+    #     return jsonify(error=f"too many input types are used for this!")
     
     cluster_unit_entities = FilteringService().get_cluster_units_experiment_entities(experiment_entities= experiment_entities)
     if not cluster_unit_entities:
@@ -696,7 +696,7 @@ def complete_sample_labeled_status(query: UpdateSample):
 @experiment_bp.route("/test/prediction", methods=["POST"])
 @validate_request_body(TestPrediction)
 @jwt_required()
-async def test_prediction(body: TestPrediction) -> PredictionsGroupedOutputFormat:
+def test_prediction(body: TestPrediction) -> PredictionsGroupedOutputFormat:
     print("body = ", body)
     print("body.experiment_id = ",body.experiment_id)
     experiment_entity = get_experiment_repository().find_by_id(body.experiment_id)
@@ -720,14 +720,20 @@ async def test_prediction(body: TestPrediction) -> PredictionsGroupedOutputForma
         cluster_unit_entities_remain = get_cluster_unit_repository().find_many_by_ids(body.cluster_unit_ids)
 
     max_concurrent = 100
-    test_predictions = await ExperimentService.test_predictions(
-        experiment_entity=experiment_entity,
-                label_template_entity=label_template_entity,
-                prompt_entity=prompt_entity,
-                cluster_unit_enities=cluster_unit_entities_remain, 
-    )
+    try:
+        
+        test_predictions = asyncio.run(ExperimentService.test_predictions(
+            experiment_entity=experiment_entity,
+                    label_template_entity=label_template_entity,
+                    prompt_entity=prompt_entity,
+                    cluster_unit_enities=cluster_unit_entities_remain, 
+        ))
 
-    return jsonify(predictions=test_predictions)
+        return jsonify(predictions=test_predictions)
+
+    except Exception as e:
+        logger.error("I got an errror!", stack_info=True)
+        raise
 
 
 @experiment_bp.route("/get_input_entities", methods=["GET"])

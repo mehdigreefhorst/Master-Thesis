@@ -36,6 +36,7 @@ export interface PredictionCategoryTokens {
 export interface ClusterUnitEntityPredictedCategory {
   experiment_id: string;
   predicted_categories: PredictionCategoryTokens[]
+  errors?: string[]
 }
 
 export interface ClusterUnitEntity {
@@ -92,10 +93,16 @@ export interface SingleUnitOneLabelAllExperiments {
     results: (LabelResult | null)[];
 }
 
+export interface UnitPredictionErrors {
+  experiment_id: string
+  errors: string[]
+}
+
 export interface ExperimentAllPredictedData {
   //"""all experiment data for one cluster unit entity, formatted for user interface"""
     cluster_unit_enity: ClusterUnitEntity
     label_name_predicted_data: SingleUnitOneLabelAllExperiments[]
+    errors?: Record<string, UnitPredictionErrors>
 }
 
 

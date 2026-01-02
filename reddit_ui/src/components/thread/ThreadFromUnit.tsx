@@ -44,7 +44,7 @@ export const ThreadFromUnit: React.FC<ThreadFromUnitProps> = ({
           }
           return <ThreadComment key={index} username={`u/${threadPathAuthor[index] ?? `u/author${index}`}`} content={text} />;
         })}
-        <ThreadTarget username={clusterUnitEntity.author} content={currentText} />
+        <ThreadTarget username={clusterUnitEntity.author} clusterUnitType={clusterUnitEntity.type } content={currentText} label={clusterUnitEntity.type === "post" ? "⭐ ANALYZING THIS POST" : "⭐ ANALYZING THIS REPLY"}/>
       </ThreadBox>
     );
   };

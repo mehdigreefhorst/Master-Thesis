@@ -1,9 +1,9 @@
 'use client';
-
+import { StepBackIcon, StepForwardIcon } from 'lucide-react';
 import { LabelTable } from '@/components/label/LabelTable';
 import { Button } from '@/components/ui/Button';
 import { ViewerSkeleton } from '@/components/ui/Skeleton';
-import type { ClusterUnitEntity, ExperimentAllPredictedData, ExperimentModelInformation } from '@/types/cluster-unit';
+import type { ExperimentAllPredictedData, ExperimentModelInformation } from '@/types/cluster-unit';
 import Link from 'next/link';
 import { ThreadFromUnit } from '../thread/ThreadFromUnit';
 import { LabelTemplateEntity } from '@/types/label-template';
@@ -14,11 +14,13 @@ export interface ViewerContentClassifyProps {
   scraperClusterId: string | null;
   labelTemplateEntity?: LabelTemplateEntity | null;
   clusterUnitEntityExperimentData?: ExperimentAllPredictedData | null;
-  allExperimentsModelInformation?: ExperimentModelInformation[]
+  allExperimentsModelInformation?: ExperimentModelInformation[];
+  isFirstClusterUnitEntity: boolean;
   isLastClusterUnitEntity: boolean;
   handleUpdateGroundTruth: (labelName: string, value: boolean | string | number) => void;
   labelsPossibleValues?: Record<string, string[] | boolean[]> | null
   handleCompleteSampleLabeling: ()=> void;
+  handlePrevious?: () => void;
   handleNext?: () => void;
   /**
    * Base path for navigation (e.g., '/viewer' or '/viewer/sample')
@@ -38,10 +40,12 @@ export function ViewerContentClassify({
   labelTemplateEntity,
   clusterUnitEntityExperimentData,
   allExperimentsModelInformation,
+  isFirstClusterUnitEntity,
   isLastClusterUnitEntity,  
   handleUpdateGroundTruth,
   labelsPossibleValues,
   handleCompleteSampleLabeling,
+  handlePrevious,
   handleNext,
   setIsLoading,
   isLoading
@@ -103,11 +107,16 @@ export function ViewerContentClassify({
         {/* Action Buttons */}
         <div className="flex gap-3 flex-wrap">
           <Link href={`/experiments?scraper_cluster_id=${scraperClusterId}`}>
-            <Button variant="primary">View Experiments</Button>
+            <Button variant="secondary">View Experiments</Button>
           </Link>
-          
-          <Button variant="primary" onClick={handleNext} disabled={isLastClusterUnitEntity}>
-            Next Sample →
+          <Button variant="primary" className="flex gap-2" onClick={handlePrevious} disabled={isFirstClusterUnitEntity}>
+            
+            <StepBackIcon/>
+            Previous Sample
+          </Button>
+          <Button variant="primary" className="flex gap-2" onClick={handleNext} disabled={isLastClusterUnitEntity}>
+            Next Sample
+            <StepForwardIcon/>
           </Button>
           {isLastClusterUnitEntity &&
             <Button variant="primary" onClick={handleCompleteSampleLabeling} >

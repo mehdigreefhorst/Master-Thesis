@@ -488,7 +488,8 @@ export const ExperimentCreator: React.FC<ExperimentCreatorProps> = ({
 
   const handleProceedToFullExperiment = () => {
     setShowTestModal(false);
-    router.push(`/experiments?scraper_cluster_id=${scraperClusterId}`);
+    const basePath = experimentType === "classify" ? "/experiments" : "/enrich"
+    router.push(`${basePath}?scraper_cluster_id=${scraperClusterId}`);
   };
 
   const handleTestCloseExperiment = async () => {

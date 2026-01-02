@@ -76,7 +76,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
 
   const handleView = (experiment: ExperimentData) => {
       if (scraperClusterId) {
-        router.push(`/viewer/sample?scraper_cluster_id=${scraperClusterId}&experiment_id=${experiment.id}&label_template_ids=${experiment.labelTemplateId}&experiment_type=${experiment.experimentType}`);
+        router.push(`/viewer/sample?unit_index=0&scraper_cluster_id=${scraperClusterId}&experiment_id=${experiment.id}&label_template_ids=${experiment.labelTemplateId}&experiment_type=${experiment.experimentType}`);
       }
     };
 
@@ -235,8 +235,8 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       id: exp.id,
       name: exp.name,
       model_id: exp.model,
-      input_type: exp.input_type,
-      input_id: exp.input_id,
+      input_type: exp.input.input_type,
+      input_id: exp.input.input_id,
       prompt_id: exp.prompt_id,
       created: new Date(exp.created).toLocaleDateString(),
       totalSamples: exp.total_samples,
@@ -252,7 +252,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       reasoningEffort: exp.reasoning_effort,
       tokenStatistics: tokenStatistics,
       experimentCost: exp.experiment_cost,
-      predictionErrors: exp.prediction_errors,
+      predictionErrors: exp.errors,
       labelTemplateId: exp.label_template_id,
       experimentType: exp.experiment_type
     };

@@ -37,6 +37,8 @@ export const LabelTable: React.FC<LabelTableProps> = ({
 }) => {
   const [isScrollMode, setIsScrollMode] = useState(false);
 
+  console.log(clusterUnitEntityExperimentData)
+
   return (
     <div className={`${className}`}>
       {/* Toggle Button */}
@@ -65,22 +67,45 @@ export const LabelTable: React.FC<LabelTableProps> = ({
                   style={isScrollMode ? { minWidth: '100px', width: '100px' } : { width: '10%' }}>
                 Truth
               </th>
-              {allExperimentsModelInformation.map((model, index) => (
-                <th
-                  key={index}
-                  className="bg-gray-100 p-3 text-center font-semibold text-sm text-gray-700 border-b-2 border-gray-300"
-                  style={isScrollMode ? { minWidth: '300px', width: '25%' } : {}}
-                >
-                  <div className="font-bold">
-                    <div className="truncate" title={`${model.prompt_name} ${model.model_id} ${model.version}`}>
-                      {model.prompt_name}
+              {allExperimentsModelInformation.map((model, index) => {
+                // Check if errors exist for this experiment
+                const experimentErrors = clusterUnitEntityExperimentData?.errors?.[model.experiment_id];
+                const hasErrors = experimentErrors && experimentErrors.errors.length > 0;
+
+                return (
+                  <th
+                    key={index}
+                    className="bg-gray-100 p-3 text-center font-semibold text-sm text-gray-700 border-b-2 border-gray-300"
+                    style={isScrollMode ? { minWidth: '300px', width: '25%' } : {}}
+                  >
+                    <div className="font-bold">
+                      <div className="truncate" title={`${model.prompt_name} ${model.model_id} ${model.version}`}>
+                        {model.prompt_name}
+                      </div>
+                      <div className="text-xs font-normal text-gray-600 truncate" title={`${model.model_id} ${model.version}`}>
+                        {model.model_id} {model.version}
+                      </div>
+
+                      {/* Error Toggle */}
+                      {hasErrors && (
+                        <details className="mt-2 text-left">
+                          <summary className="cursor-pointer text-xs text-red-600 hover:text-red-800 list-none flex items-center gap-1 justify-center">
+                            <span>▶</span>
+                            Errors ({experimentErrors.errors.length})
+                          </summary>
+                          <div className="mt-2 bg-red-50 border border-red-200 rounded p-2 max-h-32 overflow-y-auto">
+                            {experimentErrors.errors.map((error: string, errorIdx: number) => (
+                              <div key={errorIdx} className="text-xs text-red-700 mb-1 pb-1 border-b border-red-200 last:border-b-0">
+                                {error}
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
                     </div>
-                    <div className="text-xs font-normal text-gray-600 truncate" title={`${model.model_id} ${model.version}`}>
-                      {model.model_id} {model.version}
-                    </div>
-                  </div>
-                </th>
-              ))}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -97,6 +122,7 @@ export const LabelTable: React.FC<LabelTableProps> = ({
                 isScrollMode={isScrollMode}
               />
             )))}
+            
           </tbody>
         </table>
       </div>
