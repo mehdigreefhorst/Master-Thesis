@@ -19,7 +19,7 @@ from app.database.entities.label_template import LabelTemplateEntity
 from app.database.entities.prompt_entity import PromptCategory, PromptEntity
 from app.database.entities.sample_entity import SampleEntity
 from app.database.entities.user_entity import UserEntity
-from app.responses.get_experiments_response import ConfusionMatrix, GetExperimentsResponse, PredictionMetric, SinglePredictionOutputFormat, PredictionsGroupedOutputFormat
+from app.responses.get_experiments_response import ConfusionMatrix, GetExperimentsResponse, PredictionMetric, ProgressBar, SinglePredictionOutputFormat, PredictionsGroupedOutputFormat
 from app.services.llm_service import LLMService
 from app.utils.llm_helper import LlmHelper
 from app.utils.types import StatusType
@@ -57,29 +57,21 @@ class ExperimentService:
         if cluster_unit_entities_remain:
             predictions_grouped_output_format_object = await ExperimentService.create_predicted_categories(
                 experiment_entity=experiment_entity,
+                experiment_entity_runs_per_unit=experiment_entity.runs_per_unit,
                 label_template_entity=label_template_entity,
                 prompt_entity=prompt_entity,
                 cluster_unit_enities=cluster_unit_entities_remain, 
                 max_concurrent=max_concurrent)
-
-            cluster_unit_entities_successfully_done = ExperimentService.update_add_to_db_cluster_unit_predictions(
-                predictions_grouped_output_format_object=predictions_grouped_output_format_object,
-                experiment_entity=experiment_entity)
             # If there were any cluster unit entities remaining & there was at least a single failure of prediction. We set experiment status to error
             success_count, failed_count = predictions_grouped_output_format_object.get_count_successful_failure_predictions()
-        
+            cluster_unit_entities_successfully_done = predictions_grouped_output_format_object.get_cluster_units()
             cluster_unit_entities_done.extend(cluster_unit_entities_successfully_done)
         if experiment_entity.experiment_type == PromptCategory.Classify_cluster_units and LabelTemplateService().cluster_unit_entities_done_labeling_ground_truth(cluster_unit_entities=cluster_unit_entities_done,
                                                                                                                                                                   label_template_entity=label_template_entity):
-            ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities_done, experiment_entity, label_template_entity=label_template_entity)
-
-        # Calculate and store aggregate token statistics
-        ExperimentService.calculate_and_store_token_statistics(cluster_unit_entities_remain, experiment_entity)
-       
+            ExperimentService.convert_total_predicted_into_aggregate_results(cluster_unit_entities_done, experiment_entity, label_template_entity=label_template_entity)       
         
         if len(cluster_unit_entities_remain) > 0 and failed_count > 0:
             logger.error(f"THere is an error we have {failed_count} predictions")
-            ExperimentService.calculate_and_store_wasted_token_statistics(predictions_grouped_output_format_object=predictions_grouped_output_format_object, experiment_entity=experiment_entity)
             experiment_entity.status = StatusType.Error
         else:
             experiment_entity.status = StatusType.Completed
@@ -89,6 +81,7 @@ class ExperimentService:
     @staticmethod
     async def create_predicted_categories(
         experiment_entity: ExperimentEntity,
+        experiment_entity_runs_per_unit: int,
         label_template_entity: LabelTemplateEntity,
         prompt_entity: PromptEntity,
         cluster_unit_enities: List[ClusterUnitEntity],
@@ -166,24 +159,73 @@ class ExperimentService:
         # Create all tasks
         tasks = []
         for cluster_unit_entity in cluster_unit_enities:
-            for run_index in range(experiment_entity.runs_per_unit):
+            for run_index in range(experiment_entity_runs_per_unit):
                 tasks.append(predict_single_with_semaphore_and_retry(cluster_unit_entity, run_index))
 
         logger.info(f"Created {len(tasks)} prediction tasks")
 
         # Execute with gather # Run the async predictions -> Results in one dimensional list of predictions
-        list_predictions_output_format: List[SinglePredictionOutputFormat] = await asyncio.gather(
-            *tasks,
-            return_exceptions=True
-        )
+
+        # Execute async computation. And process in batches.
+        full_list_predictions_output_format: List[SinglePredictionOutputFormat] = list()
+        batch_predictions_output_format:  List[SinglePredictionOutputFormat] = list()
+        for prediction_task in  asyncio.as_completed(
+            tasks):
+            try:
+                prediction_result = await prediction_task
+                batch_predictions_output_format.append(prediction_result)
+                # :TODO make this time based instead. So every 10 seconds instead
+                if len(batch_predictions_output_format) >= 10:
+                    logger.info(f"final batch processing to store in database. Total predictions = {len(batch_predictions_output_format)}")
+
+                    await ExperimentService.process_batch_predicted_categories(batch_predictions_output_format=batch_predictions_output_format, experiment_entity=experiment_entity)
+                    
+                    # add current list to the full list and reset the list length
+                    full_list_predictions_output_format.extend(batch_predictions_output_format)
+                    batch_predictions_output_format = list()
+            except Exception as e:
+                logger.exception(
+                    f"Prediction task failed: {type(e).__name__}: {e}",
+                    extra={
+                        'extra_fields': {
+                            'operation': 'create_predicted_categories',
+                            'error_type': type(e).__name__,
+                            'error_message': str(e)
+                        }
+                    }
+                )
+            
+        
+        # Now also process the remaining predictions that have not yet been processed as a batch
+        if len(batch_predictions_output_format) > 0:
+            # There is a batch remaining. so process it!
+            try:
+                logger.info(f"final batch processing to store in database. Total predictions = {len(batch_predictions_output_format)}")
+                await ExperimentService.process_batch_predicted_categories(batch_predictions_output_format=batch_predictions_output_format,
+                                                                    experiment_entity=experiment_entity)
+                logger.info(f"completed the batch processing and storing to database")
+                # add current list to the full list and reset the list length
+                full_list_predictions_output_format.extend(batch_predictions_output_format)
+                batch_predictions_output_format = list()
+            except Exception as e:
+                logger.exception(
+                    f"Prediction task failed: {type(e).__name__}: {e}",
+                    extra={
+                        'extra_fields': {
+                            'operation': 'create_predicted_categories',
+                            'error_type': type(e).__name__,
+                            'error_message': str(e)
+                        }
+                    }
+                )
 
         predictions_output_format = PredictionsGroupedOutputFormat.parse_from_predicted_units(
-            list_predictions_output_format=list_predictions_output_format,
+            list_predictions_output_format=full_list_predictions_output_format,
             cluster_unit_enities=cluster_unit_enities,
-            runs_per_unit=experiment_entity.runs_per_unit)
+            runs_per_unit=experiment_entity_runs_per_unit)
         # Filter out None results and count failures
         successful_predictions, failed_count = predictions_output_format.get_count_successful_failure_predictions()
-
+        logger.info(f"successful_predictions = {successful_predictions}, failed_count = , {failed_count}")
         if failed_count > 0:
             logger.warning(f"Completed with {successful_predictions} successful predictions, "
                          f"{failed_count} failed after retries")
@@ -192,11 +234,35 @@ class ExperimentService:
         
         return predictions_output_format
 
+
+    @staticmethod
+    async def process_batch_predicted_categories(batch_predictions_output_format: List[SinglePredictionOutputFormat], experiment_entity: ExperimentEntity):
+        """process the batch of predicted categories to be saved inside the cluster unit entities. 
+        Also processes the predicted categories to update the experiment entity, so that the results are added for token statistics
+        we do not calculate the aggregate result. because we determine that later. After all predictions are completed """
+        logger.info(f"processing batch predicted categories of size: {len(batch_predictions_output_format)}")
+        predictions_output_format = PredictionsGroupedOutputFormat.parse_batch_from_single_prediction_output(batch_predictions_output_format)
+        cluster_unit_entities_successfully_done = await ExperimentService.update_add_to_db_cluster_unit_predictions(
+            predictions_grouped_output_format_object=predictions_output_format,
+            experiment_entity=experiment_entity)
+
+        # Now we add these predictinos_output_format to the tokens statistics of the experiment
+
+        # Calculate and store aggregate token statistics
+        ExperimentService.calculate_and_store_batch_single_prediction_format(batch_predictions_output_format, experiment_entity)           
+        success_count, failed_count = predictions_output_format.get_count_successful_failure_predictions()
+
+        if len(cluster_unit_entities_successfully_done) > 0 and failed_count > 0:
+            logger.error(f"THere is an error we have {failed_count} predictions")
+            ExperimentService.calculate_and_store_wasted_token_statistics(predictions_grouped_output_format_object=predictions_output_format, experiment_entity=experiment_entity)
+            experiment_entity.status = StatusType.Error
+        get_experiment_repository().update(experiment_entity.id, experiment_entity)
+        logger.info(f"completed the batch processing and storing to database")
         
     
 
     @staticmethod
-    def update_add_to_db_cluster_unit_predictions(
+    async def update_add_to_db_cluster_unit_predictions(
         predictions_grouped_output_format_object: PredictionsGroupedOutputFormat,
         experiment_entity: ExperimentEntity) -> List[ClusterUnitEntity]:
         """updates the predictions, by adding them to a cluster unit map which is a dictionary. Then it sends off 
@@ -216,9 +282,12 @@ class ExperimentService:
                 cluster_unit_map_predictions[cluster_unit_entity_id] = cluster_unit_predicted_category
                 completed_cluster_unit_entities.append(grouped_prediction_output_format.cluster_unit_entity)
 
+            else:
+                logger.error("We are skipping units because not all predictions are successful")
+
         if success_count == 0:
             return completed_cluster_unit_entities
-        get_cluster_unit_repository().insert_many_predicted_categories(experiment_id=experiment_entity.id,
+        await get_cluster_unit_repository().insert_many_predicted_categories(experiment_id=experiment_entity.id,
                                                                        predictions_map=cluster_unit_map_predictions)
         return completed_cluster_unit_entities
 
@@ -373,51 +442,29 @@ class ExperimentService:
 
 
     @staticmethod
-    def calculate_and_store_token_statistics(
-        cluster_unit_entities: List[ClusterUnitEntity],
-        experiment_entity: ExperimentEntity
-    ) -> None:
-        """
-        Only uses the newly done cluster units. It adds to the existing body
-        Calculate comprehensive token statistics across all predictions in the experiment.
-        This captures:
-        - Total tokens used (including all retries)
-        - Tokens wasted on failed attempts
-        - Tokens from retry attempts
-        - Success/failure counts
+    def calculate_and_store_batch_single_prediction_format(single_predictions_format: List[SinglePredictionOutputFormat], experiment_entity: ExperimentEntity):
+        total_successful_predictions = experiment_entity.token_statistics.total_successful_predictions
+        total_failed_attempts = experiment_entity.token_statistics.total_failed_attempts
 
-        Also the experiment cost is calculated if model pricing is available in the object
-        """
-        total_successful_predictions = 0
-        total_failed_attempts = 0
-
-        for cluster_unit_entity in cluster_unit_entities:
-            if cluster_unit_entity.predicted_category is None:
+        for single_prediction in single_predictions_format:
+            prediction_category_token = single_prediction.parsed_categories
+            if not isinstance(prediction_category_token, PredictionCategoryTokens):
                 continue
+            
+            # Count successful prediction
+            total_successful_predictions += 1
 
-            predicted_category_data = cluster_unit_entity.predicted_category.get(experiment_entity.id)
-            if not predicted_category_data:
-                continue
+            # Process all attempts for this prediction
+            for attempt in prediction_category_token.all_attempts_token_usage:
+                experiment_entity.token_statistics.total_tokens_used.add_token_usage_attempt(attempt)
 
-            # Iterate through all prediction runs for this cluster unit
-            for prediction in predicted_category_data.predicted_categories:
-                if not isinstance(prediction, PredictionCategoryTokens):
-                    continue
+                if not attempt.success:
+                    total_failed_attempts += 1
+                    experiment_entity.token_statistics.tokens_wasted_on_failures.add_token_usage_attempt(attempt)
+                
 
-                # Count successful prediction
-                total_successful_predictions += 1
-
-                # Process all attempts for this prediction
-                for attempt in prediction.all_attempts_token_usage:
-                    experiment_entity.token_statistics.total_tokens_used.add_token_usage_attempt(attempt)
-
-                    if not attempt.success:
-                        total_failed_attempts += 1
-                        experiment_entity.token_statistics.tokens_wasted_on_failures.add_token_usage_attempt(attempt)
-                    
-
-                    if attempt.attempt_number > 1:
-                        experiment_entity.token_statistics.tokens_from_retries.add_token_usage_attempt(attempt)
+                if attempt.attempt_number > 1:
+                    experiment_entity.token_statistics.tokens_from_retries.add_token_usage_attempt(attempt)
 
         # Calculate the cost of the model
         if experiment_entity.model_pricing is not None:
@@ -428,8 +475,8 @@ class ExperimentService:
             total_cost = 0
 
         # Store in experiment entity
-        experiment_entity.token_statistics.total_successful_predictions += total_successful_predictions
-        experiment_entity.token_statistics.total_failed_attempts += total_failed_attempts
+        experiment_entity.token_statistics.total_successful_predictions = total_successful_predictions
+        experiment_entity.token_statistics.total_failed_attempts = total_failed_attempts
 
         logger.info(f"Token Statistics for Experiment ", extra={'extra_fields': {"experiment_entity": experiment_entity.id} })
         logger.info(f"  Experiment cost spend = {total_cost}$")
@@ -502,7 +549,6 @@ class ExperimentService:
 
     @staticmethod
     def convert_experiment_entities_for_user_interface(experiment_entities: List[ExperimentEntity], 
-                                                       sample_size: int,
                                                        user_threshold: Optional[float] = None) -> List[GetExperimentsResponse]:
         """user threshold, is the minimum number of occurences out of the runs to be correct in order for the prediction to be accepted
         for example 2/3 runs need to be correct or 3/3 runs need to be correct. Or 3/5 depending on the runs taken. """
@@ -519,12 +565,12 @@ class ExperimentService:
                 overall_accuracy = None
                 overall_kappa = None
             elif experiment.experiment_type == PromptCategory.Classify_cluster_units:
-                prediction_metrics = ExperimentService.calculate_prediction_metrics(experiment, sample_size, user_threshold)
+                prediction_metrics = ExperimentService.calculate_prediction_metrics(experiment, user_threshold)
                 overall_accuracy = ExperimentService.calculate_overal_accuracy(prediction_metrics)
                 overall_kappa = ExperimentService.calculate_overall_consistency(prediction_metrics)
 
                 if experiment.aggregate_result and experiment.aggregate_result.combined_labels:
-                    combined_labels_prediction_metrics = ExperimentService.calculate_prediction_metrics_combined_labels(experiment, sample_size, user_threshold)
+                    combined_labels_prediction_metrics = ExperimentService.calculate_prediction_metrics_combined_labels(experiment, user_threshold)
                     combined_labels_accuracy = ExperimentService.calculate_overal_accuracy(combined_labels_prediction_metrics)
                     combined_labels_kappa = ExperimentService.calculate_overall_consistency(combined_labels_prediction_metrics)
             elif experiment.experiment_type == PromptCategory.Rewrite_cluster_unit_standalone:
@@ -536,13 +582,20 @@ class ExperimentService:
                 overall_accuracy = None
                 overall_kappa = None
             #:TODO Fix that I keep track of what version of prompt I am using
+
+            progress_bar = ProgressBar.build_from(
+                completed_predictions=experiment.token_statistics.total_successful_predictions,
+                failed_predictions=experiment.token_statistics.total_failed_attempts,
+                total_cluster_unit_count=experiment.input.cluster_unit_count,
+                runs_per_unit=experiment.runs_per_unit)
+            
             experiment_response = GetExperimentsResponse(id=experiment.id,
                                                          name=f"{experiment.model_id} V{index}",
                                                          model=experiment.model_id,
                                                          input=experiment.input,
                                                          prompt_id=experiment.prompt_id,
                                                          created=experiment.created_at,
-                                                         total_samples=sample_size,
+                                                         total_cluster_units=experiment.input.cluster_unit_count,
                                                          overall_accuracy=overall_accuracy,
                                                          overall_kappa=overall_kappa,
                                                          prediction_metrics=prediction_metrics,
@@ -557,7 +610,8 @@ class ExperimentService:
                                                          experiment_cost=experiment.experiment_cost,
                                                          errors=experiment.get_experiment_errors(),
                                                          status=experiment.status,
-                                                         experiment_type=experiment.experiment_type)
+                                                         experiment_type=experiment.experiment_type,
+                                                         progress_bar=progress_bar)
             
             returnable_experiments.append(experiment_response)  
         
@@ -597,7 +651,6 @@ class ExperimentService:
     
     @staticmethod
     def calculate_prediction_metrics(experiment_entity: ExperimentEntity,
-                                     sample_size: int,
                                      user_threshold: Optional[float] = None) -> List[PredictionMetric] | None:
         total_prediction_metrics: List[PredictionMetric] = list()
         if experiment_entity.aggregate_result is None:
@@ -607,7 +660,6 @@ class ExperimentService:
             prediction_metric = ExperimentService.calculate_single_prediction_metric(experiment_entity=experiment_entity,
                                                                                      prediction_result=prediction_result,
                                                                                      prediction_result_name=prediction_result_variable_name,
-                                                                                     sample_size=sample_size,
                                                                                      user_threshold=user_threshold)
             
             total_prediction_metrics.append(prediction_metric)
@@ -615,7 +667,6 @@ class ExperimentService:
         return total_prediction_metrics
     
     def calculate_prediction_metrics_combined_labels(experiment_entity: ExperimentEntity,
-                                                     sample_size: int,
                                                      user_threshold: Optional[float] = None) -> List[PredictionMetric] | None:
         """calculates the prediction metric from the combined labels"""
         total_prediction_metrics: List[PredictionMetric] = list()
@@ -626,7 +677,6 @@ class ExperimentService:
             prediction_metric = ExperimentService.calculate_single_prediction_metric(experiment_entity=experiment_entity,
                                                                                      prediction_result=prediction_result,
                                                                                      prediction_result_name=combined_prediction_name,
-                                                                                     sample_size=sample_size,
                                                                                      user_threshold=user_threshold)
             
             total_prediction_metrics.append(prediction_metric)
@@ -668,13 +718,13 @@ class ExperimentService:
     def calculate_single_prediction_metric(experiment_entity: ExperimentEntity, 
                                            prediction_result: PredictionResult,
                                            prediction_result_name: str,
-                                           sample_size: int,
                                            user_threshold: Optional[float] = None) -> PredictionMetric:
         """calculates everything that is needed for the prediction metric to be created and returns that"""
         formatted_user_threshold = ExperimentService.get_user_threshold(experiment_entity=experiment_entity, user_threshold=user_threshold)
         total_times_predicted = ExperimentService.calculate_total_times_predicted(prediction_result)
 
-        total_sample_runs = sample_size * experiment_entity.runs_per_unit
+        total_sample_runs = experiment_entity.input.cluster_unit_count * experiment_entity.runs_per_unit
+        logger.info(f" experiment_entity.input.cluster_unit_count = { experiment_entity.input.cluster_unit_count}")
         prevelance = {value_key: times_predicted/total_sample_runs for value_key, times_predicted in total_times_predicted.items()}
         
         confusion_matrix = ExperimentService.calculate_confusion_matrix(prediction_result=prediction_result,
@@ -738,9 +788,9 @@ class ExperimentService:
         prompt_entity: PromptEntity,
         cluster_unit_enities: List[ClusterUnitEntity]
         ) -> List[List[SinglePredictionOutputFormat]]:
-        experiment_entity.runs_per_unit = 1
         predictions_output_format = await ExperimentService.create_predicted_categories(
                 experiment_entity=experiment_entity,
+                experiment_entity_runs_per_unit=1,
                 label_template_entity=label_template_entity,
                 prompt_entity=prompt_entity,
                 cluster_unit_enities=cluster_unit_enities, 

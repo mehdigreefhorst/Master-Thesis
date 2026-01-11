@@ -12,7 +12,7 @@ import numpy as np
 
 import requests
 from app.database import get_openrouter_data_repository
-from app.database.entities.openrouter_data_entity import OpenRouterDataEntity
+from app.database.entities.openrouter_data_entity import OpenRouterDataEntity, Pricing
 from app.utils.logging_config import get_logger
 
 # Initialize logger for this module
@@ -890,3 +890,17 @@ class OpenRouterAnalyticsService:
         html_str = fig.to_html(include_plotlyjs='cdn', div_id="plotly-div", config={'displayModeBar': False})
         return OpenRouterAnalyticsService._inject_react_communication_js(html_str)
 
+
+class OpenRouterDataService:
+    
+    @staticmethod
+    def find_pricing_of_model(model_id: str) -> Pricing | None:
+        openrouter_entity =  get_openrouter_data_repository().find_of_today()
+        logger.info(f"model_id = {model_id}")
+        if openrouter_entity:
+            matching_models =  [model for model in openrouter_entity.dev_api_data if model.id == model_id]
+            model = matching_models[0]
+            print("found the model: = ", model)
+            if model:
+                
+                return model.pricing

@@ -90,7 +90,7 @@ class ClusterUnitRepository(BaseRepository[ClusterUnitEntity]):
         )
         return deleted_result.modified_count
 
-    def insert_many_predicted_categories(
+    async def insert_many_predicted_categories(
         self,
         experiment_id: PyObjectId,
         predictions_map: Dict[PyObjectId, ClusterUnitEntityPredictedCategory]
@@ -99,7 +99,7 @@ class ClusterUnitRepository(BaseRepository[ClusterUnitEntity]):
         Insert many predicted categories
         """
       
-        
+        logger.info(f"inserting predictions_map of unit length = {len(predictions_map)}")
         # Use a single bulk write with upsert to handle both init and update
         bulk_ops = [
             UpdateOne(
@@ -122,7 +122,8 @@ class ClusterUnitRepository(BaseRepository[ClusterUnitEntity]):
         ]
         
         # Single database call for everything!
-        inserted_count = self.collection.bulk_write(bulk_ops, ordered=False).inserted_count
+        result_write = self.collection.bulk_write(bulk_ops, ordered=False)
+        inserted_count = result_write.inserted_count
         logger.info(f"inserted a total of {inserted_count} predictions. During {experiment_id} experiment")
         return 
     

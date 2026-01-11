@@ -64,9 +64,9 @@ class LabelPredictionCounter(BaseModel):
                 self.value_counter[str(possible_value)] = 0
     
     def add_label_value_field(self, label_value_field: LabelValueField):
-        if label_value_field.type == "boolean" or label_value_field.type == "category" or label_value_field.type == "integer":
-            print("label_value_field.value = ", label_value_field.value)
+        if label_value_field.type == "boolean" or label_value_field.type == "category" or label_value_field.type == "integer":     
             if isinstance(label_value_field.value, list):
+                print("label_value_field.value = ", label_value_field.value)
                 raise Exception("LLM predicted List!")
                 print("we have a list type!")
             self.value_counter[str(label_value_field.value)] = self.value_counter.get(label_value_field.value, 0) + 1

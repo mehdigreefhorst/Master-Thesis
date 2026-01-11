@@ -17,14 +17,3 @@ class OpenRouterDataRepository(BaseRepository[OpenRouterDataEntity]):
     
     def find_of_today(self) -> OpenRouterDataEntity | None:
         return super().find_one({"date_added": datetime.now().strftime("%d-%m-%Y")})
-    
-
-    def find_pricing_of_model(self, model_id: str) -> Pricing | None:
-        openrouter_entity =  self.find_of_today()
-        logger.info(f"model_id = {model_id}")
-        if openrouter_entity:
-            model =  [model for model in openrouter_entity.dev_api_data if model.id == model_id][0]
-
-            if model:
-                
-                return model.pricing

@@ -69,7 +69,7 @@ def prepare_cluster(body: PrepareClusterRequest):
     get_scraper_cluster_repository().update(scraper_cluster_entity.id, scraper_cluster_entity)
 
     cluster_units_created = ClusterPrepService.start_preparing_clustering(scraper_cluster_entity, body.media_strategy_skip_type)
-
+    
     logger.info(f"[prepare_cluster] Cluster preparation completed: scraper_cluster_id={body.scraper_cluster_id}, units_created={cluster_units_created}")
     scraper_cluster_entity.stages.cluster_prep = StatusType.Completed
 

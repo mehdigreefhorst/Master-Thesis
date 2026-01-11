@@ -667,7 +667,23 @@ class PredictionMetric(BaseModel):
     kappa: float
     prevelance_distribution: Optional[Dict[ValueKey, Dict[ValueCount, int]]] = None #PrevalenceDistribution
     confusion_matrix: ConfusionMatrix
-    
+
+
+class ProgressBar(BaseModel):
+    total_expected: int
+    completed_predictions: int
+    failed_predictions: int # Fully failed attemps, after 3 retries still in failure mode (excluding rate limiter retry attempts)
+
+    @classmethod
+    def build_from(cls, completed_predictions: int, failed_predictions: int, total_cluster_unit_count: int, runs_per_unit: int):
+        total_predictions_needed = total_cluster_unit_count * runs_per_unit
+        return cls(
+            total_expected=total_predictions_needed,
+            completed_predictions=completed_predictions,
+            failed_predictions=failed_predictions
+        )
+        
+        
 
 
 class GetExperimentsResponse(BaseModel):
@@ -680,7 +696,7 @@ class GetExperimentsResponse(BaseModel):
     runs_per_unit: int
     label_template_id: PyObjectId
     threshold_runs_true: Optional[int]
-    total_samples: int
+    total_cluster_units: int
     combined_labels_accuracy: Optional[float] = None
     combined_labels_kappa: Optional[float] = None
     combined_labels_prediction_metrics: Optional[List[PredictionMetric]] = None
@@ -693,6 +709,7 @@ class GetExperimentsResponse(BaseModel):
     errors: Optional[List[str]] = None
     status: StatusType
     experiment_type: PromptCategory
+    progress_bar: ProgressBar
 
 
 class ClusterEntityInputCount(ClusterEntity):
@@ -768,7 +785,7 @@ class SinglePredictionOutputFormat(BaseModel):
 
 class GroupedPredictionOutputFormat(BaseModel):
     cluster_unit_entity: ClusterUnitEntity
-    predictions: List[SinglePredictionOutputFormat]
+    predictions: List[SinglePredictionOutputFormat] = Field(default_factory=list)
     errors: Optional[List[str]] = None
 
     def all_predictions_successfull(self):
@@ -784,6 +801,21 @@ class GroupedPredictionOutputFormat(BaseModel):
         if not self.all_predictions_successfull():
             return None
         return [prediction.parsed_categories for prediction in self.predictions]
+    
+    def insert_parsed_prediction(self, prediction: SinglePredictionOutputFormat):
+        if prediction.cluster_unit_entity.id != self.cluster_unit_entity.id:
+            raise Exception(f"We are adding a prediction of another unit to this groupued prediction. self.id = {self.cluster_unit_entity.id} prediction.id = {prediction.cluster_unit_entity.id}")
+        self.predictions.append(prediction)
+
+
+    @classmethod
+    def create_grouped_from_prediction(cls, prediction: SinglePredictionOutputFormat):
+        """creates a grouped prediction output format from a single prediction"""
+        return cls(
+            cluster_unit_entity=prediction.cluster_unit_entity,
+            predictions=[prediction]
+        )
+
     
     def get_errors(self) -> List[str] | None:
         errors: List[str] = list()
@@ -835,7 +867,7 @@ ClusterUnitEntityId = str
 
 class PredictionsGroupedOutputFormat(BaseModel):
     cluster_unit_predictions_map: Dict[ClusterUnitEntityId, GroupedPredictionOutputFormat]
-
+    
     
     def get_count_successful_failure_predictions(self) -> Tuple[int, int]:
         """returns success_count, failed_count of predictions"""
@@ -849,13 +881,17 @@ class PredictionsGroupedOutputFormat(BaseModel):
             
         return success_count, failed_count
     
+    def get_cluster_units(self):
+        """retrieves only the cluster units from the unit prediction map"""
+        return [grouped_prediction.cluster_unit_entity for grouped_prediction in self.cluster_unit_predictions_map.values()]
+    
     
     @classmethod
     def parse_from_predicted_units(cls, 
                                    list_predictions_output_format: List[SinglePredictionOutputFormat],
                                     cluster_unit_enities: List[ClusterUnitEntity],
                                     runs_per_unit: int) ->"PredictionsGroupedOutputFormat":
-        
+        """parses the object from a very specific format that worked until 6 jan"""
         cluster_unit_predictions_map: Dict[ClusterUnitEntityId, GroupedPredictionOutputFormat] = dict()
         grouped_predicted_categories = [list_predictions_output_format[i:runs_per_unit+i] 
                                         for i in range(0, len(cluster_unit_enities)* runs_per_unit, runs_per_unit)]
@@ -867,6 +903,23 @@ class PredictionsGroupedOutputFormat(BaseModel):
                 predictions=grouped_predictions)
 
         return cls(cluster_unit_predictions_map=cluster_unit_predictions_map)
+    
+    
+    @classmethod
+    def parse_batch_from_single_prediction_output(cls,list_predictions_output_format: List[SinglePredictionOutputFormat]) -> "PredictionsGroupedOutputFormat":
+        """parses a single batch into the object. This variant of the object does not take into account that there are multiple runs. It just assumes to add to the predicted_categories"""
+        cluster_unit_predictions_map: Dict[ClusterUnitEntityId, GroupedPredictionOutputFormat] = dict()
+        for single_prediction_format in list_predictions_output_format:
+            cluster_unit_entity = single_prediction_format.cluster_unit_entity
+            # Check if there are two of the same unit in the same batch
+            if cluster_unit_predictions_map.get(cluster_unit_entity.id):
+                # There is already a predicted unit here
+                cluster_unit_predictions_map[cluster_unit_entity.id].insert_parsed_prediction(single_prediction_format)
+            else:
+                cluster_unit_predictions_map[cluster_unit_entity.id] = GroupedPredictionOutputFormat.create_grouped_from_prediction(prediction=single_prediction_format)
+
+        return cls(cluster_unit_predictions_map=cluster_unit_predictions_map)
+
     
 
     def get_single_predictions_output_format(self) -> List[List[SinglePredictionOutputFormat]]:

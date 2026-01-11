@@ -29,3 +29,7 @@ class SampleEntity(BaseEntity):
 
     def get_label_template_ids(self) -> List[PyObjectId]:
         return [label_template_id for label_template_id in self.sample_label_template_labeled_status.keys()]
+    
+    def get_cluster_unit_count(self) -> int:
+        """gets the number of cluster unit count that are associated with the entity"""
+        return self.sample_size

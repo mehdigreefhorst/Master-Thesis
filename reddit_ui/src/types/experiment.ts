@@ -110,6 +110,14 @@ export interface ExperimentEntity {
 export interface ExperimentInput {
   input_type: string;
   input_id: string;
+  cluster_unit_count: number;
+}
+
+export interface ProgressBarData {
+  total_expected: number;
+  completed_predictions: number;
+  failed_predictions: number // # Fully failed attemps, after 3 retries still in failure mode (excluding rate limiter retry attempts)
+
 }
 
 // Response from GET /experiment endpoint (matches backend GetExperimentsResponse)
@@ -118,14 +126,13 @@ export interface GetExperimentsResponse {
   name: string;
   model: string;
   input_type: string;
-
   input: ExperimentInput;
   prompt_id: string;
   created: string | Date;  // Can be string from API or Date after parsing
   runs_per_unit: 1 | 2 | 3 | 4 | 5;
   label_template_id: string;
   threshold_runs_true?: 1 | 2 | 3 | 4 | 5;
-  total_samples: number;
+  total_cluster_units: number;
   combined_labels_accuracy?: number;
   combined_labels_kappa?: number;
   combined_labels_prediction_metrics?: PredictionMetric[];
@@ -138,6 +145,7 @@ export interface GetExperimentsResponse {
   errors?: string[];
   status: StatusType;
   experiment_type: PromptCategory;
+  progress_bar: ProgressBarData;
 
 }
 

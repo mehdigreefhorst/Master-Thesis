@@ -189,6 +189,7 @@ class ExperimentCost(BaseModel):
 class ExperimentInput(BaseModel):
     input_id: PyObjectId
     input_type: Literal["sample", "filtering", "cluster"]
+    cluster_unit_count: int
 
 
 class ExperimentEntity(BaseEntity):

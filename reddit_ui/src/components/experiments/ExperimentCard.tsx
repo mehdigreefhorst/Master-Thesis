@@ -11,7 +11,8 @@ import { TokenStatistics as TokenStatsDisplay } from './TokenStatistics';
 import { experimentApi } from '@/lib/api';
 import { useAuthFetch } from '@/utils/fetch';
 import { useToast } from '@/components/ui/use-toast';
-import { PromptCategory, ReasoningEffort } from '@/types/experiment';
+import { ProgressBarData, PromptCategory, ReasoningEffort } from '@/types/experiment';
+import { ProgressBarExperiment } from '../progress/ProgressBarExperiment';
 
 export interface TokenStatistics {
   total_successful_predictions: number;
@@ -50,7 +51,7 @@ export interface ExperimentData {
   input_type: string;
   prompt_id: string;
   created: string;
-  totalSamples: number;
+  totalClusterUnits: number;
   overallAccuracy: number;
   overallKappa: number;
   predictionMetrics: PredictionMetric[];
@@ -65,7 +66,8 @@ export interface ExperimentData {
   experimentCost?: ExperimentCost;
   predictionErrors?: string[] | null
   labelTemplateId: string;
-  experimentType: PromptCategory
+  experimentType: PromptCategory;
+  progressBarData: ProgressBarData;
 }
 
 interface ExperimentCardProps {
@@ -273,7 +275,7 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
             <span>•</span>
             <span>{experiment.created}</span>
             <span>•</span>
-            <span>samples {experiment.totalSamples} </span>
+            <span>samples {experiment.totalClusterUnits} </span>
             <span>reasoning {experiment.reasoningEffort}</span>
             <span>•</span>
             <span>Runs: {experiment.runsPerUnit}</span>
@@ -310,36 +312,46 @@ export const ExperimentCard: React.FC<ExperimentCardProps> = ({
         </div>
         
       </div>
-
       {/* Overall Metrics */}
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        <MetricBar
-          label="Overall Accuracy"
-          value={experiment.overallAccuracy}
-        />
-        <MetricBar
-          label="Overall Kappa"
-          value={experiment.overallKappa}
-        />
-      </div>
-      
-      {/* Combined Labels Metrics - Only visible if available */}
-      {(experiment.combinedLabelsAccuracy || experiment.combinedLabelsKappa) && (
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          {experiment.combinedLabelsAccuracy && (
+
+      {(experiment.status === "ongoing" || experiment.status === "initialized") ?
+        <ProgressBarExperiment progressBarData={experiment.progressBarData} status={experiment.status} />
+      :
+        <div>
+
+          <div className="grid grid-cols-2 gap-3 mb-3">
             <MetricBar
-              label="Combined Accuracy"
-              value={(experiment.combinedLabelsAccuracy)|| 0}
+              label="Overall Accuracy"
+              value={experiment.overallAccuracy}
             />
-          )}
-          {experiment.combinedLabelsKappa && (
             <MetricBar
-              label="Combined Kappa"
-              value={experiment.combinedLabelsKappa || 0}
+              label="Overall Kappa"
+              value={experiment.overallKappa}
             />
+          </div>
+          {/* Combined Labels Metrics - Only visible if available */}
+          {(experiment.combinedLabelsAccuracy || experiment.combinedLabelsKappa) && (
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              {experiment.combinedLabelsAccuracy && (
+                <MetricBar
+                  label="Combined Accuracy"
+                  value={(experiment.combinedLabelsAccuracy)|| 0}
+                />
+              )}
+              {experiment.combinedLabelsKappa && (
+                <MetricBar
+                  label="Combined Kappa"
+                  value={experiment.combinedLabelsKappa || 0}
+                />
+              )}
+            </div>
           )}
         </div>
-      )}
+
+    }
+      
+      
+      
 
       {/* Token Statistics - Always visible if available */}
       {experiment.tokenStatistics && (

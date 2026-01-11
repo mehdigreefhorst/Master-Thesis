@@ -110,8 +110,12 @@ class ClusterPrepService:
             else:
                 logger.error(f"[start_preparing_clustering] Unknown post status: cluster_entity_id={cluster_entity.id}, post_id={post_id}, status={post_prep_status}")
 
-        logger.info(f"[start_preparing_clustering] Completed: scraper_cluster_id={scraper_cluster_entity.id}, total_cluster_units_created={len(all_inserted_cluster_unit_entities)}")
-        return len(all_inserted_cluster_unit_entities)
+        logger.info(f"[start_preparing_clustering] Completed: scraper_cluster_id={scraper_cluster_entity.id}, newly created cluster_units_entities ={len(all_inserted_cluster_unit_entities)}")
+        all_cluster_unit_entities_count = len(all_previously_added_cluster_units) + len(all_inserted_cluster_unit_entities)
+        cluster_entity.cluster_unit_count = all_cluster_unit_entities_count
+        get_cluster_repository().update(cluster_entity.id, cluster_entity)
+        logger.info(f"ClusterEntity with Id : {cluster_entity.id} has a total of {all_cluster_unit_entities_count} cluster unit entities")
+        return all_cluster_unit_entities_count
 
     @staticmethod
     def convert_post_entity_to_cluster_units(cluster_entity: ClusterEntity, post_id: PyObjectId, media_strategy_skip_type: MediaStrategySkipType) -> List[PyObjectId]:

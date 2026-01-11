@@ -122,7 +122,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       );
 
       try {
-        await experimentApi.continueExperiment(authFetch, experiment.id);
+        experimentApi.continueExperiment(authFetch, experiment.id);
         toast({
           title: "Success",
           description: "Experiment resumed successfully",
@@ -239,7 +239,7 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       input_id: exp.input.input_id,
       prompt_id: exp.prompt_id,
       created: new Date(exp.created).toLocaleDateString(),
-      totalSamples: exp.total_samples,
+      totalClusterUnits: exp.total_cluster_units,
       overallAccuracy: (exp.overall_accuracy || 0 ) * 100, // Convert to percentage
       overallKappa: (exp.overall_kappa || 0) * 100, // Convert to percentage
       predictionMetrics: predictionMetrics,
@@ -254,7 +254,8 @@ export const ExperimentsSearchBarResults : React.FC<ExperimentsSearchBarResultsP
       experimentCost: exp.experiment_cost,
       predictionErrors: exp.errors,
       labelTemplateId: exp.label_template_id,
-      experimentType: exp.experiment_type
+      experimentType: exp.experiment_type,
+      progressBarData: exp.progress_bar
     };
   };
 

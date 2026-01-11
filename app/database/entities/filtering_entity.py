@@ -140,3 +140,7 @@ class FilteringEntity(FilteringFields, BaseEntity):
             filter_misc=filtering_fields.filter_misc
 
         )
+    
+    def get_cluster_unit_count(self) -> int:
+        """gets the number of cluster unit count that are associated with the entity"""
+        return len(self.output_cluster_unit_ids)

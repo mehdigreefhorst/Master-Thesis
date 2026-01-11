@@ -20,6 +20,7 @@ class ClusterEntity(BaseEntity):
     status: StatusType #Literal["initialized", "ongoing", "paused", "completed", "error"]
     post_entity_ids_prep_status: Dict[PyObjectId, StatusType]
     media_strategy_skip_type: MediaStrategySkipType
+    cluster_unit_count: int = 0
 
     @classmethod
     def from_params(cls, scraper_entity_id: PyObjectId, media_strategy_skip_type: MediaStrategySkipType, text_thread_mode: ClusterTextThreadModeType, post_entity_ids: List[PyObjectId], prompt: str = None) -> "ClusterEntity":
@@ -32,3 +33,7 @@ class ClusterEntity(BaseEntity):
             post_entity_ids_prep_status= post_entity_ids_prep_status,
             media_strategy_skip_type=media_strategy_skip_type
         )
+    
+    def get_cluster_unit_count(self) -> int:
+        """gets the number of cluster unit count that are associated with the entity"""
+        return self.cluster_unit_count
